@@ -1,0 +1,205 @@
+{"term": "abdominal aortic aneurysm", "type": "diagnosis", "aliases": ["aaa"], "priority": 0.8}
+{"term": "acute myeloid leukemia", "type": "diagnosis", "aliases": ["aml"], "priority": 1.0}
+{"term": "acute promyelocytic leukemia", "type": "diagnosis", "aliases": ["apl", "acute promyelocytic leukaemia"], "priority": 1.0}
+{"term": "acute respiratory distress syndrome", "type": "diagnosis", "aliases": ["ards"], "priority": 0.9}
+{"term": "alzheimer disease", "type": "diagnosis", "aliases": ["alzheimer's disease", "ad"], "priority": 1.0}
+{"term": "anemia", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "aortic dissection", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "appendicitis", "type": "diagnosis", "aliases": ["acute appendicitis"], "priority": 0.9}
+{"term": "aspiration pneumonia", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "asthma", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "atrial fibrillation", "type": "diagnosis", "aliases": ["afib", "a fib", "af"], "priority": 1.0}
+{"term": "bacterial meningitis", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "bronchitis", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "cholecystitis", "type": "diagnosis", "aliases": ["acute cholecystitis"], "priority": 0.9}
+{"term": "choledocholithiasis", "type": "diagnosis", "aliases": ["bile duct stones"], "priority": 0.7}
+{"term": "colorectal cancer", "type": "diagnosis", "aliases": ["colon cancer", "rectal cancer"], "priority": 1.0}
+{"term": "covid-19", "type": "diagnosis", "aliases": ["covid", "sars-cov-2 infection", "coronavirus disease 2019"], "priority": 1.0}
+{"term": "cushing syndrome", "type": "diagnosis", "aliases": ["cushing's syndrome"], "priority": 0.7}
+{"term": "dementia", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "dermatomyositis", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "diabetic ketoacidosis", "type": "diagnosis", "aliases": ["dka"], "priority": 1.0}
+{"term": "disseminated intravascular coagulation", "type": "diagnosis", "aliases": ["dic"], "priority": 0.8}
+{"term": "diverticulitis", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "encephalitis", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "end-stage renal disease", "type": "diagnosis", "aliases": ["esrd", "end stage renal disease"], "priority": 0.9}
+{"term": "endocarditis", "type": "diagnosis", "aliases": [], "priority": 0.7}
+{"term": "granulomatosis with polyangiitis", "type": "diagnosis", "aliases": ["wegener granulomatosis", "gpa"], "priority": 0.7}
+{"term": "hashimoto thyroiditis", "type": "diagnosis", "aliases": ["hashimoto's thyroiditis", "chronic autoimmune thyroiditis"], "priority": 0.7}
+{"term": "hepatocellular carcinoma", "type": "diagnosis", "aliases": ["hcc"], "priority": 0.8}
+{"term": "hiv infection", "type": "diagnosis", "aliases": ["hiv", "human immunodeficiency virus"], "priority": 1.0}
+{"term": "hodgkin lymphoma", "type": "diagnosis", "aliases": ["hodgkin's lymphoma", "hodgkin disease"], "priority": 0.9}
+{"term": "hypercalcemia", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "hypernatremia", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "hyperosmolar hyperglycemic state", "type": "diagnosis", "aliases": ["hhs"], "priority": 0.8}
+{"term": "hyperthyroidism", "type": "diagnosis", "aliases": ["overactive thyroid"], "priority": 0.9}
+{"term": "hypocalcemia", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "hypokalemia", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "infective endocarditis", "type": "diagnosis", "aliases": ["bacterial endocarditis"], "priority": 0.9}
+{"term": "inflammatory bowel disease", "type": "diagnosis", "aliases": ["ibd"], "priority": 1.0}
+{"term": "influenza", "type": "diagnosis", "aliases": ["flu"], "priority": 1.0}
+{"term": "intracerebral hemorrhage", "type": "diagnosis", "aliases": ["ich"], "priority": 0.8}
+{"term": "leukocytoclastic vasculitis", "type": "diagnosis", "aliases": ["hypersensitivity vasculitis"], "priority": 0.9}
+{"term": "lung cancer", "type": "diagnosis", "aliases": ["non-small cell lung cancer", "small cell lung cancer", "nsclc", "sclc"], "priority": 1.0}
+{"term": "migraine", "type": "diagnosis", "aliases": ["migraine headache"], "priority": 0.9}
+{"term": "multiple myeloma", "type": "diagnosis", "aliases": ["mm"], "priority": 0.9}
+{"term": "myasthenia gravis", "type": "diagnosis", "aliases": ["mg"], "priority": 0.8}
+{"term": "myopathy", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "nephritic syndrome", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "nephrotic syndrome", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "non-hodgkin lymphoma", "type": "diagnosis", "aliases": ["non hodgkin lymphoma", "nhl"], "priority": 1.0}
+{"term": "pancreatic cancer", "type": "diagnosis", "aliases": ["pancreatic adenocarcinoma"], "priority": 0.9}
+{"term": "parkinson disease", "type": "diagnosis", "aliases": ["parkinson's disease", "pd"], "priority": 1.0}
+{"term": "peptic ulcer disease", "type": "diagnosis", "aliases": ["pud", "peptic ulcer"], "priority": 0.9}
+{"term": "pericarditis", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "pleural effusion", "type": "diagnosis", "aliases": [], "priority": 0.8}
+{"term": "polymyalgia rheumatica", "type": "diagnosis", "aliases": ["pmr"], "priority": 0.7}
+{"term": "polymyositis", "type": "diagnosis", "aliases": [], "priority": 0.7}
+{"term": "prostate cancer", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "pyelonephritis", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "rheumatoid arthritis", "type": "diagnosis", "aliases": ["ra"], "priority": 1.0}
+{"term": "septic shock", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "status epilepticus", "type": "diagnosis", "aliases": [], "priority": 0.9}
+{"term": "systemic inflammatory response syndrome", "type": "diagnosis", "aliases": ["sirs"], "priority": 0.7}
+{"term": "systemic lupus erythematosus", "type": "diagnosis", "aliases": ["sle", "lupus"], "priority": 1.0}
+{"term": "thrombocytopenia", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "tuberculosis", "type": "diagnosis", "aliases": ["tb", "mycobacterium tuberculosis infection"], "priority": 1.0}
+{"term": "urinary tract infection", "type": "diagnosis", "aliases": ["uti"], "priority": 1.0}
+{"term": "vasculitis", "type": "diagnosis", "aliases": [], "priority": 0.7}
+{"term": "ventilator-associated pneumonia", "type": "diagnosis", "aliases": ["vap"], "priority": 0.8}
+{"term": "acyclovir", "type": "drug", "aliases": ["zovirax"], "priority": 0.9}
+{"term": "amikacin", "type": "drug", "aliases": ["amikin"], "priority": 0.8}
+{"term": "amiodarone", "type": "drug", "aliases": ["cordarone", "pacerone"], "priority": 1.0}
+{"term": "amoxicillin", "type": "drug", "aliases": ["amoxycillin", "amoxil", "trimox"], "priority": 1.0}
+{"term": "amoxicillin-clavulanate", "type": "drug", "aliases": ["augmentin", "co-amoxiclav"], "priority": 1.0}
+{"term": "apixaban", "type": "drug", "aliases": ["eliquis"], "priority": 1.0}
+{"term": "aripiprazole", "type": "drug", "aliases": ["abilify"], "priority": 0.9}
+{"term": "aspirin", "type": "drug", "aliases": ["acetylsalicylic acid", "asa"], "priority": 0.9}
+{"term": "atezolizumab", "type": "drug", "aliases": ["tecentriq"], "priority": 0.8}
+{"term": "azathioprine", "type": "drug", "aliases": ["imuran"], "priority": 0.9}
+{"term": "benzonatate", "type": "drug", "aliases": ["tessalon"], "priority": 0.9}
+{"term": "bevacizumab", "type": "drug", "aliases": ["avastin"], "priority": 0.9}
+{"term": "bisoprolol", "type": "drug", "aliases": ["zebeta", "concor"], "priority": 0.9}
+{"term": "budesonide", "type": "drug", "aliases": ["pulmicort", "entocort", "uceris"], "priority": 0.9}
+{"term": "buprenorphine", "type": "drug", "aliases": ["subutex", "suboxone"], "priority": 0.9}
+{"term": "capecitabine", "type": "drug", "aliases": ["xeloda"], "priority": 0.8}
+{"term": "cephalexin", "type": "drug", "aliases": ["keflex"], "priority": 1.0}
+{"term": "cetuximab", "type": "drug", "aliases": ["erbitux"], "priority": 0.8}
+{"term": "clomipramine", "type": "drug", "aliases": ["anafranil"], "priority": 0.6}
+{"term": "clopidogrel", "type": "drug", "aliases": ["plavix"], "priority": 1.0}
+{"term": "clozapine", "type": "drug", "aliases": ["clozaril"], "priority": 0.7}
+{"term": "colistin", "type": "drug", "aliases": ["colistimethate", "colomycin"], "priority": 0.8}
+{"term": "cyclophosphamide", "type": "drug", "aliases": ["cytoxan"], "priority": 0.9}
+{"term": "dalteparin", "type": "drug", "aliases": ["fragmin"], "priority": 0.7}
+{"term": "dexamethasone", "type": "drug", "aliases": ["decadron"], "priority": 1.0}
+{"term": "dexmedetomidine", "type": "drug", "aliases": ["precedex"], "priority": 0.8}
+{"term": "dextrose", "type": "drug", "aliases": ["glucose", "d5w", "d50"], "priority": 0.5}
+{"term": "diclofenac", "type": "drug", "aliases": ["voltaren", "cataflam"], "priority": 0.9}
+{"term": "digoxin", "type": "drug", "aliases": ["lanoxin"], "priority": 0.8}
+{"term": "diltiazem", "type": "drug", "aliases": ["cardizem", "tiazac"], "priority": 0.9}
+{"term": "diphenhydramine", "type": "drug", "aliases": ["benadryl"], "priority": 1.0}
+{"term": "dobutamine", "type": "drug", "aliases": ["dobutrex"], "priority": 0.9}
+{"term": "docetaxel", "type": "drug", "aliases": ["taxotere"], "priority": 0.8}
+{"term": "dronedarone", "type": "drug", "aliases": ["multaq"], "priority": 0.6}
+{"term": "dulaglutide", "type": "drug", "aliases": ["trulicity"], "priority": 0.8}
+{"term": "duloxetine", "type": "drug", "aliases": ["cymbalta"], "priority": 0.9}
+{"term": "dupilumab", "type": "drug", "aliases": ["dupixent"], "priority": 0.8}
+{"term": "edoxaban", "type": "drug", "aliases": ["savaysa", "lixiana"], "priority": 0.8}
+{"term": "enalapril", "type": "drug", "aliases": ["vasotec"], "priority": 0.9}
+{"term": "epinephrine", "type": "drug", "aliases": ["adrenaline", "epi"], "priority": 1.0}
+{"term": "eplerenone", "type": "drug", "aliases": ["inspra"], "priority": 0.7}
+{"term": "esomeprazole", "type": "drug", "aliases": ["nexium"], "priority": 1.0}
+{"term": "ethambutol", "type": "drug", "aliases": ["myambutol"], "priority": 0.8}
+{"term": "ezetimibe", "type": "drug", "aliases": ["zetia"], "priority": 0.7}
+{"term": "famotidine", "type": "drug", "aliases": ["pepcid"], "priority": 1.0}
+{"term": "fenofibrate", "type": "drug", "aliases": ["tricor"], "priority": 0.6}
+{"term": "fentanyl", "type": "drug", "aliases": ["duragesic", "sublimaze"], "priority": 1.0}
+{"term": "fidaxomicin", "type": "drug", "aliases": ["dificid"], "priority": 0.7}
+{"term": "flecainide", "type": "drug", "aliases": ["tambocor"], "priority": 0.7}
+{"term": "fluoxetine", "type": "drug", "aliases": ["prozac"], "priority": 1.0}
+{"term": "fluticasone", "type": "drug", "aliases": ["flovent", "flonase"], "priority": 1.0}
+{"term": "formoterol", "type": "drug", "aliases": ["foradil"], "priority": 0.7}
+{"term": "gemcitabine", "type": "drug", "aliases": ["gemzar"], "priority": 0.8}
+{"term": "glimepiride", "type": "drug", "aliases": ["amaryl"], "priority": 0.7}
+{"term": "glipizide", "type": "drug", "aliases": ["glucotrol"], "priority": 0.7}
+{"term": "haloperidol", "type": "drug", "aliases": ["haldol"], "priority": 0.9}
+{"term": "heparin", "type": "drug", "aliases": ["unfractionated heparin"], "priority": 1.0}
+{"term": "hydrocodone", "type": "drug", "aliases": ["vicodin", "norco", "lortab"], "priority": 1.0}
+{"term": "hydrocortisone", "type": "drug", "aliases": ["cortef", "solu-cortef"], "priority": 0.9}
+{"term": "ibuprofen", "type": "drug", "aliases": ["advil", "motrin", "brufen", "nurofen"], "priority": 1.0}
+{"term": "imipenem-cilastatin", "type": "drug", "aliases": ["primaxin"], "priority": 0.9}
+{"term": "insulin aspart", "type": "drug", "aliases": ["novolog", "novorapid"], "priority": 1.0}
+{"term": "insulin detemir", "type": "drug", "aliases": ["levemir"], "priority": 0.8}
+{"term": "isavuconazole", "type": "drug", "aliases": ["cresemba"], "priority": 0.8}
+{"term": "ivabradine", "type": "drug", "aliases": ["corlanor"], "priority": 0.6}
+{"term": "labetalol", "type": "drug", "aliases": ["trandate"], "priority": 0.8}
+{"term": "lactulose", "type": "drug", "aliases": ["enulose", "kristalose"], "priority": 0.7}
+{"term": "lansoprazole", "type": "drug", "aliases": ["prevacid"], "priority": 0.9}
+{"term": "levofloxacin", "type": "drug", "aliases": ["levaquin"], "priority": 1.0}
+{"term": "linagliptin", "type": "drug", "aliases": ["tradjenta"], "priority": 0.7}
+{"term": "loratadine", "type": "drug", "aliases": ["claritin"], "priority": 0.9}
+{"term": "magnesium sulfate", "type": "drug", "aliases": [], "priority": 0.7}
+{"term": "metformin", "type": "drug", "aliases": ["glucophage"], "priority": 1.0}
+{"term": "methadone", "type": "drug", "aliases": ["dolophine"], "priority": 0.9}
+{"term": "methotrexate", "type": "drug", "aliases": [], "priority": 1.0}
+{"term": "methylprednisolone", "type": "drug", "aliases": ["solu-medrol", "solumedrol", "medrol"], "priority": 1.0}
+{"term": "metoclopramide", "type": "drug", "aliases": ["reglan"], "priority": 0.9}
+{"term": "milrinone", "type": "drug", "aliases": ["primacor"], "priority": 0.8}
+{"term": "minocycline", "type": "drug", "aliases": ["minocin"], "priority": 0.8}
+{"term": "minoxidil", "type": "drug", "aliases": ["loniten", "rogaine"], "priority": 0.6}
+{"term": "mirtazapine", "type": "drug", "aliases": ["remeron"], "priority": 0.8}
+{"term": "morphine", "type": "drug", "aliases": ["ms contin", "kadian"], "priority": 1.0}
+{"term": "mycophenolate mofetil", "type": "drug", "aliases": ["cellcept"], "priority": 0.9}
+{"term": "naloxone", "type": "drug", "aliases": ["narcan"], "priority": 1.0}
+{"term": "naltrexone", "type": "drug", "aliases": ["vivitrol", "revia"], "priority": 0.8}
+{"term": "nifedipine", "type": "drug", "aliases": ["procardia", "adalat"], "priority": 0.9}
+{"term": "nirmatrelvir-ritonavir", "type": "drug", "aliases": ["paxlovid"], "priority": 1.0}
+{"term": "nitrofurantoin", "type": "drug", "aliases": ["macrobid", "macrodantin"], "priority": 0.9}
+{"term": "nivolumab", "type": "drug", "aliases": ["opdivo"], "priority": 1.0}
+{"term": "norepinephrine", "type": "drug", "aliases": ["noradrenaline", "levophed"], "priority": 1.0}
+{"term": "nortriptyline", "type": "drug", "aliases": ["pamelor"], "priority": 0.7}
+{"term": "ocrelizumab", "type": "drug", "aliases": ["ocrevus"], "priority": 1.0}
+{"term": "olanzapine", "type": "drug", "aliases": ["zyprexa"], "priority": 0.9}
+{"term": "omalizumab", "type": "drug", "aliases": ["xolair"], "priority": 0.8}
+{"term": "ondansetron", "type": "drug", "aliases": ["zofran"], "priority": 1.0}
+{"term": "osimertinib", "type": "drug", "aliases": ["tagrisso"], "priority": 0.8}
+{"term": "oxaliplatin", "type": "drug", "aliases": ["eloxatin"], "priority": 0.8}
+{"term": "oxycodone", "type": "drug", "aliases": ["oxycontin", "percocet", "roxicodone"], "priority": 1.0}
+{"term": "paclitaxel", "type": "drug", "aliases": ["taxol", "abraxane"], "priority": 0.9}
+{"term": "pioglitazone", "type": "drug", "aliases": ["actos"], "priority": 0.7}
+{"term": "posaconazole", "type": "drug", "aliases": ["noxafil"], "priority": 0.8}
+{"term": "prednisolone", "type": "drug", "aliases": [], "priority": 1.0}
+{"term": "prednisone", "type": "drug", "aliases": ["deltasone"], "priority": 1.0}
+{"term": "pregabalin", "type": "drug", "aliases": ["lyrica"], "priority": 1.0}
+{"term": "propylthiouracil", "type": "drug", "aliases": ["ptu"], "priority": 0.7}
+{"term": "pseudoephedrine", "type": "drug", "aliases": ["sudafed"], "priority": 0.7}
+{"term": "quetiapine", "type": "drug", "aliases": ["seroquel"], "priority": 0.9}
+{"term": "rabeprazole", "type": "drug", "aliases": ["aciphex", "pariet"], "priority": 0.7}
+{"term": "ramipril", "type": "drug", "aliases": ["altace", "tritace"], "priority": 0.9}
+{"term": "remdesivir", "type": "drug", "aliases": ["veklury"], "priority": 0.9}
+{"term": "risperidone", "type": "drug", "aliases": ["risperdal"], "priority": 0.9}
+{"term": "sacubitril-valsartan", "type": "drug", "aliases": ["entresto"], "priority": 0.9}
+{"term": "Salem aalaykom", "type": "drug", "aliases": ["Selim alakal"], "priority": 1.0}
+{"term": "salem aleykom", "type": "drug", "aliases": ["Selam naleyk"], "priority": 1.0}
+{"term": "salemou aalaykom", "type": "drug", "aliases": [], "priority": 1.0}
+{"term": "sotalol", "type": "drug", "aliases": ["betapace"], "priority": 0.7}
+{"term": "sulfasalazine", "type": "drug", "aliases": ["azulfidine"], "priority": 0.7}
+{"term": "tacrolimus", "type": "drug", "aliases": ["prograf", "fk506"], "priority": 0.9}
+{"term": "tenecteplase", "type": "drug", "aliases": ["tnkase"], "priority": 0.7}
+{"term": "ticagrelor", "type": "drug", "aliases": ["brilinta"], "priority": 1.0}
+{"term": "tiotropium", "type": "drug", "aliases": ["spiriva"], "priority": 0.9}
+{"term": "tirzepatide", "type": "drug", "aliases": ["mounjaro", "zepbound"], "priority": 0.9}
+{"term": "tofacitinib", "type": "drug", "aliases": ["xeljanz"], "priority": 0.8}
+{"term": "trastuzumab", "type": "drug", "aliases": ["herceptin"], "priority": 1.0}
+{"term": "trazodone", "type": "drug", "aliases": ["desyrel"], "priority": 0.7}
+{"term": "valproic acid", "type": "drug", "aliases": ["depakote", "valproate", "divalproex"], "priority": 0.9}
+{"term": "valsartan", "type": "drug", "aliases": ["diovan"], "priority": 1.0}
+{"term": "vecuronium", "type": "drug", "aliases": ["norcuron"], "priority": 0.7}
+{"term": "venlafaxine", "type": "drug", "aliases": ["effexor"], "priority": 0.9}
+{"term": "verapamil", "type": "drug", "aliases": ["calan", "isoptin"], "priority": 0.8}
+{"term": "warfarin", "type": "drug", "aliases": ["coumadin", "jantoven"], "priority": 1.0}
+{"term": "doliprane", "type": "drug", "aliases": ["Gli prani"], "priority": 1.0}
+{"term": "maxilase", "type": "drug", "aliases": ["maxilas"], "priority": 1.0}
+{"term": "Erythematosus", "type": "drug", "aliases": ["eritimethus"], "priority": 1.0}
+{"term": "salbutamoll", "type": "drug", "aliases": ["submittamol"], "priority": 1.0}
+{"term": "grippex", "type": "drug", "aliases": ["gripex"], "priority": 1.0}
