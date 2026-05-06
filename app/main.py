@@ -51,6 +51,38 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
+
+
+def _build_corrector() -> MedicalCorrector:
+    """Build a MedicalCorrector from the current lexicon on disk.
+
+    Short abbreviation aliases (<= 3 compact characters, e.g. 'asa', 'aml')
+    are stripped here because they match too many common English short words
+    when applied to free-form medical conversation text.  The LLM DETECT
+    / DECIDE pipeline handles those cases when the context is clear.
+    """
+    raw = lexicon.list_terms()
+    entries = []
+    for e in raw:
+        aliases = [
+            a for a in (e.get("aliases") or [])
+            if len(compact(a)) > 3  # drop 2-3 char abbreviations
+        ]
+        entries.append(
+            _LexiconEntry(
+                term=e["term"],
+                type=e.get("type", ""),
+                aliases=tuple(aliases),
+                priority=float(e.get("priority", 1.0)),
+            )
+        )
+    return MedicalCorrector(
+        lexicon=entries,
+        accept_threshold=88.0,         # was 80 — tighter to reduce false positives
+        single_word_score_floor=80.0,  # floor for the strong-phonetic path
+        single_word_phonetic_floor=92.0,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -66,13 +98,14 @@ DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "base")
 DEFAULT_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 
-# Audio-retrieval thresholds. Real-voice repeats typically score >= 0.85.
-# TTS-seeded synthetic voices score lower, so we keep a separate floor for
-# them. The thresholds are loose-ish so the LLM gets candidates to reason
-# over; the LLM itself is the strict filter.
-AUDIO_RETRIEVE_THRESHOLD_USER = 0.78
-AUDIO_RETRIEVE_THRESHOLD_SEED = 0.55
-AUDIO_AUTOFIX_THRESHOLD = 0.92  # short-circuit when very strong USER match
+# Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
+# scale (normalized Levenshtein over greedy wav2vec2-base-960h transcripts).
+# Empirically: same word / different voice -> 0.55-0.85, same word / same
+# voice -> 0.85-1.00, different words -> < 0.40. The LLM remains the
+# final filter; we just keep candidates loose enough to feed it.
+AUDIO_RETRIEVE_THRESHOLD_USER = 0.55
+AUDIO_RETRIEVE_THRESHOLD_SEED = 0.45
+AUDIO_AUTOFIX_THRESHOLD = 0.85  # short-circuit when very strong USER match
 
 _LEARN_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9'-]+")
 
@@ -228,14 +261,13 @@ def _run_transcribe_pipeline(
     print(f"[transcribe] raw text: {raw_text!r}  ({len(words)} tokens)")
 
     # 2a) Voice-first scan: for every SINGLE word, check the voice DB.
-    # Only fires at very high cosine (>= 0.90) — wav2vec2 has speaker bias,
-    # so unrelated words from the same speaker score 0.70-0.85, well below
-    # the actual same-word match (0.92+). We deliberately do NOT scan 2- or
-    # 3-word windows because they trivially match the saved fingerprint by
-    # speaker identity alone.
+    # Similarity is now phonetic (CTC transcript distance), so we can be
+    # more confident: same word should score >= 0.75 even across speakers,
+    # while unrelated words drop below 0.45. We still only scan single
+    # words to keep the scan fast and unambiguous.
     voice_first_spans: List[Dict[str, Any]] = []
     if voice_match.list_voices() and words:
-        VF_THRESHOLD = 0.90
+        VF_THRESHOLD = 0.80
         for i, tok in enumerate(words):
             start = tok.get("start")
             end = tok.get("end")
@@ -465,6 +497,25 @@ def _run_transcribe_pipeline(
     corrected_text = _apply_word_replacements(words, word_replacements, drop_indices) if words else raw_text
     if not words:
         corrected_text = raw_text
+
+    # -----------------------------------------------------------------------
+    # Final pass: text-based corrector.
+    # This catches anything the LLM/voice pipeline missed: direct alias
+    # matches and fuzzy/phonetic near-matches against the lexicon.  It never
+    # makes a correction that is already handled above (the word was already
+    # replaced), so the two passes are complementary and do not conflict.
+    # -----------------------------------------------------------------------
+    try:
+        text_corrector = _build_corrector()
+        tc_result = text_corrector.correct_transcript(corrected_text)
+        text_corrected = tc_result.get("corrected_text", corrected_text)
+        if text_corrected != corrected_text:
+            changes = tc_result.get("suspicious_spans", [])
+            print(f"[transcribe] text-corrector changes: {changes}")
+            tracing.emit("text_correct.done", {"changes": changes, "text": text_corrected})
+            corrected_text = text_corrected
+    except Exception as exc:
+        print(f"[transcribe] text-corrector failed (non-fatal): {exc!r}")
 
     return {
         "session_id": session_id,

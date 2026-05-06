@@ -203,3 +203,29 @@
 {"term": "Erythematosus", "type": "drug", "aliases": ["eritimethus"], "priority": 1.0}
 {"term": "salbutamoll", "type": "drug", "aliases": ["submittamol"], "priority": 1.0}
 {"term": "grippex", "type": "drug", "aliases": ["gripex"], "priority": 1.0}
+{"term": "myofascial", "type": "diagnosis", "aliases": ["myofacial", "myofasial", "myofaicial"], "priority": 1.0}
+{"term": "Factor V Leiden", "type": "diagnosis", "aliases": ["factor 5 leiden", "factor v leiden"], "priority": 1.0}
+{"term": "pulmonary embolism", "type": "diagnosis", "aliases": ["pulminary embolism", "pulmonary embolisim"], "priority": 1.0}
+{"term": "International Normalized Ratio", "type": "diagnosis", "aliases": ["INR", "international normalised ratio"], "priority": 1.0}
+{"term": "Acitrom", "type": "drug", "aliases": ["acitram", "acetrom"], "priority": 1.0}
+{"term": "Clopidogrel", "type": "drug", "aliases": ["clopidogral", "clopidogrel"], "priority": 1.0}
+{"term": "gabapentin", "type": "drug", "aliases": ["gabapentine", "gabapenton"], "priority": 1.0}
+{"term": "Savella", "type": "drug", "aliases": ["savela", "savella"], "priority": 1.0}
+{"term": "Percocet", "type": "drug", "aliases": ["percoset", "percacet"], "priority": 1.0}
+{"term": "mebeverine", "type": "drug", "aliases": ["mebeverin", "mebevirine"], "priority": 1.0}
+{"term": "loperamide", "type": "drug", "aliases": ["loperamid", "lopramide"], "priority": 1.0}
+{"term": "fibromyalgia", "type": "diagnosis", "aliases": ["fibromialgia", "fibromyalga"], "priority": 1.0}
+{"term": "hypothyroidism", "type": "diagnosis", "aliases": ["hypthyroidism", "hypothyrodism"], "priority": 1.0}
+{"term": "hyperthyroidism", "type": "diagnosis", "aliases": ["hyperthyrodism", "hyperthyroidizm"], "priority": 1.0}
+{"term": "carotid artery", "type": "diagnosis", "aliases": ["carotid arery", "carotid arterie"], "priority": 1.0}
+{"term": "febrile convulsion", "type": "diagnosis", "aliases": ["febrile convultion", "febral convulsion"], "priority": 1.0}
+{"term": "spinal stenosis", "type": "diagnosis", "aliases": ["spinal stenisis", "spinal stenozis"], "priority": 1.0}
+{"term": "mitral valve prolapse", "type": "diagnosis", "aliases": ["mitral valve prolaps", "mitral valve prolapss"], "priority": 1.0}
+{"term": "Irritable Bowel Syndrome", "type": "diagnosis", "aliases": ["irritable bowel syndrom", "IBS"], "priority": 1.0}
+{"term": "histopathological", "type": "diagnosis", "aliases": ["histopathologic", "histopathologocal"], "priority": 1.0}
+{"term": "coagulation profile", "type": "diagnosis", "aliases": ["coagulation profil", "coagulatoin profile"], "priority": 1.0}
+{"term": "platelet count", "type": "diagnosis", "aliases": ["platlet count", "platelet cnt"], "priority": 1.0}
+{"term": "pictocis", "type": "drug", "aliases": ["pictosis"], "priority": 1.0}
+{"term": "Biobsy", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
+{"term": "biobci", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
+{"term": "some effiralgon", "type": "drug", "aliases": ["Sami Firal gone"], "priority": 1.0}

@@ -29,10 +29,12 @@ def _load_model(model_size: str = "small"):
             "Run: pip install faster-whisper"
         ) from exc
 
-    # CPU + int8 keeps the demo runnable on a laptop without a GPU. On a GPU
-    # box, switch to compute_type="float16".
-    compute_type = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
-    device = os.environ.get("WHISPER_DEVICE", "cpu")
+    # Use MPS (Apple Silicon) when available, fall back to CPU.
+    # compute_type must be "int8" for CPU; "float16" for GPU/MPS if supported.
+    default_device = "auto"
+    default_compute = "int8"
+    device = os.environ.get("WHISPER_DEVICE", default_device)
+    compute_type = os.environ.get("WHISPER_COMPUTE_TYPE", default_compute)
     _MODEL = WhisperModel(model_size, device=device, compute_type=compute_type)
     _MODEL_NAME = model_size
     return _MODEL
