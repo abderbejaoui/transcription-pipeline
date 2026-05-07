@@ -44,6 +44,12 @@ Environment variables (all optional, sensible defaults):
 | `VOICE_ENCODER_MODEL` | `facebook/wav2vec2-base` | any wav2vec2 checkpoint |
 | `OLLAMA_URL` | `http://100.68.87.28:11434/api/chat` | your Ollama endpoint |
 | `OLLAMA_MODEL` | `hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS` | model tag |
+| `LLM_PROVIDER` | `ollama` | `ollama` or `openrouter` (auto-detects OpenRouter if key is set) |
+| `OPENROUTER_API_KEY` | _(none)_ | OpenRouter API key (required for provider `openrouter`) |
+| `OPENROUTER_URL` | `https://openrouter.ai/api/v1/chat/completions` | OpenRouter endpoint |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | OpenRouter model ID |
+| `OPENROUTER_APP_URL` | _(none)_ | Optional HTTP-Referer header value |
+| `OPENROUTER_APP_NAME` | _(none)_ | Optional X-Title header value |
 | `USE_LLM` | `1` | set to `0` to skip both LLM calls (text-only fallback) |
 
 Confirm Ollama is reachable before you start:
@@ -51,6 +57,14 @@ Confirm Ollama is reachable before you start:
 ```bash
 curl -sS $OLLAMA_URL ; echo
 curl -sS "${OLLAMA_URL%/chat}/tags" | head -1
+```
+
+To use OpenRouter instead, set:
+
+```bash
+export LLM_PROVIDER=openrouter
+export OPENROUTER_API_KEY=your_key_here
+export OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
 ## Run

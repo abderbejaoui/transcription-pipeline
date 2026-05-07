@@ -28,15 +28,25 @@ import time
 import urllib.request
 from typing import Any, Dict, List, Optional, Sequence
 
+from .llm_config import (
+    get_llm_headers,
+    get_llm_model,
+    get_llm_provider,
+    get_llm_url,
+    parse_chat_content,
+)
 
-def _ollama_url() -> str:
-    return os.environ.get("OLLAMA_URL", "http://100.68.87.28:11434/api/chat")
+
+def _llm_provider() -> str:
+    return get_llm_provider()
 
 
-def _ollama_model() -> str:
-    return os.environ.get(
-        "OLLAMA_MODEL", "hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS"
-    )
+def _llm_url() -> str:
+    return get_llm_url(_llm_provider())
+
+
+def _llm_model() -> str:
+    return get_llm_model(_llm_provider())
 
 
 NO_CHANGE = "NO_CHANGE"
@@ -108,7 +118,7 @@ def _build_user(transcript: str, items: Sequence[Dict[str, Any]]) -> str:
 
 def _post(content: str, timeout: float) -> str:
     payload = {
-        "model": _ollama_model(),
+        "model": _llm_model(),
         "stream": False,
         "format": "json",
         "think": False,
@@ -122,13 +132,13 @@ def _post(content: str, timeout: float) -> str:
     for attempt in range(4):
         try:
             req = urllib.request.Request(
-                _ollama_url(),
+                _llm_url(),
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers=get_llm_headers(_llm_provider()),
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            return data["message"]["content"]
+            return parse_chat_content(data, _llm_provider())
         except Exception as exc:
             last_exc = exc
             wait = 1.0 * (2 ** attempt)
@@ -175,8 +185,9 @@ def decide(
     tracing.emit("decide.request", {
         "system": _SYSTEM,
         "user": json.loads(user_payload),
-        "model": _ollama_model(),
-        "url": _ollama_url(),
+        "model": _llm_model(),
+        "url": _llm_url(),
+        "provider": _llm_provider(),
     })
     try:
         content = _post(user_payload, timeout=timeout)
