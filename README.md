@@ -37,7 +37,7 @@ Environment variables (all optional, sensible defaults):
 
 | Var | Default | What |
 |---|---|---|
-| `WHISPER_MODEL_SIZE` | `base` | tiny / base / small / medium / large-v3 |
+| `WHISPER_MODEL_SIZE` | `large-v3` | tiny / base / small / medium / large-v3 |
 | `WHISPER_DEVICE` | `cpu` | `cuda` on Linux+GPU |
 | `WHISPER_COMPUTE_TYPE` | `int8` | `float16` on GPU |
 | `WHISPER_LANGUAGE` | `en` | force language; UI dropdown overrides per-request |
