@@ -318,36 +318,19 @@ No architecture trick replaces a model trained on your domain audio.
 ## Domain considerations: Gulf Arabic medical
 
 This system is designed for English medical transcription. Adapting to
-Gulf Arabic (Khaleeji) clinical speech requires its own work:
+Gulf Arabic (Khaleeji) clinical speech requires data collection,
+fine-tuning, and a vocabulary-augmentation strategy.
 
-**Why it's harder:**
-- Code-switching Arabic↔English↔French (drug names) within sentences
-- Khaleeji-accented English on medical terms is far from Whisper's
-  US/UK English training distribution
-- Patient terms in Arabic that map to English drug names
+**The full inventory of free and paid datasets, fine-tuning approach,
+expected hour counts, costs, and direct links** is documented in a
+dedicated file:
 
-**Free Gulf Arabic data confirmed available** (research before fine-tuning):
+➡️ **See [DATASETS.md](DATASETS.md) for the complete dataset & fine-tuning playbook.**
 
-| Dataset | Hours | Dialect | Source |
-|---|---:|---|---|
-| **SADA** (Saudi Audio Dataset) | 668 | Saudi multi-dialect | Kaggle (free, SDAIA) |
-| **OMAN-SPEECH** | ~40 | Omani / Gulf | aclanthology.org |
-| **Ramsa** | large subset | Emirati Arabic | arXiv |
-| **Traditional Emirati Arabic** | curated | UAE | aclanthology |
-| **ZAEBUC-Spoken** | undisclosed | Multi-dialect + AR↔EN code-switch | aclanthology |
-| **Common Voice ar** | 88 | MSA + dialects | Mozilla |
-| **MASC** | 1,000 | Pan-Arabic | HuggingFace |
-| **MGB-2 Arabic** | 1,200 | Pan-Arabic broadcast | QCRI |
-| **FLEURS Arabic** | 10 | MSA test | Google |
-
-**No free medical Arabic conversational corpus exists** — confirmed via
-Semantic Scholar and ELRA searches. Medical vocabulary must come from:
-1. TTS-augmented synthesis of medical sentences (~$1k for ~50 hrs)
-2. Pilot data from real clinics over time
-
-**Realistic fine-tune budget**: ~$2k + 6–8 weeks (versus the ~$15-25k
-estimate before finding SADA). SADA alone is larger than the entire
-LDC Arabic catalog and is freely downloadable.
+Quick takeaway: ~700 hours of free Gulf Arabic speech data exists
+(SADA dominates at 668 hrs), plus ~3,000 hours of pan-Arabic. **No free
+medical Arabic conversational corpus exists** — that gap is closed via
+TTS augmentation and pilot-collected data.
 
 ## Business framing
 
