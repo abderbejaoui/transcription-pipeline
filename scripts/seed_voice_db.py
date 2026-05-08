@@ -3,12 +3,12 @@
 For every term in `data/medical_lexicon.jsonl`:
   1. LLM call -> short clinical description (cached in descriptions.jsonl)
   2. SpeechT5 TTS -> synthetic 16 kHz waveform
-  3. wav2vec2 mean-pool -> 768-d voice fingerprint
+  3. wav2vec2 CTC -> phonetic transcript string
   4. voice_match.register_with_embedding(...)
 
 Run:
     source .venv/bin/activate
-    python -m scripts.seed_voice_db [--limit N] [--skip-voice]
+    python -m scripts.seed_voice_db [--limit N] [--skip-voice] [--reset]
 
 This is idempotent: it skips any term already present in voice_match by
 canonical name, and any term already in descriptions.jsonl.
@@ -47,6 +47,7 @@ def main() -> int:
     parser.add_argument("--limit", type=int, default=None, help="seed only first N terms")
     parser.add_argument("--skip-voice", action="store_true", help="only generate descriptions, no TTS")
     parser.add_argument("--skip-descriptions", action="store_true", help="only seed voices, no descriptions")
+    parser.add_argument("--reset", action="store_true", help="wipe existing voice index before seeding")
     args = parser.parse_args()
 
     from app.services import descriptions, voice_match
@@ -55,6 +56,10 @@ def main() -> int:
     if args.limit:
         rows = rows[: args.limit]
     print(f"Seeding {len(rows)} terms from {LEXICON_PATH.name}")
+
+    if args.reset:
+        print("Resetting voice index...")
+        voice_match.reset()
 
     # Step A: descriptions, parallelised.
     if not args.skip_descriptions:
@@ -97,8 +102,7 @@ def main() -> int:
     # Step B: voice fingerprints from TTS.
     if not args.skip_voice:
         print("--- Step B: TTS-derived voice fingerprints ---")
-        # Lazy-load the legacy SoundEmbedder so we don't pay the load cost
-        # when the user only wants descriptions.
+        # Use legacy SoundEmbedder only for TTS synthesis.
         from legacy.pipeline import SoundEmbedder
 
         emb = SoundEmbedder.load()
@@ -107,18 +111,22 @@ def main() -> int:
         n_fail = 0
         for i, row in enumerate(rows, 1):
             term = row["term"]
-            type_hint = row.get("type")
             if voice_match.has_term(term):
                 n_skip += 1
                 continue
             t0 = time.time()
             try:
-                vec = emb.embed_term(term).astype(np.float32)
+                wav = emb.synthesize(term)
+                phon = voice_match.embed(wav)
+                if not phon:
+                    n_fail += 1
+                    print(f"  [{i:>3}/{len(rows)}] !voice {term!r} empty phonetic")
+                    continue
                 desc = descriptions.get(term)
                 voice_match.register_with_embedding(
                     term=term,
-                    embedding=vec,
-                    duration_s=0.0,
+                    embedding=phon,
+                    duration_s=len(wav) / 16_000,
                     description=desc,
                     source="seed",
                 )

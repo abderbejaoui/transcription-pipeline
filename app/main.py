@@ -51,7 +51,7 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
-from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
+from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact, _score_pair
 
 
 def _build_corrector() -> MedicalCorrector:
@@ -377,6 +377,42 @@ def _run_transcribe_pipeline(
     print(f"[transcribe] DETECT:      {[(s['index_start'], s['index_end'], s['text']) for s in detect_spans]}")
     print(f"[transcribe] FINAL spans: {[(s['index_start'], s['index_end'], s['text']) for s in spans]}")
 
+    # 2d) Build text corrector once (used for lexicon fallback + final pass).
+    text_corrector: Optional[MedicalCorrector] = None
+    try:
+        text_corrector = _build_corrector()
+    except Exception as exc:
+        print(f"[transcribe] text-corrector init failed (non-fatal): {exc!r}")
+
+    def _lexicon_fallback(span_text: str, *, top_k: int = 5) -> List[Dict[str, Any]]:
+        if not text_corrector:
+            return []
+        clean = span_text.strip()
+        if not clean:
+            return []
+        scored: List[Tuple[str, float]] = []
+        for entry in text_corrector.lexicon:
+            best_score = -1.0
+            for variant in entry.variants:
+                feats = _score_pair(clean, variant)
+                if feats["score"] > best_score:
+                    best_score = feats["score"]
+            if best_score >= text_corrector.accept_threshold:
+                scored.append((entry.term, best_score))
+        scored.sort(key=lambda x: -x[1])
+        out: List[Dict[str, Any]] = []
+        for term, score in scored[:top_k]:
+            desc = descriptions.get(term) or ""
+            out.append(
+                {
+                    "term": term,
+                    "similarity": round(min(1.0, score / 100.0), 4),
+                    "description": desc,
+                    "source": "lexicon",
+                }
+            )
+        return out
+
     # 3) For each span: voice retrieval -> candidates with descriptions.
     items_for_decide: List[Dict[str, Any]] = []
     span_meta: List[Dict[str, Any]] = []
@@ -442,6 +478,8 @@ def _run_transcribe_pipeline(
                 "description": desc,
                 "source": h.get("source", "user"),
             })
+        if not candidates:
+            candidates = _lexicon_fallback(s["text"])
         items_for_decide.append({"id": item_id, "span": s["text"], "candidates": candidates})
         span_meta.append({"id": item_id, "span": s, "hits": top, "auto": False})
         tracing.emit("retrieve.span", {
@@ -506,7 +544,8 @@ def _run_transcribe_pipeline(
     # replaced), so the two passes are complementary and do not conflict.
     # -----------------------------------------------------------------------
     try:
-        text_corrector = _build_corrector()
+        if text_corrector is None:
+            text_corrector = _build_corrector()
         tc_result = text_corrector.correct_transcript(corrected_text)
         text_corrected = tc_result.get("corrected_text", corrected_text)
         if text_corrected != corrected_text:

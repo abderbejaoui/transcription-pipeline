@@ -229,3 +229,10 @@
 {"term": "Biobsy", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
 {"term": "biobci", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
 {"term": "some effiralgon", "type": "drug", "aliases": ["Sami Firal gone"], "priority": 1.0}
+{"term": "effiralgon", "type": "drug", "aliases": ["fire alarm"], "priority": 1.0}
+{"term": "efferalgon", "type": "drug", "aliases": ["feral gun"], "priority": 1.0}
+{"term": "amlodipine", "type": "drug", "aliases": ["amlutipine"], "priority": 1.0}
+{"term": "Doxycycline", "type": "drug", "aliases": ["DoxyCeline"], "priority": 1.0}
+{"term": "Omeprazole", "type": "drug", "aliases": ["is only Brazil"], "priority": 1.0}
+{"term": "Spironolactone", "type": "drug", "aliases": ["Spironol Actual"], "priority": 1.0}
+{"term": "Spinorolactone", "type": "drug", "aliases": ["Spineau Lactone"], "priority": 1.0}
