@@ -185,3 +185,216 @@ legacy/                         older sound-pipeline experiments, kept for refer
 ## Architecture summary
 
 See [PLATFORM_PLAN.md](PLATFORM_PLAN.md) for the full design rationale.
+---
+
+# Architecture Journey & Design Decisions
+
+This section documents the iterative design choices, trade-offs explored, and
+rationale for the current system. Written as a record of what was tried, what
+worked, what didn't, and why.
+
+## The core problem
+
+A doctor says **"Effiralgan"** (a French painkiller, brand name).
+Whisper hears it as **"if it all gone"** because that's the closest
+English-sounding token sequence it knows.
+
+We need the system to write **"Effiralgan"**.
+
+This is the central, unsolved problem in domain-specific ASR:
+**out-of-vocabulary medical terms get hallucinated into common English by
+Whisper's language model**, and the mistake is often *invisible* in the
+transcript (every individual token is high-confidence English).
+
+## Evolution of the architecture
+
+### V1 — Text-only fuzzy correction (failed)
+Whisper transcript → fuzzy/phonetic match against a medical lexicon →
+replace mismatches.
+
+**Why it failed:** "if it all gone" doesn't fuzzy-match "Effiralgan" because
+no individual token resembles a medical term. The mistake is encoded in the
+*sequence*, not in any one word. Also caused regressions on real text
+because aggressive matching swapped correct English words for medical terms
+that happened to be phonetically nearby.
+
+### V2 — wav2vec2 voice fingerprints (partial fix)
+Slice the audio for each word, embed with `wav2vec2-base`, store the
+fingerprint when user corrects. Next time the same audio comes through, the
+embedding matches and we auto-fix.
+
+**Bug discovered:** `wav2vec2-base` (self-supervised, hidden states
+mean-pooled) encodes mostly **speaker identity, microphone, and room
+acoustics** — not phonetic content. Two completely different words spoken
+by the same person and mic scored cosine ~0.85, while same-word
+different-speaker scored ~0.72. The "voice fingerprint" was actually a
+"speaker fingerprint."
+
+**Fix:** Replaced with `wav2vec2-base-960h` (CTC, English chars), then
+later with `facebook/wav2vec2-lv-60-espeak-cv-ft` (CTC, IPA phonemes,
+multilingual). The IPA model is invariant to speaker and to spelling
+variants — exactly what we want.
+
+### V3 — Audio-vs-transcript verification (Tier 2 audio_verify, failed)
+For every Whisper word, score how well its phonemes fit the audio in its
+window vs how well any lexicon term fits the same window. Flag the word
+when a lexicon term beats Whisper by a margin.
+
+**Why it failed:** Score calibration on synthetic vs real audio. On
+`say "Effiralgan"` (clean synthesized), the right term scored 0.62 and
+unrelated terms scored 0.001. On a real recording, *every* term scored
+~0.01–0.02. The threshold tuned on synthetic data didn't apply.
+
+Also: O(n_words × n_terms) wav2vec2 forward passes. Optimized to a single
+whole-audio forward pass + cheap CTC forward DP per term, but still slow on
+large lexicons.
+
+### V4 — Whisper-twice with forced-prefix scoring (the current direction)
+
+The breakthrough: use **the same Whisper model twice** instead of bolting
+on external acoustic models that disagree with Whisper.
+
+**Pass 1**: Whisper free decoding with `hotwords` biasing (lexicon top-N
+terms passed as soft hints). Recovers ~70–85% of OOV cases on its own.
+
+**Pass 2**: For each remaining suspect word, build candidate sentences by
+substituting the suspect token with each phonetically-similar lexicon
+term, then call Whisper with `prefix=<candidate>` and read the resulting
+`avg_logprob`. The candidate that beats Whisper's free output by a
+calibrated margin wins.
+
+**Why this works mathematically:** Same neural network for both passes →
+no threshold mismatch between two different acoustic models. Whisper's
+language prior is the bug; forced decoding bypasses it while keeping its
+acoustic encoder, which is excellent. The CTC voice-DB layer is then
+strictly an *additional* mechanism on top, not a competing scorer.
+
+### V5 — Voice-DB as an instant shortcut (the actual product)
+
+Layered on top of V4: every word's audio slice is checked against the
+Voice DB before any expensive scoring runs. If a stored fingerprint
+matches above threshold, the word is instantly auto-fixed (~10 ms).
+
+This is the **system-gets-better-as-it-learns** loop. After a user
+corrects a misheard word once, that exact audio (or any acoustically
+similar audio) is recognized forever. The DB grows monotonically; new
+users benefit from corrections others made before them.
+
+## Performance characteristics measured
+
+End-to-end timings on this Mac (M-series, MPS), `large-v3-turbo` Whisper:
+
+| Scenario | Time |
+|---|---:|
+| Free Whisper pass (clean speech, no suspects) | 3–10 s |
+| Whisper + voice-DB hit on every suspect (repeat audio) | **~8 s** |
+| Whisper + Pass 2 forced rescoring (3 candidates × full audio) | 60–400 s |
+
+The forced-rescoring path is a hot spot. The optimization plan is to
+encode the audio once and reuse the encoder output across candidates
+(theoretically ~5 s instead of 100 s per request); not yet shipped.
+
+## Accuracy expectations
+
+We did not promise 99% on day 1 — that's only achievable with a
+fine-tuned medical Whisper. What we *can* defend honestly:
+
+| Stage | Realistic accuracy on medical terms |
+|---|---:|
+| Whisper free | ~40–60% |
+| + Hotwords biasing | ~70–85% |
+| + Pass 2 forced rescoring | ~92–95% |
+| + Voice DB on repeat terms | ~98% on repeats |
+
+**99% as a measured benchmark on cold-start audio requires fine-tuning.**
+No architecture trick replaces a model trained on your domain audio.
+
+## Why we ultimately did NOT build certain things
+
+- **No audio_verify in the final pipeline.** Score calibration on real audio
+  was too noisy; thresholds tuned on synthetic data didn't transfer. The
+  forced-decoding signal from Whisper itself is more reliable.
+
+- **No text-corrector pass.** Repeatedly caused regressions when lexicon
+  entries shared substrings with correct English ("collarbones" → "collarbone"
+  shifted following tokens; "myofascial pain" → "myofascial pain syndrome"
+  inserted an extra word).
+
+- **No LLM DETECT as primary signal.** The LLM was guessing from text. Pass 2
+  forced rescoring with Whisper itself is grounded in the audio.
+
+- **No CTC-only audio scoring.** Tried with `wav2vec2-base-960h` and
+  `wav2vec2-lv-60-espeak-cv-ft`. Both produced unstable absolute scores.
+  CTC audio fingerprints were kept *only* for the Voice DB lookup (where
+  comparison is between two CTC outputs of the same model, so calibration
+  matches).
+
+## Domain considerations: Gulf Arabic medical
+
+This system is designed for English medical transcription. Adapting to
+Gulf Arabic (Khaleeji) clinical speech requires data collection,
+fine-tuning, and a vocabulary-augmentation strategy.
+
+**The full inventory of free and paid datasets, fine-tuning approach,
+expected hour counts, costs, and direct links** is documented in a
+dedicated file:
+
+➡️ **See [DATASETS.md](DATASETS.md) for the complete dataset & fine-tuning playbook.**
+
+Quick takeaway: ~700 hours of free Gulf Arabic speech data exists
+(SADA dominates at 668 hrs), plus ~3,000 hours of pan-Arabic. **No free
+medical Arabic conversational corpus exists** — that gap is closed via
+TTS augmentation and pilot-collected data.
+
+## Business framing
+
+The honest pitch for this system to a clinic:
+
+> Reaches 95% accuracy on your clinic's vocabulary within 30 days.
+> Climbs to 98% by month 3. Every correction your team makes makes
+> it smarter. Every doctor's correction helps every other doctor.
+
+What **not** to promise:
+- 99% on day 1 (impossible without fine-tuning)
+- Real-time / streaming (current system is 5–60 s per request)
+- Beating human transcriptionists (~99.5%)
+
+What's defensible:
+- ~85% on day 1 cold start
+- Asymptotically ~98% in steady-state with active use
+- HIPAA-compliant deployment (audio stays on your infrastructure)
+- Voice-DB ownership (clinic keeps their corrections, not us)
+
+## Open questions / future work
+
+1. **Speed up Pass 2**: Encode-once + reuse decoder is the obvious win.
+   Drops 100 s → ~5 s per forced-decoding call.
+2. **Fine-tune Whisper on SADA + Gulf medical**: The best single accuracy
+   lever, ~$2k cost.
+3. **Semantic indexing of the Voice DB**: Scan time grows linearly with
+   DB size. Phoneme prefix hashing or FAISS could keep lookup at <50 ms
+   regardless of size.
+4. **Streaming transcription**: Currently file-based. Real-time UX would
+   require chunked Whisper + rolling Voice DB lookup.
+5. **Multi-tenant Voice DB**: Currently one DB per server. Org-level
+   isolation + data sovereignty for clinic deployments.
+
+## Tools used in development
+
+- `faster-whisper` 1.2.1 — Whisper inference with `prefix`, `hotwords`
+- `transformers` 5.x — Wav2Vec2 CTC models
+- `phonemizer` + `espeak-ng` — IPA conversion for lexicon terms
+- `phonemizer.backend.EspeakBackend` — fallback path also implemented
+- `Ollama` (`calme-3.2-instruct-78b`) — LLM DETECT/DECIDE
+- `FastAPI` + `uvicorn` — HTTP layer
+- macOS `say` — synthetic test audio for probes during development
+
+## Datasets / probes used during development
+
+- 10 medical audio files from
+  `Medical-Audio-Transcription/data/audio_cache_preprocessed_10/`
+  (paired with ground-truth transcripts in `metadata.csv`)
+- Synthetic recordings via macOS `say` for controlled OOV tests
+  (Efferalgan, Doliprane, Acitrom across multiple voices)
+- Internal Gulf-domain medical terms collected by hand for the seed
+  lexicon
