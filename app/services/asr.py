@@ -17,7 +17,7 @@ _MODEL = None
 _MODEL_NAME: Optional[str] = None
 
 
-def _load_model(model_size: str = "small"):
+def _load_model(model_size: str = "large-v3"):
     global _MODEL, _MODEL_NAME
     if _MODEL is not None and _MODEL_NAME == model_size:
         return _MODEL
@@ -40,7 +40,7 @@ def _load_model(model_size: str = "small"):
     return _MODEL
 
 
-def transcribe(audio_path: str | Path, model_size: str = "small", language: Optional[str] = None) -> Dict[str, Any]:
+def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: Optional[str] = None) -> Dict[str, Any]:
     """Transcribe a wav/webm/mp3 file. Returns the transcript and per-word info."""
     model = _load_model(model_size)
     segments, info = model.transcribe(

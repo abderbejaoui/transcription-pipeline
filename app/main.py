@@ -94,7 +94,7 @@ STATIC_DIR = PROJECT_ROOT / "app" / "static"
 SESSIONS_DIR = PROJECT_ROOT / "data" / "sessions"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "base")
+DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 
@@ -533,7 +533,7 @@ def _run_transcribe_pipeline(
 
 
 def _apply_word_replacements(
-    words: List[Dict[str, Any]],
+    words: List[Dict, Any],
     replacements: Dict[int, str],
     drop_indices: set,
 ) -> str:

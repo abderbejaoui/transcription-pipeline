@@ -19,6 +19,14 @@ import urllib.request
 from pathlib import Path
 from typing import Dict, List, Optional
 
+from .llm_config import (
+    get_llm_headers,
+    get_llm_model,
+    get_llm_provider,
+    get_llm_url,
+    parse_chat_content,
+)
+
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
@@ -26,15 +34,11 @@ DESCRIPTIONS_PATH = DATA_DIR / "descriptions.jsonl"
 
 
 def _ollama_url() -> str:
-    import os
-    return os.environ.get("OLLAMA_URL", "http://100.68.87.28:11434/api/chat")
+    return get_llm_url(get_llm_provider())
 
 
 def _ollama_model() -> str:
-    import os
-    return os.environ.get(
-        "OLLAMA_MODEL", "hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS"
-    )
+    return get_llm_model(get_llm_provider())
 
 
 _lock = threading.Lock()
@@ -56,11 +60,11 @@ def _post_with_retry(
             req = urllib.request.Request(
                 _ollama_url(),
                 data=json.dumps(payload).encode("utf-8"),
-                headers={"Content-Type": "application/json"},
+                headers=get_llm_headers(get_llm_provider()),
             )
             with urllib.request.urlopen(req, timeout=timeout) as resp:
                 data = json.loads(resp.read().decode("utf-8"))
-            return data["message"]["content"].strip()
+            return parse_chat_content(data, get_llm_provider()).strip()
         except Exception as exc:
             last_exc = exc
             wait = backoff * (2 ** i)

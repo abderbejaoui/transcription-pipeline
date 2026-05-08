@@ -9,6 +9,7 @@ rapidfuzz>=3.0
 jellyfish>=1.0
 
 # Speech-to-text (optional but installed by default for the demo)
+torch>=2.2
 faster-whisper>=1.0
 soundfile>=0.12
 numpy>=1.24
