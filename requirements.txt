@@ -13,3 +13,9 @@ torch>=2.2
 faster-whisper>=1.0
 soundfile>=0.12
 numpy>=1.24
+
+# ASR fine-tuning (scripts/finetune_*)
+transformers>=4.44
+datasets>=2.19
+accelerate>=0.33
+peft>=0.12
