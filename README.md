@@ -398,3 +398,49 @@ What's defensible:
   (Efferalgan, Doliprane, Acitrom across multiple voices)
 - Internal Gulf-domain medical terms collected by hand for the seed
   lexicon
+
+## ASR fine-tuning (Qwen, VibeVoice, Voxtral, Omni)
+
+These scripts fine-tune the largest available checkpoints for Gulf Arabic
+and log WER before and after training. They assume WAV audio.
+
+### Data layout
+
+```
+data/finetuning/
+  train/
+    batch_001/
+      data.csv
+      sample_001.wav
+      sample_002.wav
+    batch_002/
+      ...
+  test/
+    batch_010/
+      data.csv
+      sample_101.wav
+```
+
+Each `data.csv` has two columns:
+- `name` — WAV filename (with or without `.wav` suffix)
+- `transcript` — ground-truth text
+
+### Run (full fine-tune)
+
+```bash
+python -m scripts.finetune_asr_qwen --output-dir outputs/qwen3-full
+python -m scripts.finetune_asr_vibevoice --output-dir outputs/vibevoice-full
+python -m scripts.finetune_asr_voxtral --output-dir outputs/voxtral-full
+python -m scripts.finetune_asr_omni --output-dir outputs/omni-full
+```
+
+### Run (LoRA)
+
+```bash
+python -m scripts.finetune_asr_qwen --lora --output-dir outputs/qwen3-lora
+python -m scripts.finetune_asr_vibevoice --lora --output-dir outputs/vibevoice-lora
+python -m scripts.finetune_asr_voxtral --lora --output-dir outputs/voxtral-lora
+python -m scripts.finetune_asr_omni --lora --output-dir outputs/omni-lora
+```
+
+Each run writes `metrics.json` into the output directory with pre/post WER.
