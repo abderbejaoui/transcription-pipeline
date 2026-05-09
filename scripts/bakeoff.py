@@ -463,8 +463,39 @@ def load_manifest() -> List[Dict[str, Any]]:
     return out
 
 
-def run_backend(backend: Backend, manifest: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+def run_backend(
+    backend: Backend,
+    manifest: List[Dict[str, Any]],
+    skip_existing: bool = False,
+) -> List[Dict[str, Any]]:
     print(f"\n=== {backend.name} ===")
+    pred_dir = PREDICTIONS_DIR / backend.name
+    pred_dir.mkdir(parents=True, exist_ok=True)
+
+    # If skip_existing, load already-computed rows without preparing the model.
+    if skip_existing:
+        existing = list(pred_dir.glob("*.json"))
+        if len(existing) > 0:
+            print(f"  → found {len(existing)} existing predictions, loading without re-running")
+            rows = []
+            for p in existing:
+                try:
+                    d = json.loads(p.read_text(encoding="utf-8"))
+                    rows.append({
+                        "model": backend.name,
+                        "clip_id": d["id"],
+                        "category": d["category"],
+                        "language": d["language"],
+                        "duration_s": d["duration_s"],
+                        "wer": d["wer"],
+                        "medical_term_recall": d["medical_term_recall"],
+                        "inference_seconds": d["inference_seconds"],
+                        "rtf": d["rtf"],
+                    })
+                except Exception:
+                    pass
+            return rows
+
     try:
         backend.prepare()
     except Exception as exc:
@@ -472,11 +503,28 @@ def run_backend(backend: Backend, manifest: List[Dict[str, Any]]) -> List[Dict[s
         traceback.print_exc()
         return []
 
-    pred_dir = PREDICTIONS_DIR / backend.name
-    pred_dir.mkdir(parents=True, exist_ok=True)
-
     rows: List[Dict[str, Any]] = []
     for i, clip in enumerate(manifest, 1):
+        # Skip clips that already have a prediction file (allows resuming).
+        pred_file = pred_dir / f"{clip['id']}.json"
+        if pred_file.exists() and skip_existing:
+            try:
+                d = json.loads(pred_file.read_text(encoding="utf-8"))
+                rows.append({
+                    "model": backend.name,
+                    "clip_id": d["id"],
+                    "category": d["category"],
+                    "language": d["language"],
+                    "duration_s": d["duration_s"],
+                    "wer": d["wer"],
+                    "medical_term_recall": d["medical_term_recall"],
+                    "inference_seconds": d["inference_seconds"],
+                    "rtf": d["rtf"],
+                })
+                print(f"  [{i:>3}/{len(manifest)}] ↩ {clip['id']} (cached)")
+                continue
+            except Exception:
+                pass
         wav_path = EVAL_DIR / clip["audio_path"]
         if not wav_path.exists():
             print(f"  [{i:>3}/{len(manifest)}] missing audio: {wav_path}")
@@ -653,6 +701,12 @@ def main() -> int:
         default=None,
         help="Optional: limit to first N clips (for smoke testing)",
     )
+    p.add_argument(
+        "--skip-existing",
+        action="store_true",
+        default=False,
+        help="Skip clips that already have prediction files (resume interrupted runs)",
+    )
     args = p.parse_args()
 
     manifest = load_manifest()
@@ -663,7 +717,7 @@ def main() -> int:
     all_rows: List[Dict[str, Any]] = []
     for name in args.models:
         backend = BACKENDS[name]()
-        rows = run_backend(backend, manifest)
+        rows = run_backend(backend, manifest, skip_existing=args.skip_existing)
         all_rows.extend(rows)
 
     if not all_rows:
