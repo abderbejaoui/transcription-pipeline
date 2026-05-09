@@ -31,3 +31,11 @@ data/sessions/
 .coverage
 htmlcov/
 .pytest_cache/
+
+.env
+.github/
+PROJECT_DESCRIPTION.md
+app/services/asr_benchmark.py
+data/download_sada.py
+fixes.md
+scripts/run_asr_benchmark.py
