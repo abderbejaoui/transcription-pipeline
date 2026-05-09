@@ -4,26 +4,26 @@
     "flag": "OK",
     "raw_wer": 0.03636363636363636,
     "cor_wer": 0.03636363636363636,
-    "raw": "I have a dull pain behind my left collarbone when coughing. I have asthma, and I've had a virus for a couple of weeks. I have been coughing quite a bit, and it seems to be not very productive. The pain usually comes after a breathing treatment. Is it a pulled muscle or something worse?",
-    "corrected": "I have a dull pain behind my left collarbone when coughing. I have asthma, and I've had a virus for a couple of weeks. I have been coughing quite a bit, and it seems to be not very productive. The pain usually comes after a breathing treatment. Is it a pulled muscle or something worse?",
+    "raw": "I have a dull pain behind my left collarbone when coughing. I have asthma and I've had a virus for a couple of weeks. I have been coughing quite a bit and it seems to be not very productive. The pain usually comes after a breathing treatment. Is it a pulled muscle or something worse?",
+    "corrected": "I have a dull pain behind my left collarbone when coughing. I have asthma and I've had a virus for a couple of weeks. I have been coughing quite a bit and it seems to be not very productive. The pain usually comes after a breathing treatment. Is it a pulled muscle or something worse?",
     "expected": "I have a dull pain behind my left collarbone when coughing. I have asthma and have had a virus for a couple of weeks. I have been coughing quite a bit, and it seems to be not very productive. The pain usually comes after a breathing treatment. Is it a pulled muscle or something worse?"
   },
   {
     "file": "100096_2b20.wav",
-    "flag": "OK",
+    "flag": "BAD_CORRECTION",
     "raw_wer": 0.0,
-    "cor_wer": 0.0,
-    "raw": "excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones. As a few accessory muscles are inserted in the clavicle bone.",
-    "corrected": "excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones. As a few accessory muscles are inserted in the clavicle bone.",
+    "cor_wer": 0.07692307692307693,
+    "raw": "Excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones as a few accessory muscles are inserted in the clavicle bone.",
+    "corrected": "Excessive use of accessory muscles of respiration during coughing leads to pain in the collarbone as a few accessory muscles are inserted in the clavicle.",
     "expected": "Excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones, as a few accessory muscles are inserted in the clavicle bone."
   },
   {
     "file": "100301_1b20.wav",
     "flag": "OK",
     "raw_wer": 0.010869565217391304,
-    "cor_wer": 0.010869565217391304,
-    "raw": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last 11 months. Should I just try to stay comfortable and endure the horrible sensations when coughing or should I be seen? I haven't had asthma attacks in a few years either. Never mind, I was hoping you could help. I didn't realize there was a fee.",
-    "corrected": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last 11 months. Should I just try to stay comfortable and endure the horrible sensations when coughing or should I be seen? I haven't had asthma attacks in a few years either. Never mind, I was hoping you could help. I didn't realize there was a fee.",
+    "cor_wer": 0.021739130434782608,
+    "raw": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last 11 months. Should I just try to stay comfortable and endure the horrible sensations when coughing, or should I be seen? I haven't had asthma attacks in a few years either. Never mind, I was hoping you could help. I didn't realize there was a fee.",
+    "corrected": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two stents placed in the last 11 months. Should I just try to stay comfortable and endure the horrible sensations when coughing, or should I be seen? I haven't had asthma attacks in a few years either. Never mind, I was hoping you could help. I didn't realize there was a fee.",
     "expected": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last eleven months. Should I just try to stay comfortable and endure the horrible sensations when coughing, or should I be seen? I haven’t had asthma attacks in a few years either. Never mind, I was hoping you could help; I didn’t realize there was a fee."
   },
   {
@@ -40,17 +40,17 @@
     "flag": "OK",
     "raw_wer": 0.009009009009009009,
     "cor_wer": 0.009009009009009009,
-    "raw": "My husband is having pain in his lower back. If he lies on the floor with no pillows, he cannot lift his legs up. In the mornings, he cannot put his pants or socks on. He has problems transitioning from sitting to standing, but if he waits a few seconds, he is fine. Tonight, as always, he went to the gym and jumped rope, ran and lifted weights with minimal pain. He has no problem twisting or lifting. Most when his back is straight up and down or lying straight, he feels the pain. This pain is not constant, but when it hurts, it hurts. What can we do for help?",
-    "corrected": "My husband is having pain in his lower back. If he lies on the floor with no pillows, he cannot lift his legs up. In the mornings, he cannot put his pants or socks on. He has problems transitioning from sitting to standing, but if he waits a few seconds, he is fine. Tonight, as always, he went to the gym and jumped rope, ran and lifted weights with minimal pain. He has no problem twisting or lifting. Most when his back is straight up and down or lying straight, he feels the pain. This pain is not constant, but when it hurts, it hurts. What can we do for help?",
+    "raw": "My husband is having pain in his lower back. If he lies on the floor with no pillows, he cannot lift his legs up. In the mornings, he cannot put his pants or socks on. He has problems transitioning from sitting to standing, but if he waits a few seconds, he is fine. Tonight, as always, he went to the gym and jumped rope, ran, and lifted weights with minimal pain. He has no problem twisting or lifting. Most when his back is straight up and down or lying straight, he feels the pain. This pain is not constant, but when it hurts, it hurts. What can we do for help?",
+    "corrected": "My husband is having pain in his lower back. If he lies on the floor with no pillows, he cannot lift his legs up. In the mornings, he cannot put his pants or socks on. He has problems transitioning from sitting to standing, but if he waits a few seconds, he is fine. Tonight, as always, he went to the gym and jumped rope, ran, and lifted weights with minimal pain. He has no problem twisting or lifting. Most when his back is straight up and down or lying straight, he feels the pain. This pain is not constant, but when it hurts, it hurts. What can we do for help?",
     "expected": "My husband is having pain in his lower back. If he lies on the floor with no pillows, he cannot lift his legs up. In the mornings, he cannot put his pants or socks on. He has problems transitioning from sitting to standing, but if he waits a few seconds, he is fine. Tonight, as always, he went to the gym and jumped rope, ran, and lifted weights with minimal pain. He has no problem twisting or lifting. Mostly when his back is straight up and down or lying straight, he feels the pain. This pain is not constant, but when it hurts, it hurts. What can we do for help?"
   },
   {
     "file": "100716_2b20.wav",
-    "flag": "OK",
-    "raw_wer": 0.06153846153846154,
-    "cor_wer": 0.06153846153846154,
-    "raw": "Possibly, it is some muscular or myofacial pain arising in some particular area. He should do warm-up exercises for his back, before getting up in the morning and before going to the gym. Some massage and hot foam in should precede that. However, he should avoid lifting weights and lifting anything in a bed position. He should squat and then lift objects from the ground.",
-    "corrected": "Possibly, it is some muscular or myofascial pain arising in some particular area. He should do warm-up exercises for his back, before getting up in the morning and before going to the gym. Some massage and hot foam in should dexmedetomidine that. However, he should avoid lifting weights and lifting anything in a bed position. He should squat and then lift objects from the ground.",
+    "flag": "BAD_CORRECTION",
+    "raw_wer": 0.015384615384615385,
+    "cor_wer": 0.046153846153846156,
+    "raw": "Possibly. It is some muscular or myofascial pain arising in some particular area. He should do warm-up exercises for his back before getting up in the morning and before going to the gym. Some massage and hot foam should precede that. However, he should avoid lifting weights and lifting anything in a bent position. He should squat and then lift objects from the ground.",
+    "corrected": "Possibly. It is some muscular or myofascial pain syndrome arising in some particular area. He should do warm-up exercises for his back before getting up in the morning and before going to the gym. Some massage and hot foam should dexmedetomidine that. However, he should avoid lifting weights and lifting anything in a bent position. He should squat and then lift objects from the ground.",
     "expected": "Possibly, it is some muscular or myofascial pain arising in some particular area. He should do warm-up exercises for his back before getting up in the morning and before going to the gym. Some massage and hot fomentation should precede that. However, he should avoid lifting weights and lifting anything in a bent position. He should squat and then lift objects from the ground."
   },
   {
@@ -58,26 +58,26 @@
     "flag": "OK",
     "raw_wer": 0.024390243902439025,
     "cor_wer": 0.024390243902439025,
-    "raw": "My daughter just called me. She lives in another state and is waiting for Metrice for coverage from her father to be able to see a doctor. In the meantime, she called and mentioned that the skin over her spinal column is bruised and she hasn't hurt herself or bumped into anything. She does, on occasion, have back pain and there are no bruises anywhere else on her body. She is extremely upset and concerned about what could cause it.",
-    "corrected": "My daughter just called me. She lives in another state and is waiting for Metrice for coverage from her father to be able to see a doctor. In the meantime, she called and mentioned that the skin over her spinal column is bruised and she hasn't hurt herself or bumped into anything. She does, on occasion, have back pain and there are no bruises anywhere else on her body. She is extremely upset and concerned about what could cause it.",
+    "raw": "My daughter just called me. She lives in another state and is waiting for medrus for coverage from her father to be able to see a doctor. In the meantime, she called and mentioned that the skin over her spinal column is bruised, and she hasn't hurt herself or bumped into anything. She does, on occasion, have back pain, and there are no bruises anywhere else on her body. She is extremely upset and concerned about what could cause it.",
+    "corrected": "My daughter just called me. She lives in another state and is waiting for medrus for coverage from her father to be able to see a doctor. In the meantime, she called and mentioned that the skin over her spinal column is bruised, and she hasn't hurt herself or bumped into anything. She does, on occasion, have back pain, and there are no bruises anywhere else on her body. She is extremely upset and concerned about what could cause it.",
     "expected": "My daughter just called me. She lives in another state and is waiting for medical papers for coverage from her father to be able to see a doctor. In the meantime, she called and mentioned that the skin over her spinal column is bruised, and she hasn't hurt herself or bumped into anything. She does, on occasion, have back pain, and there are no bruises anywhere else on her body. She is extremely upset and concerned about what could cause it."
   },
   {
     "file": "101139_2b20.wav",
     "flag": "OK",
-    "raw_wer": 0.010752688172043012,
-    "cor_wer": 0.010752688172043012,
-    "raw": "Hi. I did review your concern. Your daughter needs medical attention and she needs to be completely evaluated. A complete blood count, platelet count, and a coagulation profile are necessary. Also, a doctor needs to examine her back for any other abnormalities and also how the bruise looks. Some skin lesions can resemble bruises, but are not formed as a result of blood extravization in tissues. Therefore, a complete skin lesion analysis by a dermatologist will also be beneficial. I hope this helps. I wish you and your daughter a healthy life ahead.",
-    "corrected": "Hi. I did review your concern. Your daughter needs medical attention and she needs to be completely evaluated. A complete blood count, platelet count, and a coagulation profile are necessary. Also, a doctor needs to examine her back for any other abnormalities and also how the bruise looks. Some skin lesions can resemble bruises, but are not formed as a result of blood extravization in tissues. Therefore, a complete skin lesion analysis by a dermatologist will also be beneficial. I hope this helps. I wish you and your daughter a healthy life ahead.",
+    "raw_wer": 0.0,
+    "cor_wer": 0.0,
+    "raw": "Hi. I did review your concern. Your daughter needs medical attention and she needs to be completely evaluated. A complete blood count, platelet count, and a coagulation profile are necessary. Also, a doctor needs to examine her back for any other abnormalities and also how the bruise looks. Some skin lesions can resemble bruises, but are not formed as a result of blood extravasation in tissues. Therefore, a complete skin lesion analysis by a dermatologist will also be beneficial. I hope this helps. I wish you and your daughter a healthy life ahead.",
+    "corrected": "Hi. I did review your concern. Your daughter needs medical attention and she needs to be completely evaluated. A complete blood count, platelet count, and a coagulation profile are necessary. Also, a doctor needs to examine her back for any other abnormalities and also how the bruise looks. Some skin lesions can resemble bruises, but are not formed as a result of blood extravasation in tissues. Therefore, a complete skin lesion analysis by a dermatologist will also be beneficial. I hope this helps. I wish you and your daughter a healthy life ahead.",
     "expected": "Hi, I did review your concern. Your daughter needs medical attention and she needs to be completely evaluated. A complete blood count, platelet count, and a coagulation profile are necessary. Also, a doctor needs to examine her back for any other abnormalities and also how the bruise looks. Some skin lesions can resemble bruises but are not formed as a result of blood extravasation in tissues. Therefore, a complete skin lesion analysis by a dermatologist will also be beneficial. I hope this helps. I wish you and your daughter a healthy life ahead."
   },
   {
     "file": "101429_1b20.wav",
     "flag": "OK",
-    "raw_wer": 0.11235955056179775,
-    "cor_wer": 0.11235955056179775,
-    "raw": "Hello, doctor. I am a male 27 years old, weighing 98 kg, and my height is 5 feet 10 inches. I have been training in the gym for the past three months, but my weight loss has been barely 3 kg. Should I go for any thyroid tests? Also, I feel like I sweat very little compared to some earlier years of my life. My mother was a patient of hypothyroidism, so what are the chances of me suffering from hypothyroidism? I also suffer from kidney stones.",
-    "corrected": "Hello, doctor. I am a male 27 years old, weighing 98 kg, and my height is 5 feet 10 inches. I have been training in the gym for the past three months, but my weight loss has been barely 3 kg. Should I go for any thyroid tests? Also, I feel like I sweat very little compared to some earlier years of my life. My mother was a patient of hypothyroidism, so what are the chances of me suffering from hypothyroidism? I also suffer from kidney stones.",
+    "raw_wer": 0.07865168539325842,
+    "cor_wer": 0.07865168539325842,
+    "raw": "Hello, doctor. I am a male, 27 years old, weighing 98 kilograms, and my height is 5 feet 10 inches. I have been training in the gym for the past three months, but my weight loss has been barely 3 kilograms. Should I go for any thyroid tests? Also, I feel like I sweat very little compared to some earlier years of my life. My mother was a patient of hyperthyroidism, so what are the chances of me suffering from hypothyroidism? I also suffer from kidney stones.",
+    "corrected": "Hello, doctor. I am a male, 27 years old, weighing 98 kilograms, and my height is 5 feet 10 inches. I have been training in the gym for the past three months, but my weight loss has been barely 3 kilograms. Should I go for any thyroid tests? Also, I feel like I sweat very little compared to some earlier years of my life. My mother was a patient of hyperthyroidism, so what are the chances of me suffering from hypothyroidism? I also suffer from kidney stones.",
     "expected": "Hello Doctor, I am a male, twenty-seven years old, weighing ninety-eight kilograms, and my height is five feet ten inches. I have been training in the gym for the past three months, but my weight loss has been barely three kilograms. Should I go for any thyroid tests? Also, I feel like I sweat very little compared to some earlier years of my life. My mother was a patient of hyperthyroidism, so what are the chances of me suffering from hypothyroidism? I also suffer from kidney stones."
   },
   {
@@ -85,8 +85,8 @@
     "flag": "OK",
     "raw_wer": 0.0,
     "cor_wer": 0.0,
-    "raw": "If you have symptoms like constipation, cold intolerance, weight gain even with poor intake of food and loss of appetite, you may be suffering from hypothyroidism. A thyroid function test should confirm the presence or absence of the problem. Kidney stones are mostly not related to hypothyroidism.",
-    "corrected": "If you have symptoms like constipation, cold intolerance, weight gain even with poor intake of food and loss of appetite, you may be suffering from hypothyroidism. A thyroid function test should confirm the presence or absence of the problem. Kidney stones are mostly not related to hypothyroidism.",
+    "raw": "If you have symptoms like constipation, cold intolerance, weight gain even with poor intake of food, and loss of appetite, you may be suffering from hypothyroidism. A thyroid function test should confirm the presence or absence of the problem. Kidney stones are mostly not related to hypothyroidism.",
+    "corrected": "If you have symptoms like constipation, cold intolerance, weight gain even with poor intake of food, and loss of appetite, you may be suffering from hypothyroidism. A thyroid function test should confirm the presence or absence of the problem. Kidney stones are mostly not related to hypothyroidism.",
     "expected": "If you have symptoms like constipation, cold intolerance, weight gain even with poor intake of food, and loss of appetite, you may be suffering from hypothyroidism. A thyroid function test should confirm the presence or absence of the problem. Kidney stones are mostly not related to hypothyroidism."
   }
 ]
