@@ -107,6 +107,12 @@ def _generate(req: TTSRequest) -> np.ndarray:
 # ── startup ──────────────────────────────────────────────────────────────────
 def load_model():
     global model, SAMPLE_RATE
+    import torch
+    # Disable torch.compile / Triton JIT — avoids Python.h build errors on DGX
+    torch._dynamo.config.suppress_errors = True
+    import os
+    os.environ.setdefault("TORCHDYNAMO_DISABLE", "1")
+
     from voxcpm import VoxCPM
 
     print("[TTS] Loading VoxCPM2 …")
