@@ -1,24 +1,25 @@
-# Training Data — Where the ~1,700 Hours of Gulf Arabic Come From
+# Training Data — Free Data Only
 
 This document is the exact breakdown of every dataset that goes into the
 training corpus, with hours, license, access method, and the role each
-plays in the fine-tune.
+plays in the fine-tune. **All sources here are free** — no paid corpora,
+no hired labellers, no clinic pilot contracts.
 
-Last verified: May 16, 2026.
+Last verified: May 17, 2026.
 
 ---
 
 ## Headline number
 
-We are budgeting **~1,700 hours of effective labelled audio** for the
-Gulf+medical fine-tune of `Qwen/Qwen3-ASR-1.7B`. Of that:
+Free-only budget for the Gulf+medical LoRA fine-tune of
+`Qwen/Qwen3-ASR-1.7B`:
 
 | Bucket | Effective hours |
 |---|---:|
 | **Gulf-specific** (Saudi + Emirati + Kuwaiti + Bahraini + Omani) | **~1,161 hrs** |
 | Pan-Arabic anchor (MSA regularisation) | ~308 hrs (after subsampling) |
-| Medical-vocabulary augmentation (TTS + pilots) | 50–230 hrs (growing) |
-| **Total used in the LoRA training mix** | **~1,520 – 1,700 hrs** |
+| Medical TTS augmentation (free voices only) | ~10–20 hrs |
+| **Total effective audio in the training mix** | **~1,480 – 1,490 hrs** |
 
 "Effective" means after deduplication, duration filtering (3–25 s
 clips), and weighted sampling. The raw downloadable total is larger —
@@ -126,6 +127,9 @@ weight `3.0`** in the training mix, so that even ~50 effective hours
 produces the curriculum effect of a dedicated UAE stage without the
 forgetting risk.
 
+No clinic-pilot data is collected — see §3 for why we removed that
+plan.
+
 ---
 
 ## 2. Pan-Arabic anchors (~308 effective hrs, subsampled)
@@ -153,53 +157,64 @@ dominate.
 
 ---
 
-## 3. Medical-vocabulary augmentation (50–230 hrs, partially synthetic)
+## 3. Medical-vocabulary augmentation (free TTS only, ~10–20 hrs)
 
 There is **no free Arabic medical conversational corpus** in any
 catalogue. We confirmed this across LDC, ELRA, OpenSLR, HuggingFace,
-Kaggle, and ~1,200 Semantic Scholar papers. We bridge the gap
-ourselves in three layers.
+Kaggle, and ~1,200 Semantic Scholar papers. Since we are **budget = $0**
+the two paid/contract approaches are off the table:
 
-### Layer A — TTS-augmented medical readings (~50 hrs, ~$1k)
+- ~~**Layer B — Hired Gulf medical readers (~$5k for ~80 h).**~~
+  **Removed.** Requires paying a labelling vendor.
+- ~~**Layer C — Real clinic pilot data (~150 h over 3 months).**~~
+  **Removed.** Requires signing contracts with clinics, IRB review,
+  HIPAA-equivalent compliance, and staff time we don't have. The
+  `/api/learn_from_edit` endpoint can still capture corrections for
+  our own internal use, but we no longer plan to depend on it for
+  training data.
 
-Use Arabic TTS APIs (Azure `ar-XA`, Google `ar-AE`, ElevenLabs
-Arabic) to synthesise carrier sentences containing each of our top
-~1,000 medical terms in Gulf dialect, in 5–10 different voices.
+That leaves a single free path:
 
-Recipe (already partially built in
+### TTS-augmented medical readings (free voices, ~10–20 hrs)
+
+Use **free / open Arabic TTS models** to synthesise carrier sentences
+containing each of our top medical terms in Gulf dialect. No paid API
+calls.
+
+Free TTS options we'll use (no cost, downloadable):
+
+| Model | Coverage | Source |
+|---|---|---|
+| **macOS `say` voices** (`Majed`, `Tarik`, `Hamza`) | Arabic, Gulf-accent leaning | built-in on Mac |
+| **`facebook/mms-tts-ara`** | MSA, multi-speaker, neural | HuggingFace, free |
+| **Coqui XTTS-v2** Arabic | Arabic, zero-shot voice cloning | Coqui-AI/TTS, MPL-2.0 |
+| **`SWivid/Habibi-TTS`** | Gulf Arabic (trained on Nexdata UAE corpus) | HuggingFace, free |
+
+Recipe (largely already implemented in
 `scripts/generate_medical_training_data.py` and
 `scripts/synthesize_conversations.py`):
 
-1. Take top ~1,000 terms from `data/medical_lexicon.jsonl`.
-2. For each, generate ~10 carrier sentences via an LLM
-   ("اعطي المريض دوز من <term>", etc.).
-3. Render each in 5–10 Gulf-accent voices.
-4. Mix with real ambient clinic noise at SNR 15–25 dB.
-5. ~10,000 utterances × ~5 s = ~14 raw hours, padded to ~50 h with
-   carrier-sentence variation.
+1. Take the ~250 terms from `data/medical_lexicon.jsonl`.
+2. For each term, build ~10 carrier sentences with a local LLM
+   (e.g. the same Ollama endpoint already used by the app, free):
+   "اعطي المريض جرعة من <term>", "المريض يعاني من <term>", etc.
+3. Render each sentence in 3–5 different free voices (rotate
+   between `say`, `mms-tts-ara`, `Habibi-TTS`).
+4. Optionally mix with ambient noise samples (free, e.g. `MUSAN`
+   `noise` split or in-browser silence captures) at SNR 15–25 dB.
+5. ~2,500 utterances × ~5 s ≈ **3–4 raw hours**. With multiple voices
+   and noise variants we expand to **~10–20 hours of synthetic audio**.
 
-**How we use it.** Oversampled at weight `5.0` — this is the highest
-weight in the mix because it's the data type the public corpora
-fundamentally cannot provide.
+**Honest caveats.** Synthetic TTS audio carries acoustic artefacts a
+clinic mic wouldn't. The model will learn the term spellings but
+will *not* learn the real-world acoustic distribution of those terms
+in Gulf doctor speech. The free TTS voices are also weaker on Gulf
+phonology than paid services like Azure `ar-XA`. So this layer is a
+**vocabulary primer**, not an acoustic-realism source.
 
-### Layer B — Hired Gulf medical readers (target ~80 hrs, ~$5k)
-
-For ~$5k via providers like Anolytics, iMerit, Defined.ai, Appen, or
-local recruitment in Riyadh/Dubai/Doha you can get ~80 h of scripted
-Gulf medical readings from ~10 medical students or residents.
-Read-speech only, but vocabulary-rich and real-accent.
-
-**Status:** not yet executed. Adds another ~80 h once funded.
-
-### Layer C — Real clinic pilot data (target 150+ hrs over 3 months)
-
-Run free pilots in 3–5 Gulf clinics. Every correction the clinician
-makes through the UI becomes an aligned `(audio, text)` training
-pair at zero data cost. Realistic yield: ~150 h after 3 months,
-~500 h by month 6.
-
-**Status:** captured passively via `/api/learn_from_edit` whenever a
-user edits a transcript. Already integrated into the app.
+**How we use it.** Oversampled at weight `5.0`. It's the only path
+to medical-term coverage we have, but we acknowledge its limits in
+§9.
 
 ---
 
@@ -257,8 +272,7 @@ data/train_corpus/
     mgb2_sample/            # 250 h sampled subset
     common_voice_ar/        # 50 h
     fleurs_ar/              # 8 h
-  medical_tts/              # ~50 h Layer A
-  clinic_pilots/            # grows from /api/learn_from_edit
+  medical_tts/              # ~10–20 h free TTS only
   manifest.jsonl            # weighted sampling pointer file
 ```
 
@@ -266,24 +280,24 @@ Total disk: ~80 GB raw audio + ~5 GB metadata.
 
 ---
 
-## 7. Final training-mix weights (locked plan)
+## 7. Final training-mix weights (free-only plan)
 
 ```
-SADA22                  1.0    (~667 h)
-WorldSpeech Gulf BH+KW+SA 1.0  (~454 h)
-OMAN-SPEECH             1.0    (~40 h)
-Other small Gulf        1.0    (~40-100 h)
-UAE data                3.0    oversampled (~50-150 h authentic)
-Medical TTS (Layer A)   5.0    oversampled (~50 h synthetic)
-Medical pilots (Layer C) 8.0   oversampled when available (initially 0)
-MGB-2 subset            0.5    (~250 h, MSA anchor)
-Common Voice ar         0.3    (~50 h, MSA anchor)
-FLEURS ar               0.2    (8 h, regularisation anchor)
+SADA22                    1.0    (~667 h)
+WorldSpeech Gulf BH+KW+SA 1.0    (~454 h)
+OMAN-SPEECH               1.0    (~40 h)
+Other small Gulf          1.0    (~40-100 h)
+UAE data                  3.0    oversampled (~50-150 h authentic)
+Medical TTS (free)        5.0    oversampled (~10-20 h synthetic)
+MGB-2 subset              0.5    (~250 h, MSA anchor)
+Common Voice ar           0.3    (~50 h, MSA anchor)
+FLEURS ar                 0.2    (8 h, regularisation anchor)
 ```
 
 Effective audio actually seen by the model per epoch when
-oversampling is applied: **~1,500–1,700 hours**, with
-Gulf+medical signal dominating.
+oversampling is applied: **~1,480–1,490 hours**, with
+Gulf signal dominating. Medical signal is small but oversampled
+heavily because it's the rarest data type.
 
 ---
 
@@ -303,24 +317,34 @@ Gulf+medical signal dominating.
 
 ---
 
-## 9. Honest limitations
+## 9. Honest limitations (free-only edition)
 
-- **No medical conversational Arabic corpus exists yet.** Layer A
-  (TTS) and Layer C (pilot data) are the only paths to medical
-  vocabulary coverage in Gulf accent.
+- **No medical conversational Arabic corpus exists.** Free-only TTS
+  is the *only* path to medical vocabulary coverage. We accept that
+  the model will know medical *spellings* well but will be exposed
+  to medical *acoustics* only through synthetic audio.
 - **Authentic UAE data is small.** Without the gated vadimbelsky
   download we have <1 h of real Emirati audio publicly. With it,
   ~120 h. Even oversampled at weight 3.0, that's not enough to
-  guarantee UAE-specialist accuracy; that's why we treat clinic
-  pilots (Layer C) as the strategic moat.
+  guarantee UAE-specialist accuracy. Since we removed the paid +
+  pilot layers, this is a **hard ceiling** on how good UAE-specific
+  performance can get with free data alone.
+- **No real clinical recordings in training.** Because Layer C is
+  removed, the model never sees real noisy clinic audio with real
+  doctor accents. WER on actual clinic deployments will be measurably
+  worse than the test-set numbers suggest. Plan accordingly.
+- **Free TTS quality is limited.** macOS `say` and `mms-tts-ara` are
+  decent for MSA but weaker on Gulf phonology than paid services
+  (Azure `ar-XA`, ElevenLabs Arabic). The medical-term audio will
+  carry a synthetic-MSA accent, not a real Gulf-doctor accent.
 - **Hour counts are approximate.** WorldSpeech reports per-clip
   duration; SADA reports total. Filtering (duration, CER) reduces
   the "available" hours by ~10-15%. The numbers above are after
   realistic filtering.
 - **Licensing is research / non-commercial for most of this.** SADA
-  is CC BY-NC-SA. WorldSpeech is CC BY-NC. For commercial
-  deployment, layers Layer B + C (paid + collected) replace these
-  research-only datasets over time.
+  is CC BY-NC-SA. WorldSpeech is CC BY-NC. For *commercial*
+  deployment later you'd need to revisit licensing — but that's a
+  separate problem from the free-data fine-tune we're planning now.
 
 ---
 
