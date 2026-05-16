@@ -122,13 +122,79 @@ def _ffmpeg_resample(arr: np.ndarray, sr: int, out_path: Path) -> float:
 
 
 def _stream_hf_dataset(repo_id: str, subset: Optional[str], split: str):
-    """Stream a Hugging Face dataset. Returns iterator of dicts."""
+    """Stream a Hugging Face dataset, robust to recent datasets/fsspec changes.
+
+    Newer versions reject the `**` glob and the `trust_remote_code` kwarg, so
+    for datasets that ship parquet shards (WorldSpeech, SADA22, vadimbelsky)
+    we build the stream by listing files explicitly with HfFileSystem.
+    """
     from datasets import load_dataset
 
-    kwargs = {"split": split, "streaming": True, "trust_remote_code": False}
-    if subset is None:
-        return load_dataset(repo_id, **kwargs)
-    return load_dataset(repo_id, subset, **kwargs)
+    # Try the explicit parquet-shard path first (works on >=2.20).
+    try:
+        return _stream_via_parquet_shards(repo_id, subset, split)
+    except Exception as parquet_exc:
+        # Fall back to load_dataset with no trust_remote_code so newer
+        # datasets versions don't choke on the kwarg.
+        try:
+            kwargs = {"split": split, "streaming": True}
+            if subset is None:
+                return load_dataset(repo_id, **kwargs)
+            return load_dataset(repo_id, subset, **kwargs)
+        except Exception:
+            raise parquet_exc
+
+
+def _stream_via_parquet_shards(repo_id: str, subset: Optional[str], split: str):
+    """List parquet shards on the HF Hub for `repo_id` and stream them.
+
+    Layout we expect (works for WorldSpeech, SADA22, vadimbelsky):
+        datasets/<repo>/<subset>/<split>-*.parquet
+        datasets/<repo>/data/<subset>/<split>-*.parquet
+        datasets/<repo>/<split>-*.parquet (no subset)
+    """
+    from datasets import load_dataset
+    from huggingface_hub import HfFileSystem
+
+    fs = HfFileSystem()
+    root = f"datasets/{repo_id}"
+    # Build candidate glob patterns, most specific first.
+    candidates = []
+    if subset:
+        candidates += [
+            f"{root}/{subset}/{split}-*.parquet",
+            f"{root}/{subset}/{split}/*.parquet",
+            f"{root}/data/{subset}/{split}-*.parquet",
+            f"{root}/data/{subset}/{split}/*.parquet",
+            f"{root}/{subset}/*.parquet",
+        ]
+    else:
+        candidates += [
+            f"{root}/{split}-*.parquet",
+            f"{root}/{split}/*.parquet",
+            f"{root}/data/{split}-*.parquet",
+            f"{root}/data/{split}/*.parquet",
+            f"{root}/*.parquet",
+        ]
+    files: list = []
+    for pat in candidates:
+        try:
+            files = sorted(fs.glob(pat))
+        except Exception:
+            files = []
+        if files:
+            break
+    if not files:
+        raise FileNotFoundError(
+            f"no parquet shards under {root} for subset={subset!r} split={split!r}"
+        )
+    urls = [f"hf://{p}" if not str(p).startswith("hf://") else str(p) for p in files]
+    return load_dataset(
+        "parquet",
+        data_files={split: urls},
+        split=split,
+        streaming=True,
+    )
 
 
 def iter_worldspeech_gulf(
