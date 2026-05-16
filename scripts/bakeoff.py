@@ -41,12 +41,26 @@ from pathlib import Path
 from typing import Any, Callable, Dict, List, Optional, Tuple
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
+# These globals are rebound by main() once --eval-dir is parsed. Defaults
+# keep backward compatibility with prior invocations.
 EVAL_DIR = PROJECT_ROOT / "eval" / "gulf_medical_v1"
 MANIFEST_PATH = EVAL_DIR / "manifest.jsonl"
 OUT_DIR = EVAL_DIR / "bakeoff"
-OUT_DIR.mkdir(parents=True, exist_ok=True)
 PREDICTIONS_DIR = OUT_DIR / "predictions"
-PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+def _set_eval_dir(path: Path) -> None:
+    """Re-point all output paths to a different eval directory."""
+    global EVAL_DIR, MANIFEST_PATH, OUT_DIR, PREDICTIONS_DIR
+    EVAL_DIR = path
+    MANIFEST_PATH = EVAL_DIR / "manifest.jsonl"
+    OUT_DIR = EVAL_DIR / "bakeoff"
+    PREDICTIONS_DIR = OUT_DIR / "predictions"
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
+    PREDICTIONS_DIR.mkdir(parents=True, exist_ok=True)
+
+
+_set_eval_dir(EVAL_DIR)
 
 
 # ---------------------------------------------------------------------------
@@ -635,7 +649,8 @@ def write_report(summary: Dict[str, Any]) -> Path:
     lines.append("# Bake-off report — eval/gulf_medical_v1\n")
 
     # Overall ranking
-    lines.append("## Overall (across all 90 clips)\n")
+    n_total = next(iter(summary.values()))["overall"]["n"] if summary else 0
+    lines.append(f"## Overall (across all {n_total} clips)\n")
     lines.append("| model | n | WER ↓ | Medical-term recall ↑ | RTF ↑ |")
     lines.append("|---|---:|---:|---:|---:|")
     rows = sorted(summary.items(), key=lambda kv: (kv[1]["overall"].get("wer_mean") or 1e9))
@@ -647,8 +662,13 @@ def write_report(summary: Dict[str, Any]) -> Path:
         lines.append(f"| {model} | {ov['n']} | {wer_s} | {rec_s} | {rtf_s} |")
     lines.append("")
 
-    # Per-category
-    for cat in ["saudi_acoustic", "medical_vocab_ar", "code_switching", "english_medical"]:
+    # Per-category. Discover categories from the summary so any eval set works.
+    discovered_cats: List[str] = []
+    for stats in summary.values():
+        for c in stats["by_category"].keys():
+            if c not in discovered_cats:
+                discovered_cats.append(c)
+    for cat in discovered_cats:
         lines.append(f"## Category: `{cat}`\n")
         lines.append("| model | n | WER ↓ | Medical-term recall ↑ | RTF ↑ |")
         lines.append("|---|---:|---:|---:|---:|")
@@ -707,7 +727,21 @@ def main() -> int:
         default=False,
         help="Skip clips that already have prediction files (resume interrupted runs)",
     )
+    p.add_argument(
+        "--eval-dir",
+        type=Path,
+        default=None,
+        help="Eval set directory (must contain manifest.jsonl + audio/). "
+             "Defaults to eval/gulf_medical_v1.",
+    )
     args = p.parse_args()
+
+    if args.eval_dir is not None:
+        eval_dir = args.eval_dir
+        if not eval_dir.is_absolute():
+            eval_dir = (PROJECT_ROOT / eval_dir).resolve()
+        _set_eval_dir(eval_dir)
+        print(f"using eval dir: {EVAL_DIR.relative_to(PROJECT_ROOT)}")
 
     manifest = load_manifest()
     if args.max_clips:
