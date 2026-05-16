@@ -24,6 +24,7 @@ env/
 # Each tenant should produce its own.
 data/voice_index.npz
 data/voice_index.jsonl
+data/descriptions.jsonl
 data/sessions/
 
 # Misc

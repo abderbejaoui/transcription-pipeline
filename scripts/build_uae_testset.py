@@ -123,12 +123,71 @@ Clip = Tuple[str, np.ndarray, int, str, float, Dict[str, Any]]
 
 
 def _load_hf(repo_id: str, subset: Optional[str], split: str, streaming: bool):
+    """Load a Hugging Face dataset, robust to recent datasets/fsspec changes.
+
+    Newer versions reject the `**` glob and the `trust_remote_code` kwarg.
+    For parquet-based datasets (WorldSpeech, vadimbelsky), list shards
+    explicitly with HfFileSystem and stream them with the parquet builder.
+    For tiny non-parquet datasets (Nexdata's sample audiofolder) we fall
+    back to the regular load_dataset call.
+    """
     from datasets import load_dataset
 
-    kwargs = {"split": split, "streaming": streaming, "trust_remote_code": False}
+    if streaming:
+        try:
+            return _stream_via_parquet_shards(repo_id, subset, split)
+        except Exception:
+            pass
+
+    kwargs = {"split": split, "streaming": streaming}
     if subset is None:
         return load_dataset(repo_id, **kwargs)
     return load_dataset(repo_id, subset, **kwargs)
+
+
+def _stream_via_parquet_shards(repo_id: str, subset: Optional[str], split: str):
+    """List parquet shards on the HF Hub for `repo_id` and stream them."""
+    from datasets import load_dataset
+    from huggingface_hub import HfFileSystem
+
+    fs = HfFileSystem()
+    root = f"datasets/{repo_id}"
+    candidates = []
+    if subset:
+        candidates += [
+            f"{root}/{subset}/{split}-*.parquet",
+            f"{root}/{subset}/{split}/*.parquet",
+            f"{root}/data/{subset}/{split}-*.parquet",
+            f"{root}/data/{subset}/{split}/*.parquet",
+            f"{root}/{subset}/*.parquet",
+        ]
+    else:
+        candidates += [
+            f"{root}/{split}-*.parquet",
+            f"{root}/{split}/*.parquet",
+            f"{root}/data/{split}-*.parquet",
+            f"{root}/data/{split}/*.parquet",
+            f"{root}/*.parquet",
+        ]
+    files: list = []
+    for pat in candidates:
+        try:
+            files = sorted(fs.glob(pat))
+        except Exception:
+            files = []
+        if files:
+            break
+    if not files:
+        raise FileNotFoundError(
+            f"no parquet shards under {root} for subset={subset!r} split={split!r}"
+        )
+    urls = [f"hf://{p}" if not str(p).startswith("hf://") else str(p) for p in files]
+    return load_dataset(
+        "parquet",
+        data_files={split: urls},
+        split=split,
+        streaming=True,
+    )
 
 
 def iter_vadimbelsky_uae(
