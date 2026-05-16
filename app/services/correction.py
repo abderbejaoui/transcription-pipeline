@@ -390,19 +390,10 @@ class MedicalCorrector:
             return None
 
         # Strong-phonetic relaxation: accept slightly below threshold ONLY
-        # Reject pure-phonetic matches with no character-level evidence.
-        # A score driven entirely by metaphone with zero fuzzy/compact is a
-        # false positive caused by coincidentally identical phoneme codes.
-        # Require at least weak character evidence (fuzzy or compact >= 45).
-        has_any_char = (
-            best_features.get("fuzzy", 0.0) >= 45.0
-            or best_features.get("compact", 0.0) >= 45.0
-        )
-        if not has_any_char:
-            return None
-
-        # Strong-phonetic relaxation path: accept slightly below threshold
-        # when phonetic match is high AND there is solid character evidence.
+        # when phonetic match is high AND there is independent character-
+        # level evidence AND the span actually covers most of the variant.
+        # The length check stops short common English words ("Open") from
+        # grabbing longer specific terms ("OpenAI") via phonetic-only luck.
         threshold = self.accept_threshold
         has_char_evidence = (
             best_features.get("fuzzy", 0.0) >= 70.0
@@ -431,14 +422,6 @@ class MedicalCorrector:
             and normalize_text(best.correction) in normalize_text(span.text)
             and normalize_text(best.correction) != normalize_text(span.text)
         ):
-            return None
-
-        # Reject corrections where the span is the term prefixed/suffixed
-        # only by a common article ("a", "an", "the").  These arise when a
-        # multi-word term like "coagulation profile" matches "a coagulation
-        # profile" — the article is correct English and should not be dropped.
-        _article_stripped = re.sub(r"^(?:a|an|the)\s+|\s+(?:a|an|the)$", "", span.text, flags=re.I).strip()
-        if normalize_text(_article_stripped) == normalize_text(best.correction):
             return None
 
         conf = max(0.0, min(0.99, (best.score - 70.0) / 30.0))

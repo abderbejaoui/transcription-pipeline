@@ -1,19 +1,39 @@
-"""Voice fingerprint store + retrieval (IPA phoneme, speaker-invariant).
+"""Voice fingerprint store + retrieval (phonetic, speaker-invariant).
 
-This module wraps `facebook/wav2vec2-lv-60-espeak-cv-ft`: a CTC model whose
-vocabulary is **IPA phonemes**, trained on multilingual Common Voice. It
-outputs sequences like `ɛ f ə ɹ æ l ɡ æ n` for "Efferalgan" — the same
-string regardless of language, accent, or how the word is spelled.
-
-Public API (kept stable for callers in main.py)
+Background
 ----------
-warm_up()                      # preload the CTC model in a background thread
-load_audio(path)               # ffmpeg -> 16 kHz mono float32
-slice_audio(wav, t0, t1)       # safe slice with small padding
-embed(wav) -> str              # IPA phoneme transcript (no spaces, lowercase)
-posteriors(wav) -> ndarray     # (T, V) softmax matrix — used by audio_verify
-vocab() -> dict[str, int]      # IPA token -> id, used by audio_verify
-register(...), match(...), list_voices(), has_term(...), reset()
+The previous version mean-pooled the *self-supervised* `wav2vec2-base`
+hidden states. That representation is dominated by speaker timbre and
+recording conditions, so two completely different words spoken by the
+same person scored ~0.85 cosine — well above unrelated-word thresholds.
+
+This rewrite replaces the embedding with a CTC phonetic transcript:
+1. Greedy-decode the audio with `wav2vec2-base-960h` (CTC, character
+   vocabulary).
+2. Strip spaces and lowercase. The result behaves like a coarse phoneme
+   string, e.g. "doliprane" -> "dolarain", "ifer algon" -> "eyeforalgon".
+3. Compare two clips with normalized Levenshtein similarity in [0, 1].
+
+Properties (verified empirically with macOS `say`):
+- Same word, different voice  -> high similarity (~0.6-1.0)
+- Different words, same voice -> low similarity  (~0.2-0.4)
+- Empty / silence             -> empty string, similarity 0
+
+The "embedding" stored on disk is the phonetic string itself. The public
+API matches what the previous module exposed so callers keep working.
+
+Public API
+----------
+warm_up()                       # preload the CTC model in a background thread
+load_audio(path)                # ffmpeg -> 16 kHz mono float32
+slice_audio(wav, t0, t1)        # safe slice with small padding
+embed(wav) -> str               # CTC phonetic transcript
+register(term, audio_path, t0, t1, ...)
+register_with_embedding(term, embedding, ...)   # accepts str OR ndarray
+match(wav_or_path, t0, t1, top_k, threshold)
+list_voices()
+has_term(term)
+reset()
 """
 
 from __future__ import annotations
@@ -37,14 +57,15 @@ import numpy as np
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 DATA_DIR = PROJECT_ROOT / "data"
-INDEX_PATH = DATA_DIR / "voice_index.json"
+INDEX_PATH = DATA_DIR / "voice_index.json"   # phonetic strings live here
 META_PATH = DATA_DIR / "voice_index.jsonl"
-LEGACY_NPZ = DATA_DIR / "voice_index.npz"   # removed on first save
+
+# Legacy file from the old SSL-embedding implementation. Removed on first
+# save so the migration is clean.
+LEGACY_NPZ = DATA_DIR / "voice_index.npz"
 
 SAMPLE_RATE = 16_000
-MIN_SLICE_SECONDS = 0.20
-
-DEFAULT_MODEL_ID = "facebook/wav2vec2-lv-60-espeak-cv-ft"
+MIN_SLICE_SECONDS = 0.20  # CTC needs a minimum input length
 
 
 # ---------------------------------------------------------------------------
@@ -56,13 +77,10 @@ _processor = None
 _model = None
 _torch = None
 _device = "cpu"
-_vocab_token_to_id: Optional[Dict[str, int]] = None
-_id_to_vocab_token: Optional[Dict[int, str]] = None
 
 
 def _load_models():
     global _processor, _model, _torch, _device
-    global _vocab_token_to_id, _id_to_vocab_token
     if _model is not None:
         return _processor, _model, _torch, _device
     with _lock:
@@ -78,33 +96,19 @@ def _load_models():
         else:
             _device = "cpu"
 
-        model_id = os.environ.get("VOICE_ENCODER_MODEL", DEFAULT_MODEL_ID)
-        print(f"[voice_match] loading IPA-CTC {model_id} on {_device}")
+        model_id = os.environ.get(
+            "VOICE_ENCODER_MODEL", "facebook/wav2vec2-base-960h"
+        )
+        print(f"[voice_match] loading CTC {model_id} on {_device}")
         _processor = Wav2Vec2Processor.from_pretrained(model_id)
         _model = Wav2Vec2ForCTC.from_pretrained(model_id).to(_device).eval()
         _torch = torch
-        try:
-            v = _processor.tokenizer.get_vocab()
-            _vocab_token_to_id = dict(v)
-            _id_to_vocab_token = {i: t for t, i in v.items()}
-        except Exception:
-            _vocab_token_to_id = {}
-            _id_to_vocab_token = {}
         return _processor, _model, _torch, _device
 
 
 def warm_up() -> None:
+    """Trigger model load in a background thread."""
     threading.Thread(target=_load_models, daemon=True).start()
-
-
-def vocab() -> Dict[str, int]:
-    _load_models()
-    return dict(_vocab_token_to_id or {})
-
-
-def id_to_token() -> Dict[int, str]:
-    _load_models()
-    return dict(_id_to_vocab_token or {})
 
 
 # ---------------------------------------------------------------------------
@@ -113,6 +117,7 @@ def id_to_token() -> Dict[int, str]:
 
 
 def load_audio(path: Union[str, Path]) -> np.ndarray:
+    """ffmpeg-decode any audio file -> 16 kHz mono float32 in [-1, 1]."""
     path = str(path)
     cmd = [
         "ffmpeg", "-nostdin", "-hide_banner", "-loglevel", "error",
@@ -147,28 +152,22 @@ def _ensure_min_length(wav: np.ndarray) -> np.ndarray:
 
 
 # ---------------------------------------------------------------------------
-# IPA decoding + posteriors
+# CTC phonetic decode + edit similarity
 # ---------------------------------------------------------------------------
 
 
-def posteriors(wav: np.ndarray) -> np.ndarray:
-    """Return the (T, V) softmax matrix. Used by audio_verify."""
-    processor, model, torch, device = _load_models()
-    wav = _ensure_min_length(wav)
-    with torch.inference_mode():
-        inputs = processor(wav, sampling_rate=SAMPLE_RATE, return_tensors="pt").to(device)
-        logits = model(**inputs).logits.squeeze(0)
-        probs = torch.softmax(logits, dim=-1)
-    return probs.detach().cpu().numpy().astype(np.float32)
-
-
 def embed(wav: np.ndarray) -> str:
+    """Greedy-CTC decode `wav` and return its phonetic string.
+
+    Empty for silence / nonsense. Spaces are stripped so the comparison
+    operates on a single token sequence.
+    """
     processor, model, torch, device = _load_models()
     wav = _ensure_min_length(wav)
     with torch.inference_mode():
         inputs = processor(wav, sampling_rate=SAMPLE_RATE, return_tensors="pt").to(device)
-        logits = model(**inputs).logits.squeeze(0)
-        ids = logits.argmax(dim=-1).cpu().tolist()
+        logits = model(**inputs).logits.squeeze(0)        # (T, V)
+        ids = logits.argmax(dim=-1).cpu().tolist()        # greedy
     pad_id = model.config.pad_token_id
     tokens: List[int] = []
     prev = None
@@ -181,6 +180,7 @@ def embed(wav: np.ndarray) -> str:
 
 
 def _lev_sim(a: str, b: str) -> float:
+    """Normalized Levenshtein similarity in [0, 1]."""
     if not a and not b:
         return 1.0
     if not a or not b:
@@ -195,7 +195,8 @@ def _lev_sim(a: str, b: str) -> float:
             cost = 0 if ai == b[j - 1] else 1
             cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
         prev, cur = cur, prev
-    return 1.0 - prev[m] / max(n, m)
+    dist = prev[m]
+    return 1.0 - dist / max(n, m)
 
 
 # ---------------------------------------------------------------------------
@@ -210,9 +211,9 @@ class VoiceEntry:
     language: Optional[str]
     duration_s: float
     created_at: float
-    phonetic: str
+    phonetic: str  # CTC transcript, lowercase, no spaces
     description: Optional[str] = None
-    source: str = "user"
+    source: str = "user"  # "seed" | "user"
 
 
 _index_lock = threading.Lock()
@@ -276,12 +277,22 @@ def _save_index() -> None:
     INDEX_PATH.write_text(json.dumps(phon_by_id, ensure_ascii=False), encoding="utf-8")
     with META_PATH.open("w", encoding="utf-8") as fh:
         for e in _entries:
-            fh.write(json.dumps({
-                "id": e.id, "term": e.term, "language": e.language,
-                "duration_s": e.duration_s, "created_at": e.created_at,
-                "phonetic": e.phonetic, "description": e.description,
-                "source": e.source,
-            }, ensure_ascii=False) + "\n")
+            fh.write(
+                json.dumps(
+                    {
+                        "id": e.id,
+                        "term": e.term,
+                        "language": e.language,
+                        "duration_s": e.duration_s,
+                        "created_at": e.created_at,
+                        "phonetic": e.phonetic,
+                        "description": e.description,
+                        "source": e.source,
+                    },
+                    ensure_ascii=False,
+                )
+                + "\n"
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -298,6 +309,7 @@ def register(
     description: Optional[str] = None,
     source: str = "user",
 ) -> Dict[str, Any]:
+    """Save the phonetic fingerprint of `audio[start_s..end_s]` keyed by `term`."""
     if not term or not term.strip():
         raise ValueError("term is required")
     _load_index()
@@ -331,10 +343,16 @@ def register_with_embedding(
     description: Optional[str] = None,
     source: str = "seed",
 ) -> Dict[str, Any]:
+    """Register an already-computed phonetic string.
+
+    Accepts a string (preferred) or a numpy array (legacy callers — ignored
+    and recorded as empty). Numpy arrays from the previous SSL-embedding
+    implementation are not phonetic, so they're not useful at match time.
+    """
     if not term or not term.strip():
         raise ValueError("term is required")
     if isinstance(embedding, np.ndarray):
-        phon = ""
+        phon = ""  # legacy dense vector, no longer usable
     else:
         phon = str(embedding or "").strip().lower().replace(" ", "")
     _load_index()
@@ -356,9 +374,12 @@ def register_with_embedding(
 
 def _serialize_entry(e: VoiceEntry) -> Dict[str, Any]:
     return {
-        "id": e.id, "term": e.term, "language": e.language,
+        "id": e.id,
+        "term": e.term,
+        "language": e.language,
         "duration_s": round(e.duration_s, 3),
-        "phonetic": e.phonetic, "description": e.description,
+        "phonetic": e.phonetic,
+        "description": e.description,
         "source": e.source,
     }
 
@@ -370,6 +391,11 @@ def match(
     threshold: float = 0.55,
     top_k: int = 5,
 ) -> List[Dict[str, Any]]:
+    """Return up to `top_k` nearest voice entries above `threshold`.
+
+    Similarity is normalized Levenshtein over CTC phonetic transcripts.
+    Entries with empty phonetic strings (legacy seed entries) are skipped.
+    """
     _load_index()
     if not _entries:
         return []
@@ -386,37 +412,51 @@ def match(
         return []
     sims = []
     for e in _entries:
-        sims.append(_lev_sim(q, e.phonetic) if e.phonetic else 0.0)
+        if not e.phonetic:
+            sims.append(0.0)
+        else:
+            sims.append(_lev_sim(q, e.phonetic))
     sims_arr = np.asarray(sims, dtype=np.float32)
     order = np.argsort(-sims_arr)
     out: List[Dict[str, Any]] = []
     for i in order[:top_k]:
         if sims_arr[i] >= threshold:
             e = _entries[i]
-            out.append({
-                "id": e.id, "term": e.term,
-                "similarity": round(float(sims_arr[i]), 4),
-                "language": e.language,
-                "phonetic": e.phonetic,
-                "query_phonetic": q,
-                "description": e.description,
-                "source": e.source,
-            })
+            out.append(
+                {
+                    "id": e.id,
+                    "term": e.term,
+                    "similarity": round(float(sims_arr[i]), 4),
+                    "language": e.language,
+                    "phonetic": e.phonetic,
+                    "query_phonetic": q,
+                    "description": e.description,
+                    "source": e.source,
+                }
+            )
     return out
 
 
 def list_voices() -> List[Dict[str, Any]]:
     _load_index()
-    return [{**_serialize_entry(e), "created_at": e.created_at} for e in _entries]
+    return [
+        {
+            **_serialize_entry(e),
+            "created_at": e.created_at,
+        }
+        for e in _entries
+    ]
 
 
 def has_term(term: str) -> bool:
+    """True if the index has at least one voice entry for this canonical term."""
     _load_index()
     target = term.strip().lower()
     return any(e.term.strip().lower() == target for e in _entries)
 
 
 def reset() -> None:
+    """Clear in-memory + on-disk index. Useful for tests."""
     global _entries, _loaded
     with _index_lock:
         _entries = []
