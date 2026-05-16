@@ -35,7 +35,6 @@ POST /api/voices/reset       wipe voice index (testing)
 from __future__ import annotations
 
 import difflib
-import math
 import os
 import re
 import shutil
@@ -51,59 +50,7 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import (
-    asr,
-    audio_verify,
-    descriptions,
-    forced_score,
-    lexicon,
-    llm_decide,
-    llm_detect,
-    tracing,
-    voice_match,
-)
-from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
-
-
-# Forced-decoding margin: the winning candidate must beat the original
-# Whisper output by at least this many nats of avg_logprob to override.
-FORCED_MARGIN = 0.05
-# Tiebreaker zone: if multiple candidates are within this distance of the
-# top, fall back to LLM DECIDE.
-FORCED_TIE_BAND = 0.02
-# How many lexicon candidates to phoneme-prune to before forced scoring.
-FORCED_TOPK = 3
-
-
-def _build_corrector() -> MedicalCorrector:
-    """Build a MedicalCorrector from the current lexicon on disk.
-
-    Short abbreviation aliases (<= 3 compact characters, e.g. 'asa', 'aml')
-    are stripped here because they match too many common English short words
-    when applied to free-form medical conversation text.  The LLM DETECT
-    / DECIDE pipeline handles those cases when the context is clear.
-    """
-    raw = lexicon.list_terms()
-    entries = []
-    for e in raw:
-        aliases = [
-            a for a in (e.get("aliases") or [])
-            if len(compact(a)) > 3  # drop 2-3 char abbreviations
-        ]
-        entries.append(
-            _LexiconEntry(
-                term=e["term"],
-                type=e.get("type", ""),
-                aliases=tuple(aliases),
-                priority=float(e.get("priority", 1.0)),
-            )
-        )
-    return MedicalCorrector(
-        lexicon=entries,
-        accept_threshold=88.0,         # was 80 — tighter to reduce false positives
-        single_word_score_floor=80.0,  # floor for the strong-phonetic path
-        single_word_phonetic_floor=92.0,
-    )
+from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
 
 
 # ---------------------------------------------------------------------------
@@ -148,11 +95,6 @@ class LearnFromEditRequest(BaseModel):
     corrected_text: str
     session_id: Optional[str] = None
     type: str = Field("drug")
-    # Optional: words from the original /api/transcribe response. If
-    # provided, we use them directly instead of re-running ASR (which would
-    # produce different word boundaries because the original used
-    # hotwords-biased decoding).
-    words: Optional[List[Dict[str, Any]]] = None
 
 
 # ---------------------------------------------------------------------------
@@ -267,28 +209,15 @@ def _run_transcribe_pipeline(
     """The full pipeline. Calls into services that emit trace events via
     `app.services.tracing`, so this function can be run with or without an
     active Tracer."""
-    # 1) Whisper free pass — with `hotwords` biasing toward the lexicon.
-    #
-    # Step 1 of the Whisper-twice architecture. Just by feeding the lexicon
-    # as soft hot-words, Whisper recovers most OOV medical terms in one
-    # shot (Doliprane, Acitrom, Efferalgan, …). The remaining mishears
-    # (rare/new words, accent confusion) are caught by step 2 below.
-    lex_entries = lexicon.list_terms()
-    hotwords = forced_score.lexicon_to_hotwords(lex_entries)
+    # 1) Whisper.
     tracing.emit("asr.start", {
         "session_id": session_id,
         "audio_path": str(session_path),
         "model": model_size,
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
-        "hotwords_chars": len(hotwords),
     })
-    asr_result = asr.transcribe(
-        session_path,
-        model_size=model_size,
-        language=language,
-        hotwords=hotwords or None,
-    )
+    asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
     raw_text = asr_result["text"]
     words = list(asr_result["words"])
     tracing.emit("asr.done", {
@@ -299,11 +228,12 @@ def _run_transcribe_pipeline(
     })
     print(f"[transcribe] raw text: {raw_text!r}  ({len(words)} tokens)")
 
-    # 2) Voice-DB instant fix: for any single word that exactly matches a
-    # learned voice fingerprint, autofix it before forced-scoring runs.
-    # This is the "system gets better as users correct it" loop — once a
-    # term has a stored fingerprint, repeated audio is replaced for free.
-    voice_first_replacements: Dict[int, str] = {}
+    # 2a) Voice-first scan: for every SINGLE word, check the voice DB.
+    # Similarity is now phonetic (CTC transcript distance), so we can be
+    # more confident: same word should score >= 0.75 even across speakers,
+    # while unrelated words drop below 0.45. We still only scan single
+    # words to keep the scan fast and unambiguous.
+    voice_first_spans: List[Dict[str, Any]] = []
     if voice_match.list_voices() and words:
         VF_THRESHOLD = 0.80
         for i, tok in enumerate(words):
@@ -312,6 +242,7 @@ def _run_transcribe_pipeline(
             if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
                 continue
             if end - start < 0.15:
+                # too short to embed reliably
                 continue
             try:
                 hits = voice_match.match(
@@ -323,112 +254,217 @@ def _run_transcribe_pipeline(
                 )
             except Exception:
                 hits = []
-            if hits and hits[0].get("source") == "user" and hits[0]["similarity"] >= AUDIO_AUTOFIX_THRESHOLD:
-                voice_first_replacements[i] = hits[0]["term"]
-    tracing.emit("voice_first.replacements", {"replacements": voice_first_replacements})
+            if not hits or hits[0].get("source") != "user":
+                continue
+            voice_first_spans.append({
+                "index_start": i,
+                "index_end": i + 1,
+                "text": (tok.get("word") or "").strip(),
+                "start_s": float(start),
+                "end_s": float(end),
+                "probability_min": 1.0,
+                "reason": f"voice_match:{hits[0]['term']}@{hits[0]['similarity']:.2f}",
+            })
 
-    # 3) Suspect detection: text-only (Whisper logprob + OOV vs lexicon).
-    # We DO NOT use audio_verify here — its scoring was unreliable on real
-    # audio. Suspect detection only triggers FORCED scoring; it doesn't
-    # decide anything by itself, so being a bit lenient is safe.
-    suspect_indices = forced_score.suspect_word_indices(words, lex_entries)
-    # Don't re-score words that voice-DB already locked in.
-    suspect_indices = [i for i in suspect_indices if i not in voice_first_replacements]
-    tracing.emit("suspect.indices", {
-        "indices": suspect_indices,
-        "words": [(i, (words[i].get("word") or "").strip(), words[i].get("probability")) for i in suspect_indices],
-    })
-    print(f"[transcribe] suspect: {[(i, (words[i].get('word') or '').strip()) for i in suspect_indices]}")
+    # 2b) DETECT — LLM call #1.
+    detect_spans: List[Dict[str, Any]] = []
+    if USE_LLM and words:
+        try:
+            detect_spans = llm_detect.detect(words)
+        except Exception as exc:
+            print(f"[transcribe] DETECT failed: {exc!r}")
+            detect_spans = []
 
-    # 4) Forced whole-utterance scoring per suspect span.
-    # For each suspect word, build candidate sentences (raw_text with the
-    # suspect token replaced by each phoneme-similar lexicon term).
-    # Whisper scores all of them at full-utterance scope; whichever
-    # sentence beats the raw transcript by FORCED_MARGIN wins.
-    forced_replacements: Dict[int, str] = {}
-    for i in suspect_indices:
-        tok = words[i]
-        word_text = (tok.get("word") or "").strip()
-        if not word_text:
+    # 2c) Combine voice-first + DETECT spans WITHOUT losing words.
+    #
+    # A confident voice-first hit is a stop sign: it pinpoints exactly which
+    # token an existing fingerprint matches. If the LLM returned a wider span
+    # that engulfs that token (e.g. "gripex, maxilas" overlapping a voice hit
+    # on just "gripex"), we MUST NOT merge them — that would allow the
+    # voice-chosen replacement to swallow the other token. Instead we split
+    # the LLM span around the voice-first tokens.
+    voice_indices = {s["index_start"] for s in voice_first_spans}
+
+    def _make_span(i0: int, i1: int, reason: str) -> Optional[Dict[str, Any]]:
+        if i1 <= i0:
+            return None
+        toks = words[i0:i1]
+        starts = [t.get("start") for t in toks if isinstance(t.get("start"), (int, float))]
+        ends = [t.get("end") for t in toks if isinstance(t.get("end"), (int, float))]
+        if not starts or not ends:
+            return None
+        probs = [t.get("probability") for t in toks if isinstance(t.get("probability"), (int, float))]
+        return {
+            "index_start": i0,
+            "index_end": i1,
+            "text": " ".join((t.get("word") or "").strip() for t in toks).strip(),
+            "start_s": float(min(starts)),
+            "end_s": float(max(ends)),
+            "probability_min": float(min(probs)) if probs else 1.0,
+            "reason": reason,
+        }
+
+    # Carry voice-first spans through unchanged.
+    final_spans: List[Dict[str, Any]] = list(voice_first_spans)
+    # Split each DETECT span around any voice indices it covers.
+    for d in detect_spans:
+        i0, i1 = d["index_start"], d["index_end"]
+        cur = i0
+        for vi in sorted(voice_indices):
+            if vi < cur or vi >= i1:
+                continue
+            piece = _make_span(cur, vi, d.get("reason", ""))
+            if piece is not None:
+                final_spans.append(piece)
+            cur = vi + 1
+        if cur < i1:
+            piece = _make_span(cur, i1, d.get("reason", ""))
+            if piece is not None:
+                final_spans.append(piece)
+
+    # Dedup: if voice-first and a DETECT piece end up on the exact same
+    # range, prefer the voice-first version.
+    seen_ranges: Dict[Tuple[int, int], Dict[str, Any]] = {}
+    for s in final_spans:
+        key = (s["index_start"], s["index_end"])
+        prev = seen_ranges.get(key)
+        if prev is None:
+            seen_ranges[key] = s
+        else:
+            prefer = prev if prev.get("reason", "").startswith("voice_match") else s
+            other = s if prev is prefer else prev
+            seen_ranges[key] = prefer
+            if other.get("reason") and other["reason"] not in prefer.get("reason", ""):
+                prefer["reason"] = (prefer.get("reason", "") + "+" + other["reason"]).strip("+")
+
+    spans = sorted(seen_ranges.values(), key=lambda s: s["index_start"])
+    tracing.emit("voice_first.spans", {"spans": voice_first_spans})
+    tracing.emit("detect.spans", {"spans": detect_spans})
+    tracing.emit("spans.merged", {"spans": spans})
+    print(f"[transcribe] voice_first: {[(s['index_start'], s['index_end'], s['text']) for s in voice_first_spans]}")
+    print(f"[transcribe] DETECT:      {[(s['index_start'], s['index_end'], s['text']) for s in detect_spans]}")
+    print(f"[transcribe] FINAL spans: {[(s['index_start'], s['index_end'], s['text']) for s in spans]}")
+
+    # 3) For each span: voice retrieval -> candidates with descriptions.
+    items_for_decide: List[Dict[str, Any]] = []
+    span_meta: List[Dict[str, Any]] = []
+    auto_choices: Dict[str, str] = {}
+    tracing.emit("retrieve.start", {"n_spans": len(spans)})
+    for s in spans:
+        try:
+            user_hits = voice_match.match(
+                session_path,
+                start_s=s["start_s"],
+                end_s=s["end_s"],
+                threshold=AUDIO_RETRIEVE_THRESHOLD_USER,
+                top_k=8,
+            )
+        except Exception as exc:
+            print(f"[transcribe] voice user match failed: {exc!r}")
+            user_hits = []
+        # Strong user-fingerprint match -> short-circuit, skip the LLM.
+        item_id = f"s{len(items_for_decide)}"
+        if user_hits and user_hits[0].get("source") == "user" and user_hits[0]["similarity"] >= AUDIO_AUTOFIX_THRESHOLD:
+            auto_choices[item_id] = user_hits[0]["term"]
+            span_meta.append({"id": item_id, "span": s, "hits": user_hits, "auto": True})
+            items_for_decide.append({"id": item_id, "span": s["text"], "candidates": []})
+            tracing.emit("retrieve.span", {
+                "span_id": item_id,
+                "span_text": s["text"],
+                "start_s": s["start_s"],
+                "end_s": s["end_s"],
+                "user_hits": user_hits,
+                "auto": True,
+                "chosen": user_hits[0]["term"],
+            })
             continue
-        # Phoneme-prune to top-K lexicon candidates.
-        candidates = forced_score.prune_candidates(word_text, lex_entries, k=FORCED_TOPK)
-        if not candidates:
-            continue
-        ranked = forced_score.score_whole(
-            str(session_path),
-            raw_text,
-            word_text,
-            candidates,
-            model_size=model_size,
-            language=language or "en",
-        )
-        tracing.emit("forced.score", {
-            "word_index": i,
-            "span_text": word_text,
-            "ranked": ranked[:5],
+
+        # Otherwise also pull seed (TTS-derived) hits at a more lenient floor.
+        try:
+            all_hits = voice_match.match(
+                session_path,
+                start_s=s["start_s"],
+                end_s=s["end_s"],
+                threshold=AUDIO_RETRIEVE_THRESHOLD_SEED,
+                top_k=8,
+            )
+        except Exception as exc:
+            print(f"[transcribe] voice fallback match failed: {exc!r}")
+            all_hits = []
+        # Dedup: keep best similarity per term, prefer user > seed.
+        seen: Dict[str, Dict[str, Any]] = {}
+        for h in (user_hits + all_hits):
+            term = h["term"]
+            prev = seen.get(term)
+            if prev is None or h["similarity"] > prev["similarity"]:
+                seen[term] = h
+        ranked = sorted(seen.values(), key=lambda h: -h["similarity"])
+        top = ranked[:5]
+        # Attach description (use cached one if metadata didn't have it).
+        candidates = []
+        for h in top:
+            desc = h.get("description") or descriptions.get(h["term"]) or ""
+            candidates.append({
+                "term": h["term"],
+                "similarity": h["similarity"],
+                "description": desc,
+                "source": h.get("source", "user"),
+            })
+        items_for_decide.append({"id": item_id, "span": s["text"], "candidates": candidates})
+        span_meta.append({"id": item_id, "span": s, "hits": top, "auto": False})
+        tracing.emit("retrieve.span", {
+            "span_id": item_id,
+            "span_text": s["text"],
+            "start_s": s["start_s"],
+            "end_s": s["end_s"],
+            "user_hits": user_hits,
+            "all_hits": all_hits,
+            "candidates": candidates,
+            "auto": False,
         })
-        # The first entry of `ranked` is the highest avg_logprob.
-        # The "original" entry (is_original=True) is our baseline.
-        original_score = next(
-            (r["avg_logprob"] for r in ranked if r.get("is_original")),
-            float("-inf"),
-        )
-        non_original = [r for r in ranked if not r.get("is_original")]
-        if not non_original:
-            continue
-        winner = non_original[0]
-        margin = winner["avg_logprob"] - original_score
-        if margin > FORCED_MARGIN:
-            # We picked a NEW transcript. Look up which lexicon term made
-            # it win — the substitution we performed is recorded as the
-            # `candidate` text. Find the term that's INSIDE winner["candidate"]
-            # but NOT in raw_text — that's the replacement.
-            chosen_term = None
-            for cand_term in candidates:
-                if cand_term.lower() in winner["candidate"].lower() and cand_term.lower() not in raw_text.lower():
-                    chosen_term = cand_term
-                    break
-            if chosen_term:
-                forced_replacements[i] = chosen_term
-                print(f"[transcribe] forced[{i}] {word_text!r} -> {chosen_term!r} (margin={margin:.4f})")
 
-    # 6) Build the suspicious_out list (what the UI shows).
-    suspicious_out: List[Dict[str, Any]] = []
-    for i, choice in voice_first_replacements.items():
-        suspicious_out.append({
-            "span": (words[i].get("word") or "").strip(),
-            "start_s": float(words[i].get("start") or 0.0),
-            "end_s": float(words[i].get("end") or 0.0),
-            "reason": "voice_db",
-            "auto_via_voice": True,
-            "chosen": choice,
-        })
-    for i, choice in forced_replacements.items():
-        if i in voice_first_replacements:
-            continue
-        suspicious_out.append({
-            "span": (words[i].get("word") or "").strip(),
-            "start_s": float(words[i].get("start") or 0.0),
-            "end_s": float(words[i].get("end") or 0.0),
-            "reason": "forced_score",
-            "auto_via_voice": False,
-            "chosen": choice,
-        })
+    # 4) DECIDE — LLM call #2.
+    decisions: Dict[str, Optional[str]] = dict(auto_choices)
+    decide_items = [it for it in items_for_decide if it["id"] not in auto_choices and it["candidates"]]
+    if decide_items and USE_LLM:
+        try:
+            results = llm_decide.decide(raw_text, decide_items)
+            for r in results:
+                decisions[r["id"]] = r["choice"]
+        except Exception as exc:
+            print(f"[transcribe] DECIDE failed: {exc!r}")
+            tracing.emit("decide.error", {"error": repr(exc)})
 
-    # 7) Apply word-level replacements (voice DB + forced-scoring winners).
-    word_replacements: Dict[int, str] = {**voice_first_replacements, **forced_replacements}
+    tracing.emit("decide.done", {"decisions": decisions, "auto": auto_choices})
+    print(f"[transcribe] decisions: {decisions}")
+
+    # 5) Apply replacements at word-token level.
+    word_replacements: Dict[int, str] = {}
     drop_indices: set = set()
+    suspicious_out: List[Dict[str, Any]] = []
+    for item, meta in zip(items_for_decide, span_meta):
+        choice = decisions.get(item["id"])
+        suspicious_out.append({
+            "span": meta["span"]["text"],
+            "start_s": meta["span"]["start_s"],
+            "end_s": meta["span"]["end_s"],
+            "reason": meta["span"].get("reason", "near_medical"),
+            "auto_via_voice": bool(meta.get("auto")),
+            "candidates": item["candidates"],
+            "voice_hits": meta["hits"],
+            "chosen": choice,
+        })
+        if not choice:
+            continue
+        i0 = meta["span"]["index_start"]
+        i1 = meta["span"]["index_end"]
+        word_replacements[i0] = choice
+        for idx in range(i0 + 1, i1):
+            drop_indices.add(idx)
 
     corrected_text = _apply_word_replacements(words, word_replacements, drop_indices) if words else raw_text
     if not words:
         corrected_text = raw_text
-
-    print(f"[transcribe] applied: {word_replacements}")
-    tracing.emit("apply.done", {
-        "replacements": word_replacements,
-        "corrected_text": corrected_text.strip(),
-    })
 
     return {
         "session_id": session_id,
@@ -610,21 +646,9 @@ def learn_from_edit(req: LearnFromEditRequest) -> Dict[str, Any]:
 
     session_path = _find_session_audio(req.session_id) if req.session_id else None
     asr_words: List[Dict[str, Any]] = []
-    # Prefer the client-supplied words from the original transcribe call.
-    # Re-running ASR here would use different decoding parameters (no
-    # hotwords) and produce mismatched word boundaries, which breaks the
-    # diff -> slice mapping below.
-    if req.words:
-        asr_words = list(req.words)
-    elif session_path:
+    if session_path:
         try:
-            lex_for_re = forced_score.lexicon_to_hotwords(lexicon.list_terms())
-            asr_result = asr.transcribe(
-                session_path,
-                model_size=DEFAULT_WHISPER_SIZE,
-                language=None,
-                hotwords=lex_for_re or None,
-            )
+            asr_result = asr.transcribe(session_path, model_size=DEFAULT_WHISPER_SIZE, language=None)
             asr_words = list(asr_result["words"])
         except Exception as exc:
             print(f"[learn] re-ASR failed: {exc!r}")
