@@ -26,7 +26,7 @@ _MODEL = None
 _MODEL_NAME: Optional[str] = None
 
 
-def _load_model(model_size: str = "small"):
+def _load_model(model_size: str = "large-v3"):
     global _MODEL, _MODEL_NAME
     if _MODEL is not None and _MODEL_NAME == model_size:
         return _MODEL

@@ -37,13 +37,19 @@ Environment variables (all optional, sensible defaults):
 
 | Var | Default | What |
 |---|---|---|
-| `WHISPER_MODEL_SIZE` | `base` | tiny / base / small / medium / large-v3 |
+| `WHISPER_MODEL_SIZE` | `large-v3` | tiny / base / small / medium / large-v3 |
 | `WHISPER_DEVICE` | `cpu` | `cuda` on Linux+GPU |
 | `WHISPER_COMPUTE_TYPE` | `int8` | `float16` on GPU |
 | `WHISPER_LANGUAGE` | `en` | force language; UI dropdown overrides per-request |
 | `VOICE_ENCODER_MODEL` | `facebook/wav2vec2-base` | any wav2vec2 checkpoint |
 | `OLLAMA_URL` | `http://100.68.87.28:11434/api/chat` | your Ollama endpoint |
 | `OLLAMA_MODEL` | `hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS` | model tag |
+| `LLM_PROVIDER` | `ollama` | `ollama` or `openrouter` (auto-detects OpenRouter if key is set) |
+| `OPENROUTER_API_KEY` | _(none)_ | OpenRouter API key (required for provider `openrouter`) |
+| `OPENROUTER_URL` | `https://openrouter.ai/api/v1/chat/completions` | OpenRouter endpoint |
+| `OPENROUTER_MODEL` | `openai/gpt-4o-mini` | OpenRouter model ID |
+| `OPENROUTER_APP_URL` | _(none)_ | Optional HTTP-Referer header value |
+| `OPENROUTER_APP_NAME` | _(none)_ | Optional X-Title header value |
 | `USE_LLM` | `1` | set to `0` to skip both LLM calls (text-only fallback) |
 
 Confirm Ollama is reachable before you start:
@@ -51,6 +57,14 @@ Confirm Ollama is reachable before you start:
 ```bash
 curl -sS $OLLAMA_URL ; echo
 curl -sS "${OLLAMA_URL%/chat}/tags" | head -1
+```
+
+To use OpenRouter instead, set:
+
+```bash
+export LLM_PROVIDER=openrouter
+export OPENROUTER_API_KEY=your_key_here
+export OPENROUTER_MODEL=openai/gpt-4o-mini
 ```
 
 ## Run
@@ -384,3 +398,49 @@ What's defensible:
   (Efferalgan, Doliprane, Acitrom across multiple voices)
 - Internal Gulf-domain medical terms collected by hand for the seed
   lexicon
+
+## ASR fine-tuning (Qwen, VibeVoice, Voxtral, Omni)
+
+These scripts fine-tune the largest available checkpoints for Gulf Arabic
+and log WER before and after training. They assume WAV audio.
+
+### Data layout
+
+```
+data/finetuning/
+  train/
+    batch_001/
+      data.csv
+      sample_001.wav
+      sample_002.wav
+    batch_002/
+      ...
+  test/
+    batch_010/
+      data.csv
+      sample_101.wav
+```
+
+Each `data.csv` has two columns:
+- `name` — WAV filename (with or without `.wav` suffix)
+- `transcript` — ground-truth text
+
+### Run (full fine-tune)
+
+```bash
+python -m scripts.finetune_asr_qwen --output-dir outputs/qwen3-full
+python -m scripts.finetune_asr_vibevoice --output-dir outputs/vibevoice-full
+python -m scripts.finetune_asr_voxtral --output-dir outputs/voxtral-full
+python -m scripts.finetune_asr_omni --output-dir outputs/omni-full
+```
+
+### Run (LoRA)
+
+```bash
+python -m scripts.finetune_asr_qwen --lora --output-dir outputs/qwen3-lora
+python -m scripts.finetune_asr_vibevoice --lora --output-dir outputs/vibevoice-lora
+python -m scripts.finetune_asr_voxtral --lora --output-dir outputs/voxtral-lora
+python -m scripts.finetune_asr_omni --lora --output-dir outputs/omni-lora
+```
+
+Each run writes `metrics.json` into the output directory with pre/post WER.
