@@ -64,12 +64,46 @@ _set_eval_dir(EVAL_DIR)
 
 
 # ---------------------------------------------------------------------------
-# Text normalization (must match build_eval_set.py)
+# Text normalization
+#
+# For Arabic we apply the standard ASR-eval normalisation pipeline:
+#   - NFKC unicode normalisation
+#   - strip Arabic diacritics (tashkeel) and tatweel
+#   - unify alef variants  أ إ آ ٱ -> ا
+#   - unify hamza carriers ؤ -> و,  ئ -> ي,  ء -> ""
+#   - unify yaa             ى -> ي
+#   - unify teh marbuta     ة -> ه
+#   - map Arabic-Indic digits ٠-٩ -> 0-9
+# Then a generic cleanup: lowercase, strip punctuation, collapse whitespace.
+#
+# Without these, spelling variants count as substitutions and inflate WER
+# by 15-25 absolute points on dialectal Arabic. See:
+#   - vadimbelsky/qwen3-asr-arabic-uae model card (`text normalization` section)
+#   - SADA22 paper, normalisation procedure
 # ---------------------------------------------------------------------------
 
 _PUNCT_RE = re.compile(r"[^\w\s]", flags=re.UNICODE)
 _WS_RE = re.compile(r"\s+")
-_DIACRITICS_RE = re.compile(r"[\u064b-\u065f\u0670]")
+# Tashkeel (U+064B..U+065F), superscript alef (U+0670), tatweel (U+0640)
+_DIACRITICS_RE = re.compile(r"[\u064b-\u065f\u0670\u0640]")
+
+# Translation table for Arabic letter unification + digit folding.
+_AR_TRANSLIT = {
+    ord("أ"): "ا",
+    ord("إ"): "ا",
+    ord("آ"): "ا",
+    ord("ٱ"): "ا",
+    ord("ى"): "ي",
+    ord("ة"): "ه",
+    ord("ؤ"): "و",
+    ord("ئ"): "ي",
+    ord("ء"): "",
+    # Arabic-Indic digits 0..9
+    ord("٠"): "0", ord("١"): "1", ord("٢"): "2", ord("٣"): "3", ord("٤"): "4",
+    ord("٥"): "5", ord("٦"): "6", ord("٧"): "7", ord("٨"): "8", ord("٩"): "9",
+    # Persian/Urdu-style alternates that sometimes appear
+    ord("ﻻ"): "لا", ord("ﻷ"): "لا", ord("ﻹ"): "لا", ord("ﻵ"): "لا",
+}
 
 
 def normalize_text(s: str) -> str:
@@ -77,6 +111,7 @@ def normalize_text(s: str) -> str:
         return ""
     s = unicodedata.normalize("NFKC", s)
     s = _DIACRITICS_RE.sub("", s)
+    s = s.translate(_AR_TRANSLIT)
     s = s.lower()
     s = _PUNCT_RE.sub(" ", s)
     s = _WS_RE.sub(" ", s).strip()
@@ -768,6 +803,76 @@ BACKENDS: Dict[str, Callable[[], Backend]] = {
     "qwen3_uae":    QwenUaeBackend,
 }
 
+# Map CLI model key -> backend class.name (the directory name used to cache
+# predictions). Used by --rescore-only to find the cached predictions.
+_MODEL_KEY_TO_DIR: Dict[str, str] = {
+    "whisper":      WhisperBackend.name,
+    "qwen3":        QwenAsrBackend.name,
+    "vibevoice":    VibeVoiceBackend.name,
+    "omniASR":      OmniAsrBackend.name,
+    "whisper_gulf": WhisperGulfBackend.name,
+    "qwen3_ksa":    QwenKsaBackend.name,
+    "qwen3_uae":    QwenUaeBackend.name,
+}
+
+
+def _rescore_cached_predictions(model_keys: List[str]) -> List[Dict[str, Any]]:
+    """Walk cached prediction JSONs and recompute WER + recall.
+
+    Each prediction JSON is updated in place so subsequent reads see the
+    new numbers. The returned row list matches what run_backend() would
+    have produced for a fresh run, so write_csv / write_report can be
+    reused unchanged.
+    """
+    rows: List[Dict[str, Any]] = []
+    for key in model_keys:
+        dir_name = _MODEL_KEY_TO_DIR.get(key)
+        if dir_name is None:
+            print(f"  ! unknown model key {key!r}; skipping")
+            continue
+        pred_dir = PREDICTIONS_DIR / dir_name
+        if not pred_dir.is_dir():
+            print(f"  ! no cached predictions for {dir_name} "
+                  f"({pred_dir.relative_to(PROJECT_ROOT)})")
+            continue
+        files = sorted(pred_dir.glob("*.json"))
+        if not files:
+            print(f"  ! cache dir for {dir_name} is empty")
+            continue
+        print(f"  rescoring {dir_name}: {len(files)} clips")
+        for p in files:
+            try:
+                d = json.loads(p.read_text(encoding="utf-8"))
+            except Exception as exc:
+                print(f"    ✗ skip {p.name}: {exc!r}")
+                continue
+            ref_norm = normalize_text(d.get("ref") or "")
+            hyp_norm = normalize_text(d.get("pred") or "")
+            new_wer = wer(ref_norm, hyp_norm)
+            new_rec = medical_term_recall(
+                d.get("medical_terms") or [],
+                d.get("pred") or "",
+            )
+            # Persist new metrics back into the cache file.
+            d["ref_normalized"] = ref_norm
+            d["pred_normalized"] = hyp_norm
+            d["wer"] = new_wer
+            d["medical_term_recall"] = new_rec
+            p.write_text(json.dumps(d, ensure_ascii=False, indent=2),
+                         encoding="utf-8")
+            rows.append({
+                "model": dir_name,
+                "clip_id": d.get("id", p.stem),
+                "category": d.get("category", ""),
+                "language": d.get("language", ""),
+                "duration_s": d.get("duration_s", 0.0),
+                "wer": new_wer,
+                "medical_term_recall": new_rec,
+                "inference_seconds": d.get("inference_seconds", 0.0),
+                "rtf": d.get("rtf", 0.0),
+            })
+    return rows
+
 
 def main() -> int:
     p = argparse.ArgumentParser(description="Run zero-shot ASR bake-off.")
@@ -797,6 +902,14 @@ def main() -> int:
         help="Eval set directory (must contain manifest.jsonl + audio/). "
              "Defaults to eval/gulf_medical_v1.",
     )
+    p.add_argument(
+        "--rescore-only",
+        action="store_true",
+        default=False,
+        help="Skip model inference. Re-score every cached prediction in "
+             "<eval-dir>/bakeoff/predictions/<model>/*.json using the "
+             "current normalize_text() and write a fresh report.",
+    )
     args = p.parse_args()
 
     if args.eval_dir is not None:
@@ -806,7 +919,22 @@ def main() -> int:
         _set_eval_dir(eval_dir)
         print(f"using eval dir: {EVAL_DIR.relative_to(PROJECT_ROOT)}")
 
-    manifest = load_manifest()
+    if args.rescore_only:
+        all_rows = _rescore_cached_predictions(args.models)
+        if not all_rows:
+            print("no cached predictions found under "
+                  f"{PREDICTIONS_DIR.relative_to(PROJECT_ROOT)}")
+            return 1
+        csv_path = write_csv(all_rows)
+        summary = aggregate(all_rows)
+        md_path = write_report(summary)
+        print("\n" + "=" * 60)
+        print(f"rescored {len(all_rows)} cached predictions")
+        print(f"results -> {csv_path.relative_to(PROJECT_ROOT)}")
+        print(f"report  -> {md_path.relative_to(PROJECT_ROOT)}")
+        print("=" * 60)
+        print(md_path.read_text(encoding="utf-8"))
+        return 0
     if args.max_clips:
         manifest = manifest[: args.max_clips]
     print(f"loaded {len(manifest)} clips from {MANIFEST_PATH.relative_to(PROJECT_ROOT)}")
