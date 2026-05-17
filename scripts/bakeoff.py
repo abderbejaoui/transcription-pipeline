@@ -1029,6 +1029,8 @@ def main() -> int:
         print("=" * 60)
         print(md_path.read_text(encoding="utf-8"))
         return 0
+
+    manifest = load_manifest()
     if args.max_clips:
         manifest = manifest[: args.max_clips]
     print(f"loaded {len(manifest)} clips from {MANIFEST_PATH.relative_to(PROJECT_ROOT)}")
