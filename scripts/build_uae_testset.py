@@ -284,7 +284,10 @@ def iter_worldspeech_uae_neighbors(
     max_s: float,
     max_per_country: int,
 ) -> Iterable[Clip]:
-    """Stream WorldSpeech country splits closest to UAE (Kuwait, Bahrain)."""
+    """Stream WorldSpeech country splits closest to UAE (Kuwait, Bahrain).
+
+    Tracks rejection reasons so we can see why kept=0 if it happens.
+    """
     for country in countries:
         try:
             ds = _load_hf("disco-eth/WorldSpeech", country, "train", streaming=True)
@@ -293,22 +296,39 @@ def iter_worldspeech_uae_neighbors(
             continue
         seen = 0
         kept = 0
+        rejected = {
+            "no_audio": 0, "no_sr": 0, "no_transcript": 0,
+            "too_short": 0, "too_long": 0, "high_cer": 0,
+        }
         for ex in ds:
             seen += 1
             if seen > max_per_country * 30:
                 break
             audio = ex.get("audio") or {}
             arr = audio.get("array")
-            sr = int(audio.get("sampling_rate") or 0)
+            sr_val = audio.get("sampling_rate")
+            sr = int(sr_val) if sr_val else 0
             transcript = (ex.get("human_transcript") or "").strip()
-            if arr is None or sr <= 0 or not transcript:
-                continue
-            dur = float(ex.get("duration") or (len(arr) / sr))
-            if dur < min_s or dur > max_s:
-                continue
+            # Prefer the dataset-published duration so we can filter even when
+            # audio decode is lazy / missing.
+            dur_val = ex.get("duration")
+            try:
+                dur = float(dur_val) if dur_val is not None else (len(arr) / sr if arr is not None and sr else 0.0)
+            except Exception:
+                dur = 0.0
+            if arr is None:
+                rejected["no_audio"] += 1; continue
+            if sr <= 0:
+                rejected["no_sr"] += 1; continue
+            if not transcript:
+                rejected["no_transcript"] += 1; continue
+            if dur < min_s:
+                rejected["too_short"] += 1; continue
+            if dur > max_s:
+                rejected["too_long"] += 1; continue
             cer = ex.get("cer")
             if cer is not None and cer > 0.25:
-                continue
+                rejected["high_cer"] += 1; continue
             yield (
                 f"worldspeech_{country}_{kept:03d}",
                 np.asarray(arr, dtype=np.float32),
@@ -320,7 +340,7 @@ def iter_worldspeech_uae_neighbors(
             kept += 1
             if kept >= max_per_country:
                 break
-        print(f"  [worldspeech/{country}] scanned {seen}, kept {kept}")
+        print(f"  [worldspeech/{country}] scanned {seen}, kept {kept}, rejected {rejected}")
 
 
 # ---------------------------------------------------------------------------
