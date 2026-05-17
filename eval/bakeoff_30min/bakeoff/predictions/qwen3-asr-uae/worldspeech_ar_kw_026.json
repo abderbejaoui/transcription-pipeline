@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_026",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 6.3,
+  "ref": "وكد لا تدهل في شكل من الاشكال اللي نكول ان هي هرفه ل",
+  "ref_normalized": "وكد لا تدهل في شكل من الاشكال اللي نكول ان هي هرفه ل",
+  "pred": "وقد لا تدخل في شكل من الاشكال اللي نقول انها هي حرفة الله",
+  "pred_normalized": "وقد لا تدخل في شكل من الاشكال اللي نقول انها هي حرفه الله",
+  "wer": 0.46153846153846156,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6968719959259033,
+  "rtf": 9.040397715550997,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

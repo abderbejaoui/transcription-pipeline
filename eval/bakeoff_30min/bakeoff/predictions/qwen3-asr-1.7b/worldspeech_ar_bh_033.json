@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_033",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.48,
+  "ref": "لما تشكله من ارث وتاريخ عريق لمملكه البحرين",
+  "ref_normalized": "لما تشكله من ارث وتاريخ عريق لمملكه البحرين",
+  "pred": "لما تشكلهم من أرض وتاريخ عريق للمملكة البحرين وحضارته.",
+  "pred_normalized": "لما تشكلهم من ارض وتاريخ عريق للمملكه البحرين وحضارته",
+  "wer": 0.5,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7248818874359131,
+  "rtf": 6.180317204292234,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

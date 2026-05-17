@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_sa_024",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.26,
+  "ref": "اقول قولي هذا واستغفر اهلل تعالي لي ولكم",
+  "ref_normalized": "اقول قولي هذا واستغفر اهلل تعالي لي ولكم",
+  "pred": "اقول قولي هذا واسفف الله تعالى لي ولكم",
+  "pred_normalized": "اقول قولي هذا واسفف الله تعالي لي ولكم",
+  "wer": 0.25,
+  "medical_term_recall": null,
+  "inference_seconds": 0.48418545722961426,
+  "rtf": 8.798281601381904,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

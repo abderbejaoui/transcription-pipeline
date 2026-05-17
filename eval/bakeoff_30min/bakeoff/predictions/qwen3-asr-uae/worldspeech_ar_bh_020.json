@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_020",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 3.15,
+  "ref": "سمو الشيخ ناصر بن حمد ال خليفه",
+  "ref_normalized": "سمو الشيخ ناصر بن حمد ال خليفه",
+  "pred": "سموه الشيخ ناصر بن حمد الخليفه",
+  "pred_normalized": "سموه الشيخ ناصر بن حمد الخليفه",
+  "wer": 0.42857142857142855,
+  "medical_term_recall": null,
+  "inference_seconds": 0.38770365715026855,
+  "rtf": 8.124762152499128,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

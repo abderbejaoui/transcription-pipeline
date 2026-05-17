@@ -1,0 +1,18 @@
+{
+  "id": "sada_026",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.22,
+  "ref": "تبغيني اسكت عنه لحد ما ياخذ بيتنا ويخلينا نصير مشردين",
+  "ref_normalized": "تبغيني اسكت عنه لحد ما ياخذ بيتنا ويخلينا نصير مشردين",
+  "pred": "ابغي اني اسكت عنه لحد ما اخذ بيتنا وغون خلنا نصير مشردين",
+  "pred_normalized": "ابغي اني اسكت عنه لحد ما اخذ بيتنا وغون خلنا نصير مشردين",
+  "wer": 0.5,
+  "medical_term_recall": null,
+  "inference_seconds": 0.913672685623169,
+  "rtf": 3.524238001931517,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

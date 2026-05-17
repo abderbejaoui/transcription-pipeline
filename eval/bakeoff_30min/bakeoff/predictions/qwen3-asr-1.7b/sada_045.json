@@ -1,0 +1,18 @@
+{
+  "id": "sada_045",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.98,
+  "ref": "ها مهمتك",
+  "ref_normalized": "ها مهمتك",
+  "pred": "محمدك.",
+  "pred_normalized": "محمدك",
+  "wer": 1.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.1714649200439453,
+  "rtf": 23.211744997052183,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

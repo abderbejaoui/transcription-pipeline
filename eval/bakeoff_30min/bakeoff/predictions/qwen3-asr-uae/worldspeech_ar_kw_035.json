@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_035",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.4,
+  "ref": "لهدره ساهب السمو الامير وسمو ولي عهده الامين",
+  "ref_normalized": "لهدره ساهب السمو الامير وسمو ولي عهده الامين",
+  "pred": "ليحضرت صاحب سمو الأمير وسمو ولي عهده الأمين",
+  "pred_normalized": "ليحضرت صاحب سمو الامير وسمو ولي عهده الامين",
+  "wer": 0.375,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6507992744445801,
+  "rtf": 8.2974892751818,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

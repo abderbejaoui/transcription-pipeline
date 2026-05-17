@@ -1,0 +1,18 @@
+{
+  "id": "sada_005",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.26,
+  "ref": "بغات تنحبس ولا طقاقن يطق راسها ان شاء الله",
+  "ref_normalized": "بغات تنحبس ولا طقاقن يطق راسها ان شا الله",
+  "pred": "البقس تمحس ونفقّعهم يطقّرس إن شاء الله.",
+  "pred_normalized": "البقس تمحس ونفقعهم يطقرس ان شا الله",
+  "wer": 0.6666666666666666,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7650496959686279,
+  "rtf": 5.568265725021199,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

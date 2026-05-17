@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_009",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 6.82,
+  "ref": "بسبب سله فاسده تمتلك الكرار وتسيتر علي الاعلام",
+  "ref_normalized": "بسبب سله فاسده تمتلك الكرار وتسيتر علي الاعلام",
+  "pred": "بسبب ثله فاسده تمتلك القرار وتسيطر علي الاعلام",
+  "pred_normalized": "بسبب ثله فاسده تمتلك القرار وتسيطر علي الاعلام",
+  "wer": 0.375,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5814180374145508,
+  "rtf": 11.72994224659278,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

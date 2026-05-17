@@ -1,0 +1,18 @@
+{
+  "id": "sada_055",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.925,
+  "ref": "تقصد تقصد بنتي حصة",
+  "ref_normalized": "تقصد تقصد بنتي حصه",
+  "pred": "قصد تقصد بنتي حصل",
+  "pred_normalized": "قصد تقصد بنتي حصل",
+  "wer": 0.5,
+  "medical_term_recall": null,
+  "inference_seconds": 0.29961371421813965,
+  "rtf": 13.100201405141043,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

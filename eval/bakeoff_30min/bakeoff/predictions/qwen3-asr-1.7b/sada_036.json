@@ -1,0 +1,18 @@
+{
+  "id": "sada_036",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.98,
+  "ref": "وامرص كبدك مرص وامغصب",
+  "ref_normalized": "وامرص كبدك مرص وامغصب",
+  "pred": "وأمرس كبدك مرس وأمغصه",
+  "pred_normalized": "وامرس كبدك مرس وامغصه",
+  "wer": 0.75,
+  "medical_term_recall": null,
+  "inference_seconds": 0.45310235023498535,
+  "rtf": 8.783887344517007,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

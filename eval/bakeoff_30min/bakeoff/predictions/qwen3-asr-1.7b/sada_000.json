@@ -1,0 +1,18 @@
+{
+  "id": "sada_000",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.5,
+  "ref": "ما يصير يا ابو مسامح تخلي البنت في البيت دون امها",
+  "ref_normalized": "ما يصير يا ابو مسامح تخلي البنت في البيت دون امها",
+  "pred": "ما يصير يا أبو مسامح تخلي البنت في البيت دون أمها؟",
+  "pred_normalized": "ما يصير يا ابو مسامح تخلي البنت في البيت دون امها",
+  "wer": 0.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6374478340148926,
+  "rtf": 5.490645372430946,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_039",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 6.91,
+  "ref": "مع نهايه هذا العام 2025م و10 بحلول عام",
+  "ref_normalized": "مع نهايه هذا العام 2025م و10 بحلول عام",
+  "pred": "مع نهاية هذا العام ألفين وخمسه وعشرين وعشره بالمائه بحلول عام ألفين وخمسه وثلاثين",
+  "pred_normalized": "مع نهايه هذا العام الفين وخمسه وعشرين وعشره بالمايه بحلول عام الفين وخمسه وثلاثين",
+  "wer": 1.0,
+  "medical_term_recall": null,
+  "inference_seconds": 1.0308277606964111,
+  "rtf": 6.703350708494416,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}
