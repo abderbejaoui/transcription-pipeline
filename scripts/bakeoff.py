@@ -192,12 +192,11 @@ class WhisperBackend(Backend):
 
 
 class _Qwen3AsrBase(Backend):
-    """Loads Qwen3-ASR family models through `transformers` + trust_remote_code.
+    """Loads Qwen3-ASR family models.
 
-    The `qwen-asr` pip package is a thin wrapper that drags in Gradio /
-    Flask / Sox / Japanese & Korean NLP libs. We avoid it entirely by
-    loading the model code shipped inside the HF repo via
-    `trust_remote_code=True`.
+    Preferred path: `transformers` (clean, no extra deps).
+    Fallback path: `qwen_asr` pip wrapper, used automatically when the
+    current `transformers` doesn't register `qwen3_asr` (e.g. pre-5.9 dev).
     """
 
     repo_id: str = ""
@@ -208,41 +207,93 @@ class _Qwen3AsrBase(Backend):
         self._model = None
         self._processor = None
         self._device = None
+        self._backend: str = ""  # "transformers" | "qwen_asr"
+
+    def _pick_device(self):
+        import torch
+        if torch.cuda.is_available():
+            return "cuda:0", torch.bfloat16
+        if torch.backends.mps.is_available():
+            return "mps", torch.float16
+        return "cpu", torch.float32
+
+    def _qwen3_asr_in_transformers(self) -> bool:
+        try:
+            from transformers.models.auto.configuration_auto import CONFIG_MAPPING_NAMES
+            return "qwen3_asr" in CONFIG_MAPPING_NAMES
+        except Exception:
+            return False
 
     def prepare(self) -> None:
-        import torch
-        from transformers import AutoModelForCausalLM, AutoProcessor
+        self._device, dtype = self._pick_device()
 
-        if torch.cuda.is_available():
-            self._device, dtype = "cuda:0", torch.bfloat16
-        elif torch.backends.mps.is_available():
-            self._device, dtype = "mps", torch.float16
-        else:
-            self._device, dtype = "cpu", torch.float32
+        if self._qwen3_asr_in_transformers():
+            from transformers import AutoModelForCausalLM, AutoProcessor
+            print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype}) via transformers")
+            self._processor = AutoProcessor.from_pretrained(
+                self.repo_id, trust_remote_code=True
+            )
+            self._model = AutoModelForCausalLM.from_pretrained(
+                self.repo_id,
+                torch_dtype=dtype,
+                trust_remote_code=True,
+                low_cpu_mem_usage=True,
+            ).to(self._device).eval()
+            self._backend = "transformers"
+            return
 
-        print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype})")
-        self._processor = AutoProcessor.from_pretrained(
-            self.repo_id, trust_remote_code=True
-        )
-        self._model = AutoModelForCausalLM.from_pretrained(
+        # Fallback: qwen-asr pip wrapper.
+        try:
+            from qwen_asr import Qwen3ASRModel
+        except ImportError as exc:
+            raise RuntimeError(
+                "transformers does not yet register `qwen3_asr` and the "
+                "qwen-asr pip wrapper is not installed. Run: "
+                "`pip install qwen-asr` (or upgrade transformers from main "
+                "once the model is merged)."
+            ) from exc
+        print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype}) via qwen-asr wrapper")
+        self._model = Qwen3ASRModel.from_pretrained(
             self.repo_id,
-            torch_dtype=dtype,
-            trust_remote_code=True,
-            low_cpu_mem_usage=True,
-        ).to(self._device).eval()
+            dtype=dtype,
+            device_map=self._device,
+            max_inference_batch_size=1,
+            max_new_tokens=256,
+        )
+        self._backend = "qwen_asr"
 
     def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
         # Qwen3-ASR uses verbose language names. None = auto-detect.
         return {"en": "English", "ar": "Arabic", "mixed": None}.get(language or "", None)
 
     def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
-        import io
+        assert self._model is not None
+        qlang = self._qwen_language_label(language)
+
+        if self._backend == "qwen_asr":
+            t0 = time.time()
+            try:
+                results = self._model.transcribe(
+                    audio=str(wav_path), language=qlang
+                )
+                r = results[0]
+                return Prediction(
+                    text=getattr(r, "text", "").strip(),
+                    inference_seconds=time.time() - t0,
+                    extra={"lang_hint": qlang,
+                           "detected_language": getattr(r, "language", None)},
+                )
+            except Exception as exc:
+                return Prediction(
+                    text="", inference_seconds=time.time() - t0,
+                    extra={"error": repr(exc)},
+                )
+
+        # transformers backend
         import torch
         import soundfile as sf
+        assert self._processor is not None
 
-        assert self._model is not None and self._processor is not None
-
-        # Load audio, resample to 16 kHz mono if needed.
         audio, sr = sf.read(str(wav_path), dtype="float32")
         if audio.ndim > 1:
             audio = audio.mean(axis=1)
@@ -257,15 +308,11 @@ class _Qwen3AsrBase(Backend):
                     extra={"error": f"resample failed: {exc!r}"},
                 )
 
-        # Qwen3-ASR uses a chat-style prompt. The processor knows the
-        # template; we just supply audio + optional language hint.
-        qlang = self._qwen_language_label(language)
         user_msg = (
             f"<|audio_1|>Transcribe the audio in {qlang}."
             if qlang else
             "<|audio_1|>Transcribe the audio."
         )
-
         t0 = time.time()
         try:
             inputs = self._processor(
@@ -277,11 +324,8 @@ class _Qwen3AsrBase(Backend):
             inputs = {k: v.to(self._device) for k, v in inputs.items()}
             with torch.inference_mode():
                 out_ids = self._model.generate(
-                    **inputs,
-                    max_new_tokens=256,
-                    do_sample=False,
+                    **inputs, max_new_tokens=256, do_sample=False,
                 )
-            # Strip the prompt tokens so we keep only the generated transcript.
             input_len = inputs["input_ids"].shape[1] if "input_ids" in inputs else 0
             gen_ids = out_ids[:, input_len:] if input_len else out_ids
             text = self._processor.batch_decode(
