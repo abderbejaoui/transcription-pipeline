@@ -116,6 +116,56 @@ def _ffmpeg_resample(arr: np.ndarray, sr: int, out_path: Path) -> float:
     return float(info)
 
 
+def _decode_audio_field(audio: Any) -> Tuple[Optional[np.ndarray], int]:
+    """Return (waveform, sample_rate) from a HuggingFace audio field.
+
+    Handles three cases the parquet streamer can yield on different
+    `datasets` versions:
+      1. `{array: np.ndarray, sampling_rate: int}` — already decoded.
+      2. `{bytes: <opus/wav/mp3>, path: ..., sampling_rate?: int}` —
+         raw encoded bytes; decode with soundfile or fall back to ffmpeg.
+      3. `None` or unrecognised — return (None, 0).
+    """
+    if not isinstance(audio, dict):
+        return None, 0
+    arr = audio.get("array")
+    sr_val = audio.get("sampling_rate")
+    sr = int(sr_val) if sr_val else 0
+    if arr is not None:
+        return np.asarray(arr, dtype=np.float32), sr or 0
+    data = audio.get("bytes")
+    if not data:
+        return None, 0
+    # Try in-memory decode via soundfile (handles wav/flac/ogg/opus).
+    try:
+        import io
+        import soundfile as sf
+        wav, sr_dec = sf.read(io.BytesIO(data), dtype="float32", always_2d=False)
+        if wav.ndim > 1:
+            wav = wav.mean(axis=1)
+        return wav.astype(np.float32), int(sr_dec)
+    except Exception:
+        pass
+    # Fallback: shell out to ffmpeg for everything else.
+    try:
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".bin") as tin, \
+             tempfile.NamedTemporaryFile(suffix=".wav") as tout:
+            tin.write(data); tin.flush()
+            subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-i", tin.name,
+                 "-ac", "1", "-ar", str(SR), tout.name],
+                check=True,
+            )
+            import soundfile as sf
+            wav, sr_dec = sf.read(tout.name, dtype="float32", always_2d=False)
+            if wav.ndim > 1:
+                wav = wav.mean(axis=1)
+            return wav.astype(np.float32), int(sr_dec)
+    except Exception:
+        return None, 0
+
+
 # ---------------------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------------------
@@ -209,11 +259,14 @@ def iter_worldspeech_gulf(
 
     Each Gulf country subset is a separate config (ar_bh, ar_kw, ar_sa).
     Streams + reservoir-samples up to `max_per_country` rows that fit the
-    duration window.
+    duration window. Logs per-reason rejection counts so we can see why
+    clips get dropped if the kept count is 0.
     """
     for country in countries:
         seen = 0
         kept = 0
+        rej = {"no_audio": 0, "no_sr": 0, "no_transcript": 0,
+               "too_short": 0, "too_long": 0, "high_cer": 0}
         try:
             ds = _stream_hf_dataset("disco-eth/WorldSpeech", country, split="train")
         except Exception as exc:
@@ -222,21 +275,27 @@ def iter_worldspeech_gulf(
         for ex in ds:
             seen += 1
             if seen > max_per_country * 30:
-                # Don't iterate forever if the corpus is huge.
                 break
-            audio = ex.get("audio") or {}
-            arr = audio.get("array")
-            sr = int(audio.get("sampling_rate") or 0)
+            arr, sr = _decode_audio_field(ex.get("audio"))
             transcript = (ex.get("human_transcript") or "").strip()
-            if arr is None or sr <= 0 or not transcript:
-                continue
-            dur = float(ex.get("duration") or (len(arr) / sr))
-            if dur < min_s or dur > max_s:
-                continue
+            dur_val = ex.get("duration")
+            try:
+                dur = float(dur_val) if dur_val is not None else (len(arr) / sr if arr is not None and sr else 0.0)
+            except Exception:
+                dur = 0.0
+            if arr is None:
+                rej["no_audio"] += 1; continue
+            if sr <= 0:
+                rej["no_sr"] += 1; continue
+            if not transcript:
+                rej["no_transcript"] += 1; continue
+            if dur < min_s:
+                rej["too_short"] += 1; continue
+            if dur > max_s:
+                rej["too_long"] += 1; continue
             cer = ex.get("cer")
-            # Skip very poor alignments — WorldSpeech publishes ASR/human CER.
             if cer is not None and cer > 0.25:
-                continue
+                rej["high_cer"] += 1; continue
             yield (
                 f"worldspeech_{country}_{kept:03d}",
                 np.asarray(arr, dtype=np.float32),
@@ -248,7 +307,7 @@ def iter_worldspeech_gulf(
             kept += 1
             if kept >= max_per_country:
                 break
-        print(f"  [worldspeech/{country}] scanned {seen}, kept {kept}")
+        print(f"  [worldspeech/{country}] scanned {seen}, kept {kept}, rejected {rej}")
 
 
 def iter_sada(
@@ -256,9 +315,11 @@ def iter_sada(
     max_s: float = 20.0,
     max_clips: int = 60,
 ) -> Iterable[Tuple[str, np.ndarray, int, str, float, Dict[str, Any]]]:
-    """Yield clips from the SADA Saudi corpus."""
+    """Yield clips from the SADA Saudi corpus, with per-reason rejection logs."""
     seen = 0
     kept = 0
+    rej = {"no_audio": 0, "no_sr": 0, "no_transcript": 0,
+           "too_short": 0, "too_long": 0}
     try:
         ds = _stream_hf_dataset("MohamedRashad/SADA22", None, split="train")
     except Exception as exc:
@@ -268,20 +329,24 @@ def iter_sada(
         seen += 1
         if seen > max_clips * 40:
             break
-        audio = ex.get("audio") or {}
-        arr = audio.get("array")
-        sr = int(audio.get("sampling_rate") or 0)
+        arr, sr = _decode_audio_field(ex.get("audio"))
         text = (
             ex.get("cleaned_text")
             or ex.get("text")
             or ex.get("transcription")
             or ""
         ).strip()
-        if arr is None or sr <= 0 or len(text) < 3:
-            continue
+        if arr is None:
+            rej["no_audio"] += 1; continue
+        if sr <= 0:
+            rej["no_sr"] += 1; continue
+        if len(text) < 3:
+            rej["no_transcript"] += 1; continue
         dur = len(arr) / sr
-        if dur < min_s or dur > max_s:
-            continue
+        if dur < min_s:
+            rej["too_short"] += 1; continue
+        if dur > max_s:
+            rej["too_long"] += 1; continue
         yield (
             f"sada_{kept:03d}",
             np.asarray(arr, dtype=np.float32),
@@ -297,12 +362,7 @@ def iter_sada(
         kept += 1
         if kept >= max_clips:
             break
-    print(f"  [sada22] scanned {seen}, kept {kept}")
-
-
-# ---------------------------------------------------------------------------
-# Builder
-# ---------------------------------------------------------------------------
+    print(f"  [sada22] scanned {seen}, kept {kept}, rejected {rej}")
 
 
 def build(
