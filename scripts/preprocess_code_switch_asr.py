@@ -101,6 +101,15 @@ ARABIC_TRANSLATION = {
     ord("۹"): "9",
 }
 
+PHRASE_NORMALIZATIONS = (
+    (re.compile(r"\bان\s*شاء\s*الله\b"), "ان شاء الله"),
+    (re.compile(r"\bانشالله\b"), "ان شاء الله"),
+    (re.compile(r"\bما\s*شاء\s*الله\b"), "ما شاء الله"),
+    (re.compile(r"\bماشاءالله\b"), "ما شاء الله"),
+    (re.compile(r"\bاهلل\b"), "الله"),
+    (re.compile(r"\bاللو\b"), "الله"),
+)
+
 UNIT_WORDS = {
     "mg": "مليغرام",
     "milligram": "مليغرام",
@@ -221,6 +230,14 @@ def _split_arabic_latin_boundaries(text: str) -> str:
     return text
 
 
+def _normalize_common_phrases(text: str) -> str:
+    for pattern, replacement in PHRASE_NORMALIZATIONS:
+        text = pattern.sub(replacement, text)
+    text = text.replace("اهلل", "الله")
+    text = text.replace("اللو", "الله")
+    return text
+
+
 def clean_asr_text(text: str, options: Optional[CleanOptions] = None) -> str:
     """Normalize Arabic-English code-switched ASR transcript text.
 
@@ -245,6 +262,10 @@ def clean_asr_text(text: str, options: Optional[CleanOptions] = None) -> str:
         text = re.sub(r"[A-Za-z]+", lambda m: m.group(0).lower(), text)
     if opts.verbalize_numbers:
         text = _verbalize_numbers(text)
+        # num2words may reintroduce hamza forms such as مائة; fold again so
+        # generated number words obey the same Arabic normalization policy.
+        text = text.translate(ARABIC_TRANSLATION)
+    text = _normalize_common_phrases(text)
     if opts.remove_punctuation:
         text = ARABIC_PUNCT_RE.sub(" ", text)
         text = PUNCT_RE.sub(" ", text)
@@ -267,6 +288,15 @@ def _resolve_audio_path(row: Dict[str, Any], manifest_path: Path) -> Optional[Pa
         if path.exists():
             return path
     return None
+
+
+def _resolve_relative_path(value: Any, manifest_path: Path) -> Optional[Path]:
+    if not isinstance(value, str) or not value.strip():
+        return None
+    path = Path(value)
+    if not path.is_absolute():
+        path = manifest_path.parent / path
+    return path if path.exists() else None
 
 
 def _pick_text(row: Dict[str, Any]) -> str:
@@ -346,6 +376,27 @@ def _load_manifest(path: Path) -> Iterable[Dict[str, Any]]:
             yield row
 
 
+def _load_segments(row: Dict[str, Any], manifest_path: Path) -> List[Dict[str, Any]]:
+    path = _resolve_relative_path(row.get("segments_path"), manifest_path)
+    if path is None:
+        return []
+    segments: List[Dict[str, Any]] = []
+    with path.open("r", encoding="utf-8") as handle:
+        for line in handle:
+            line = line.strip()
+            if line:
+                segments.append(json.loads(line))
+    return segments
+
+
+def _segment_text(segment: Dict[str, Any]) -> str:
+    for key in ("processed_text", "text", "ground_truth_text", "transcript", "transcription"):
+        value = segment.get(key)
+        if isinstance(value, str) and value.strip():
+            return value
+    return ""
+
+
 def _write_jsonl(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
     path.parent.mkdir(parents=True, exist_ok=True)
     with path.open("w", encoding="utf-8") as handle:
@@ -356,6 +407,106 @@ def _write_jsonl(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
 def _write_vocab(path: Path, rows: Sequence[Dict[str, Any]]) -> None:
     vocab = sorted({tok for row in rows for tok in row["text"].split()})
     path.write_text("\n".join(vocab) + ("\n" if vocab else ""), encoding="utf-8")
+
+
+def _unique_id(base_id: str, seen_ids: set[str]) -> str:
+    sample_id = base_id
+    suffix_i = 1
+    while sample_id in seen_ids:
+        suffix_i += 1
+        sample_id = f"{base_id}_{suffix_i}"
+    seen_ids.add(sample_id)
+    return sample_id
+
+
+def _reject(
+    rejected: List[Dict[str, Any]],
+    *,
+    sample_id: str,
+    reason: str,
+    manifest: Path,
+    source_audio: Optional[Path],
+    raw_text: str,
+    clean_text: str,
+    duration_s: float,
+    source_segment: Optional[Dict[str, Any]] = None,
+) -> None:
+    rejected.append({
+        "id": sample_id,
+        "reason": reason,
+        "source_manifest": str(manifest),
+        "source_audio": str(source_audio) if source_audio else None,
+        "raw_text": raw_text,
+        "clean_text": clean_text,
+        "duration_s": round(duration_s, 3),
+        "source_segment": source_segment,
+    })
+
+
+def _accept_or_reject_clip(
+    *,
+    wav,
+    sample_id: str,
+    raw_text: str,
+    clean_text: str,
+    out_dir: Path,
+    manifest: Path,
+    source_audio: Path,
+    clean_rows: List[Dict[str, Any]],
+    rejected: List[Dict[str, Any]],
+    args: argparse.Namespace,
+    source_segment: Optional[Dict[str, Any]] = None,
+) -> None:
+    sf = _sf()
+    trim_start_s = 0.0
+    trim_end_s = 0.0
+    reject_reason = None
+    if args.trim_silence:
+        wav, trim_start_s, trim_end_s = _trim_silence(wav, threshold_db=args.silence_db, pad_s=args.silence_pad_s)
+    duration_s = float(len(wav) / SAMPLE_RATE) if wav is not None else 0.0
+    if duration_s < args.min_duration_s:
+        reject_reason = "too_short"
+    elif duration_s > args.max_duration_s:
+        reject_reason = "too_long_needs_alignment_chunking"
+    elif not clean_text:
+        reject_reason = "empty_transcript"
+    else:
+        cps = _chars_per_second(clean_text, duration_s)
+        if cps < args.min_chars_per_s:
+            reject_reason = "text_too_short_for_duration"
+        elif cps > args.max_chars_per_s:
+            reject_reason = "text_too_long_for_duration"
+        elif _bad_charset_tokens(clean_text):
+            reject_reason = "bad_charset_tokens"
+    if reject_reason is not None:
+        _reject(
+            rejected,
+            sample_id=sample_id,
+            reason=reject_reason,
+            manifest=manifest,
+            source_audio=source_audio,
+            raw_text=raw_text,
+            clean_text=clean_text,
+            duration_s=duration_s,
+            source_segment=source_segment,
+        )
+        return
+    rel_audio = f"audio/{sample_id}.wav"
+    (out_dir / rel_audio).parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(out_dir / rel_audio), wav, SAMPLE_RATE, subtype="PCM_16")
+    clean_rows.append({
+        "id": sample_id,
+        "audio_path": rel_audio,
+        "text": clean_text,
+        "duration_s": round(duration_s, 3),
+        "source_manifest": str(manifest),
+        "source_audio": str(source_audio),
+        "raw_text": raw_text,
+        "trim_start_s": round(trim_start_s, 3),
+        "trim_end_s": round(trim_end_s, 3),
+        "chars_per_s": round(_chars_per_second(clean_text, duration_s), 3),
+        "source_segment": source_segment,
+    })
 
 
 def preprocess_manifests(args: argparse.Namespace) -> int:
@@ -374,28 +525,16 @@ def preprocess_manifests(args: argparse.Namespace) -> int:
     for manifest in args.manifest:
         manifest = manifest.resolve()
         for row in _load_manifest(manifest):
-            raw_text = _pick_text(row)
-            clean_text = clean_asr_text(raw_text, opts)
             source_audio = _resolve_audio_path(row, manifest)
             source_id = str(row.get("id") or Path(str(row.get("audio_path") or row.get("audio") or "sample")).stem)
             base_id = re.sub(r"[^a-zA-Z0-9_\-]+", "_", source_id).strip("_") or "sample"
-            sample_id = base_id
-            suffix_i = 1
-            while sample_id in seen_ids:
-                suffix_i += 1
-                sample_id = f"{base_id}_{suffix_i}"
-            seen_ids.add(sample_id)
+            segments = _load_segments(row, manifest)
 
             reject_reason = None
             if source_audio is None:
                 reject_reason = "missing_audio"
-            elif not clean_text:
-                reject_reason = "empty_transcript"
 
             tmp_wav = None
-            duration_s = 0.0
-            trim_start_s = 0.0
-            trim_end_s = 0.0
             if reject_reason is None:
                 try:
                     with tempfile.NamedTemporaryFile(suffix=".wav", delete=False) as tmp:
@@ -405,52 +544,75 @@ def preprocess_manifests(args: argparse.Namespace) -> int:
                     wav, sr = sf.read(str(tmp_wav), dtype="float32", always_2d=False)
                     if sr != SAMPLE_RATE:
                         raise RuntimeError(f"unexpected sample rate after ffmpeg: {sr}")
-                    if args.trim_silence:
-                        wav, trim_start_s, trim_end_s = _trim_silence(wav, threshold_db=args.silence_db, pad_s=args.silence_pad_s)
-                    duration_s = float(len(wav) / SAMPLE_RATE) if wav is not None else 0.0
-                    if duration_s < args.min_duration_s:
-                        reject_reason = "too_short"
-                    elif duration_s > args.max_duration_s:
-                        reject_reason = "too_long_needs_alignment_chunking"
+                    if segments:
+                        for segment_index, segment in enumerate(segments):
+                            raw_text = _segment_text(segment)
+                            clean_text = clean_asr_text(raw_text, opts)
+                            seg_start = max(0.0, float(segment.get("start_s") or 0.0))
+                            seg_end = float(segment.get("end_s") or seg_start)
+                            start_sample = max(0, int(seg_start * SAMPLE_RATE))
+                            end_sample = min(len(wav), int(seg_end * SAMPLE_RATE))
+                            segment_wav = wav[start_sample:end_sample]
+                            seg_base = re.sub(r"[^a-zA-Z0-9_\-]+", "_", f"{base_id}_{segment_index:04d}").strip("_")
+                            sample_id = _unique_id(seg_base, seen_ids)
+                            _accept_or_reject_clip(
+                                wav=segment_wav,
+                                sample_id=sample_id,
+                                raw_text=raw_text,
+                                clean_text=clean_text,
+                                out_dir=out_dir,
+                                manifest=manifest,
+                                source_audio=source_audio,
+                                clean_rows=clean_rows,
+                                rejected=rejected,
+                                args=args,
+                                source_segment=segment,
+                            )
                     else:
-                        cps = _chars_per_second(clean_text, duration_s)
-                        if cps < args.min_chars_per_s:
-                            reject_reason = "text_too_short_for_duration"
-                        elif cps > args.max_chars_per_s:
-                            reject_reason = "text_too_long_for_duration"
-                        elif _bad_charset_tokens(clean_text):
-                            reject_reason = "bad_charset_tokens"
-                    if reject_reason is None:
-                        rel_audio = f"audio/{sample_id}.wav"
-                        sf.write(str(out_dir / rel_audio), wav, SAMPLE_RATE, subtype="PCM_16")
-                        clean_rows.append({
-                            "id": sample_id,
-                            "audio_path": rel_audio,
-                            "text": clean_text,
-                            "duration_s": round(duration_s, 3),
-                            "source_manifest": str(manifest),
-                            "source_audio": str(source_audio),
-                            "raw_text": raw_text,
-                            "trim_start_s": round(trim_start_s, 3),
-                            "trim_end_s": round(trim_end_s, 3),
-                            "chars_per_s": round(_chars_per_second(clean_text, duration_s), 3),
-                        })
+                        raw_text = _pick_text(row)
+                        clean_text = clean_asr_text(raw_text, opts)
+                        sample_id = _unique_id(base_id, seen_ids)
+                        _accept_or_reject_clip(
+                            wav=wav,
+                            sample_id=sample_id,
+                            raw_text=raw_text,
+                            clean_text=clean_text,
+                            out_dir=out_dir,
+                            manifest=manifest,
+                            source_audio=source_audio,
+                            clean_rows=clean_rows,
+                            rejected=rejected,
+                            args=args,
+                        )
                 except Exception as exc:
-                    reject_reason = f"audio_error:{exc}"
+                    sample_id = _unique_id(base_id, seen_ids)
+                    _reject(
+                        rejected,
+                        sample_id=sample_id,
+                        reason=f"audio_error:{exc}",
+                        manifest=manifest,
+                        source_audio=source_audio,
+                        raw_text=_pick_text(row),
+                        clean_text=clean_asr_text(_pick_text(row), opts),
+                        duration_s=0.0,
+                    )
                 finally:
                     if tmp_wav is not None:
                         tmp_wav.unlink(missing_ok=True)
 
             if reject_reason is not None:
-                rejected.append({
-                    "id": sample_id,
-                    "reason": reject_reason,
-                    "source_manifest": str(manifest),
-                    "source_audio": str(source_audio) if source_audio else None,
-                    "raw_text": raw_text,
-                    "clean_text": clean_text,
-                    "duration_s": round(duration_s, 3),
-                })
+                sample_id = _unique_id(base_id, seen_ids)
+                raw_text = _pick_text(row)
+                _reject(
+                    rejected,
+                    sample_id=sample_id,
+                    reason=reject_reason,
+                    manifest=manifest,
+                    source_audio=source_audio,
+                    raw_text=raw_text,
+                    clean_text=clean_asr_text(raw_text, opts),
+                    duration_s=0.0,
+                )
 
     _write_jsonl(out_dir / "manifest.jsonl", clean_rows)
     _write_jsonl(out_dir / "rejected.jsonl", rejected)
