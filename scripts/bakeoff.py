@@ -293,7 +293,9 @@ class _Qwen3AsrBase(Backend):
             dtype=dtype,
             device_map=self._device,
             max_inference_batch_size=1,
-            max_new_tokens=256,
+            # 1024 matches the official Qwen3-ASR evaluation (HF model card).
+            # 256 truncated clips longer than ~20s.
+            max_new_tokens=1024,
         )
         self._backend = "qwen_asr"
 
@@ -359,7 +361,8 @@ class _Qwen3AsrBase(Backend):
             inputs = {k: v.to(self._device) for k, v in inputs.items()}
             with torch.inference_mode():
                 out_ids = self._model.generate(
-                    **inputs, max_new_tokens=256, do_sample=False,
+                    # 1024 matches the official Qwen3-ASR evaluation.
+                    **inputs, max_new_tokens=1024, do_sample=False,
                 )
             input_len = inputs["input_ids"].shape[1] if "input_ids" in inputs else 0
             gen_ids = out_ids[:, input_len:] if input_len else out_ids
@@ -558,6 +561,93 @@ class QwenUaeBackend(_Qwen3AsrBase):
     def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
         # UAE-tuned model: always force Arabic except for explicit English.
         return "English" if (language or "") == "en" else "Arabic"
+
+
+# ---------------------------------------------------------------------------
+# Backend: Mistral Voxtral (Voxtral-Mini-3B / Voxtral-Small-24B)
+# ---------------------------------------------------------------------------
+# Uses the official Open Universal Arabic ASR Leaderboard inference recipe:
+# processor.apply_transcription_request(language="ar", ...) at bf16, with
+# max_new_tokens=500 and greedy decoding.
+# Source: github.com/Natural-Language-Processing-Elm/open_universal_arabic_asr_leaderboard
+#         /blob/main/models/voxtral.py
+
+
+class VoxtralBackend(Backend):
+    name = "voxtral-mini-3b"  # overridden by size variants below
+
+    def __init__(self, repo_id: str = "mistralai/Voxtral-Mini-3B-2507"):
+        self.repo_id = repo_id
+        self._model = None
+        self._processor = None
+        self._device = None
+
+    def prepare(self) -> None:
+        try:
+            import torch
+            from transformers import VoxtralForConditionalGeneration, AutoProcessor
+        except ImportError as exc:
+            raise RuntimeError(
+                f"Voxtral requires a recent transformers (≥4.46): {exc}"
+            )
+        if torch.cuda.is_available():
+            self._device, dtype = "cuda:0", torch.bfloat16
+        elif torch.backends.mps.is_available():
+            self._device, dtype = "mps", torch.float16
+        else:
+            self._device, dtype = "cpu", torch.float32
+        self._dtype = dtype
+        print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype})")
+        self._processor = AutoProcessor.from_pretrained(self.repo_id)
+        self._model = VoxtralForConditionalGeneration.from_pretrained(
+            self.repo_id, torch_dtype=dtype, device_map=self._device,
+        )
+
+    def _voxtral_lang(self, language: Optional[str]) -> str:
+        # Voxtral accepts ISO 639-1 codes via apply_transcription_request.
+        return {"en": "en", "ar": "ar", "mixed": "ar"}.get(language or "", "ar")
+
+    def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
+        assert self._model is not None and self._processor is not None
+        import torch
+        lang = self._voxtral_lang(language)
+        t0 = time.time()
+        try:
+            inputs = self._processor.apply_transcription_request(
+                language=lang,
+                audio=str(wav_path),
+                model_id=self.repo_id,
+            )
+            inputs = inputs.to(self._device, dtype=self._dtype)
+            with torch.inference_mode():
+                outputs = self._model.generate(
+                    **inputs, max_new_tokens=500, do_sample=False,
+                )
+            decoded = self._processor.batch_decode(
+                outputs[:, inputs.input_ids.shape[1]:], skip_special_tokens=True,
+            )
+            text = decoded[0].strip() if decoded else ""
+            return Prediction(
+                text=text, inference_seconds=time.time() - t0,
+                extra={"lang_hint": lang},
+            )
+        except Exception as exc:
+            return Prediction(
+                text="", inference_seconds=time.time() - t0,
+                extra={"error": repr(exc)},
+            )
+
+
+class VoxtralMiniBackend(VoxtralBackend):
+    name = "voxtral-mini-3b"
+    def __init__(self):
+        super().__init__(repo_id="mistralai/Voxtral-Mini-3B-2507")
+
+
+class VoxtralSmallBackend(VoxtralBackend):
+    name = "voxtral-small-24b"
+    def __init__(self):
+        super().__init__(repo_id="mistralai/Voxtral-Small-24B-2507")
 
 
 # ---------------------------------------------------------------------------
@@ -794,25 +884,29 @@ def write_report(summary: Dict[str, Any]) -> Path:
 
 
 BACKENDS: Dict[str, Callable[[], Backend]] = {
-    "whisper":      WhisperBackend,
-    "qwen3":        QwenAsrBackend,
-    "vibevoice":    VibeVoiceBackend,
-    "omniASR":      OmniAsrBackend,
-    "whisper_gulf": WhisperGulfBackend,
-    "qwen3_ksa":    QwenKsaBackend,
-    "qwen3_uae":    QwenUaeBackend,
+    "whisper":        WhisperBackend,
+    "qwen3":          QwenAsrBackend,
+    "vibevoice":      VibeVoiceBackend,
+    "omniASR":        OmniAsrBackend,
+    "whisper_gulf":   WhisperGulfBackend,
+    "qwen3_ksa":      QwenKsaBackend,
+    "qwen3_uae":      QwenUaeBackend,
+    "voxtral_mini":   VoxtralMiniBackend,
+    "voxtral_small":  VoxtralSmallBackend,
 }
 
 # Map CLI model key -> backend class.name (the directory name used to cache
 # predictions). Used by --rescore-only to find the cached predictions.
 _MODEL_KEY_TO_DIR: Dict[str, str] = {
-    "whisper":      WhisperBackend.name,
-    "qwen3":        QwenAsrBackend.name,
-    "vibevoice":    VibeVoiceBackend.name,
-    "omniASR":      OmniAsrBackend.name,
-    "whisper_gulf": WhisperGulfBackend.name,
-    "qwen3_ksa":    QwenKsaBackend.name,
-    "qwen3_uae":    QwenUaeBackend.name,
+    "whisper":        WhisperBackend.name,
+    "qwen3":          QwenAsrBackend.name,
+    "vibevoice":      VibeVoiceBackend.name,
+    "omniASR":        OmniAsrBackend.name,
+    "whisper_gulf":   WhisperGulfBackend.name,
+    "qwen3_ksa":      QwenKsaBackend.name,
+    "qwen3_uae":      QwenUaeBackend.name,
+    "voxtral_mini":   VoxtralMiniBackend.name,
+    "voxtral_small":  VoxtralSmallBackend.name,
 }
 
 

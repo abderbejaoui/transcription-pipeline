@@ -2,17 +2,26 @@
 bakeoff manifest format.
 
 Casablanca (Talafha et al., 2024, arXiv:2410.04527) is the gold-standard
-public benchmark for dialectal Arabic ASR. Eight dialects, all
-conversational speech with human-verified transcripts.
+public benchmark for dialectal Arabic ASR. Eight dialects, conversational
+speech, human-verified transcripts.
 
   Algeria | Egypt | Jordan | Mauritania | Morocco | Palestine | UAE | Yemen
 
 There is NO Saudi or Kuwait config. For Gulf coverage use `UAE` (closest to
-your existing SADA22 / WorldSpeech Gulf clips) and optionally `Yemen` and
-`Jordan` for Levantine cross-comparison.
+our existing SADA22 / WorldSpeech Gulf clips).
 
-License: **CC-BY-NC-ND-4.0** — research and evaluation only. Do not embed
-into a commercial product.
+License: **CC-BY-NC-ND-4.0** — research and evaluation only.
+
+Implementation note
+-------------------
+We do NOT use `datasets.load_dataset()` because the parquet-glob pattern in
+recent `datasets` versions hits a fsspec bug on Python 3.12:
+
+    ValueError: Invalid pattern: '**' can only be an entire path component
+
+Instead we read parquet shards directly via `huggingface_hub` + `pyarrow`,
+which avoids the buggy glob resolver entirely. Same approach we use for
+the WorldSpeech builder.
 
 Output:
   eval/casablanca_{dialect}/
@@ -21,33 +30,87 @@ Output:
     README.md
 
 Usage:
-  pip install datasets soundfile huggingface_hub
-  # UAE test split, all 813 clips:
+  pip install huggingface_hub pyarrow soundfile requests
   python -m scripts.build_casablanca_testset --dialect UAE
-  # Smoke test with 30 clips:
   python -m scripts.build_casablanca_testset --dialect UAE --max-clips 30
-  # Multiple dialects (one folder each):
-  python -m scripts.build_casablanca_testset --dialect UAE --dialect Yemen --dialect Jordan
-
-After this, score any backend against it the usual way:
-  python -m scripts.bakeoff --eval-dir eval/casablanca_UAE --models qwen3 qwen3_uae
-  python3 scripts/eval_standard.py --testset eval/casablanca_UAE
+  python -m scripts.build_casablanca_testset --dialect UAE --dialect Yemen
 """
 
 from __future__ import annotations
 
 import argparse
+import io
 import json
 import sys
 from pathlib import Path
 
 PROJECT_ROOT = Path(__file__).resolve().parents[1]
 
-# Per the dataset card: https://huggingface.co/datasets/UBC-NLP/Casablanca
+REPO_ID = "UBC-NLP/Casablanca"
 VALID_DIALECTS = {
     "Algeria", "Egypt", "Jordan", "Mauritania",
     "Morocco", "Palestine", "UAE", "Yemen",
 }
+TARGET_SR = 16_000
+
+
+def _resample_mono_16k(arr, sr: int):
+    """Resample to 16 kHz mono. Uses soxr if available, else librosa, else passes through."""
+    import numpy as np
+    if arr.ndim > 1:
+        arr = arr.mean(axis=1)
+    arr = arr.astype(np.float32)
+    if sr == TARGET_SR:
+        return arr, TARGET_SR
+    try:
+        import soxr
+        return soxr.resample(arr, sr, TARGET_SR).astype(np.float32), TARGET_SR
+    except ImportError:
+        pass
+    try:
+        import librosa
+        return librosa.resample(arr, orig_sr=sr, target_sr=TARGET_SR).astype(np.float32), TARGET_SR
+    except ImportError:
+        # No resampler — keep original SR. bakeoff.py resamples again at inference.
+        return arr, sr
+
+
+def _decode_audio_bytes(blob: bytes):
+    """Return (np.ndarray, sr) from a raw audio binary blob via soundfile."""
+    import soundfile as sf
+    bio = io.BytesIO(blob)
+    arr, sr = sf.read(bio, dtype="float32", always_2d=False)
+    return arr, sr
+
+
+def _iter_parquet_rows(repo_id: str, shard_paths, max_rows: int | None):
+    """Yield row-dicts from each parquet shard. Streams shards one at a time;
+    each shard is downloaded fully into memory, but that's typically <600 MB
+    for Casablanca and we discard it once iterated."""
+    import pyarrow.parquet as pq
+    from huggingface_hub import hf_hub_url
+    import requests
+
+    yielded = 0
+    for shard in shard_paths:
+        if max_rows is not None and yielded >= max_rows:
+            return
+        url = hf_hub_url(repo_id=repo_id, filename=shard, repo_type="dataset")
+        print(f"  downloading {shard} ...")
+        # Stream into memory; parquet readers want a file-like object.
+        with requests.get(url, stream=True, timeout=600) as resp:
+            resp.raise_for_status()
+            buf = io.BytesIO()
+            for chunk in resp.iter_content(chunk_size=1 << 20):
+                buf.write(chunk)
+        buf.seek(0)
+        table = pq.read_table(buf)
+        print(f"    rows in shard: {table.num_rows}")
+        for row in table.to_pylist():
+            yield row
+            yielded += 1
+            if max_rows is not None and yielded >= max_rows:
+                return
 
 
 def build_one(dialect: str, split: str, max_clips: int | None) -> int:
@@ -57,10 +120,13 @@ def build_one(dialect: str, split: str, max_clips: int | None) -> int:
         return 1
 
     try:
-        from datasets import load_dataset
-        import soundfile as sf
+        import soundfile  # noqa: F401  (validate availability)
+        from huggingface_hub import list_repo_files
+        import pyarrow  # noqa: F401
+        import requests  # noqa: F401
     except ImportError as exc:
-        print(f"!! missing dependency: {exc}. Run: pip install datasets soundfile",
+        print(f"!! missing dependency: {exc}. "
+              f"Run: pip install huggingface_hub pyarrow soundfile requests",
               file=sys.stderr)
         return 1
 
@@ -68,46 +134,67 @@ def build_one(dialect: str, split: str, max_clips: int | None) -> int:
     out_dir.mkdir(parents=True, exist_ok=True)
     (out_dir / "audio").mkdir(parents=True, exist_ok=True)
 
-    print(f"\nLoading UBC-NLP/Casablanca config={dialect} split={split} ...")
-    ds = load_dataset("UBC-NLP/Casablanca", dialect, split=split)
-    print(f"  got {len(ds)} clips")
-
-    if max_clips:
-        ds = ds.select(range(min(max_clips, len(ds))))
-        print(f"  truncated to {len(ds)} clips")
+    print(f"\nDiscovering parquet shards for {dialect}/{split} ...")
+    files = list_repo_files(REPO_ID, repo_type="dataset")
+    prefix = f"{dialect}/{split}-"
+    shards = sorted(f for f in files if f.startswith(prefix) and f.endswith(".parquet"))
+    if not shards:
+        print(f"!! no parquet shards matching '{prefix}*.parquet' in {REPO_ID}",
+              file=sys.stderr)
+        return 1
+    print(f"  found {len(shards)} shard(s): {shards}")
 
     manifest = []
-    skipped = 0
-    for i, ex in enumerate(ds):
-        audio = ex["audio"]
-        sr = audio["sampling_rate"]
-        arr = audio["array"]
-        transcript = (ex.get("transcription") or "").strip()
+    skipped_empty = 0
+    skipped_decode = 0
 
+    for i, row in enumerate(_iter_parquet_rows(REPO_ID, shards, max_clips)):
+        transcript = (row.get("transcription") or "").strip()
         if not transcript:
-            skipped += 1
+            skipped_empty += 1
             continue
+
+        audio_field = row.get("audio")
+        audio_bytes = None
+        if isinstance(audio_field, dict):
+            audio_bytes = audio_field.get("bytes")
+        elif isinstance(audio_field, (bytes, bytearray)):
+            audio_bytes = bytes(audio_field)
+
+        if not audio_bytes:
+            skipped_decode += 1
+            continue
+
+        try:
+            arr, sr = _decode_audio_bytes(audio_bytes)
+        except Exception as exc:
+            print(f"  !! decode failed for row {i}: {exc}")
+            skipped_decode += 1
+            continue
+
+        arr, sr = _resample_mono_16k(arr, sr)
 
         cid = f"casablanca_{dialect.lower()}_{i:04d}"
         wav_path = out_dir / "audio" / f"{cid}.wav"
-        sf.write(str(wav_path), arr, sr, subtype="PCM_16")
+        _sf_write_safe(wav_path, arr, sr)
 
         manifest.append({
             "id": cid,
             "category": "casablanca",
             "language": "ar",
             "audio_path": f"audio/{cid}.wav",
-            "duration_s": round(float(ex.get("duration") or len(arr) / sr), 2),
+            "duration_s": round(float(row.get("duration") or len(arr) / sr), 2),
             "transcript": transcript,
             "source": f"casablanca:{dialect}",
             "tags": ["casablanca", dialect.lower(), split],
             "medical_terms": [],
-            "gender": ex.get("gender"),
-            "seg_id": ex.get("seg_id"),
+            "gender": row.get("gender"),
+            "seg_id": row.get("seg_id"),
         })
 
-        if (i + 1) % 50 == 0:
-            print(f"  [{i+1:4d}/{len(ds)}]  {cid}  dur={manifest[-1]['duration_s']:.1f}s")
+        if (len(manifest)) % 25 == 0:
+            print(f"  kept={len(manifest):4d}  last={cid} "
+                  f"dur={manifest[-1]['duration_s']:.1f}s")
 
     (out_dir / "manifest.jsonl").write_text(
         "\n".join(json.dumps(r, ensure_ascii=False) for r in manifest) + "\n",
@@ -117,33 +204,25 @@ def build_one(dialect: str, split: str, max_clips: int | None) -> int:
     total_dur = sum(r["duration_s"] for r in manifest)
     readme = f"""# Casablanca-{dialect} test set (split={split})
 
-- Clips: {len(manifest)} (skipped {skipped} empty-transcript clips)
+- Clips: {len(manifest)}
 - Total duration: {total_dur/60:.1f} min
-- Source: [UBC-NLP/Casablanca](https://huggingface.co/datasets/UBC-NLP/Casablanca), config `{dialect}`
-- License: **CC-BY-NC-ND-4.0** — non-commercial, no-derivatives. Research/eval use only.
+- Skipped: {skipped_empty} empty-transcript, {skipped_decode} decode-failed
+- Source: [UBC-NLP/Casablanca](https://huggingface.co/datasets/UBC-NLP/Casablanca/tree/main/{dialect}), config `{dialect}`
+- License: **CC-BY-NC-ND-4.0** — non-commercial, no-derivatives. Research/eval only.
 - Citation: Talafha et al. (2024), *Casablanca: Data and Models for Multidialectal Arabic Speech Recognition*. [arXiv:2410.04527](https://arxiv.org/abs/2410.04527)
 
 ## What this is
 
-Casablanca is the current public benchmark for **dialectal Arabic ASR**.
-Unlike FLEURS (Modern Standard / Egyptian, read speech), Casablanca is
-**conversational dialectal speech** with human-verified transcripts. The
-`{dialect}` config covers the {dialect} dialect specifically.
+Casablanca is the current public benchmark for dialectal Arabic ASR.
+Conversational speech, human-verified transcripts. The `{dialect}` config
+covers the {dialect} dialect specifically.
 
 ## How to use
 
 ```bash
-# Run inference on this set (any backend in bakeoff.py):
 python -m scripts.bakeoff --eval-dir eval/casablanca_{dialect} --models qwen3 qwen3_uae
-
-# Score with the industry-standard pipeline:
 python3 scripts/eval_standard.py --testset eval/casablanca_{dialect}
 ```
-
-## Reference numbers (from the Casablanca paper)
-
-Best zero-shot WER on the {dialect} test split is in the **30-50%** range
-for SOTA models in 2024. Anything below that is competitive.
 """
     (out_dir / "README.md").write_text(readme, encoding="utf-8")
 
@@ -151,7 +230,15 @@ for SOTA models in 2024. Anything below that is competitive.
     print(f"  manifest : {out_dir / 'manifest.jsonl'}")
     print(f"  audio    : {out_dir / 'audio'}")
     print(f"  readme   : {out_dir / 'README.md'}")
+    if skipped_empty or skipped_decode:
+        print(f"  skipped  : {skipped_empty} empty, {skipped_decode} decode-failed")
     return 0
+
+
+def _sf_write_safe(path: Path, arr, sr: int) -> None:
+    import soundfile as sf
+    path.parent.mkdir(parents=True, exist_ok=True)
+    sf.write(str(path), arr, sr, subtype="PCM_16")
 
 
 def main() -> int:
