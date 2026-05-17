@@ -187,61 +187,126 @@ class WhisperBackend(Backend):
 
 
 # ---------------------------------------------------------------------------
-# Backend: Qwen3-ASR-1.7B
+# Qwen3-ASR shared loader (uses `transformers` directly, no qwen-asr wrapper)
 # ---------------------------------------------------------------------------
 
 
-class QwenAsrBackend(Backend):
-    name = "qwen3-asr-1.7b"
+class _Qwen3AsrBase(Backend):
+    """Loads Qwen3-ASR family models through `transformers` + trust_remote_code.
 
-    def __init__(self, repo_id: str = "Qwen/Qwen3-ASR-1.7B"):
-        self.repo_id = repo_id
+    The `qwen-asr` pip package is a thin wrapper that drags in Gradio /
+    Flask / Sox / Japanese & Korean NLP libs. We avoid it entirely by
+    loading the model code shipped inside the HF repo via
+    `trust_remote_code=True`.
+    """
+
+    repo_id: str = ""
+
+    def __init__(self, repo_id: Optional[str] = None):
+        if repo_id:
+            self.repo_id = repo_id
         self._model = None
+        self._processor = None
+        self._device = None
 
     def prepare(self) -> None:
-        try:
-            from qwen_asr import Qwen3ASRModel
-        except ImportError:
-            raise RuntimeError(
-                "qwen-asr package not installed. Run: pip install -U qwen-asr"
-            )
-        try:
-            import torch
-        except ImportError:
-            raise RuntimeError("PyTorch is required for Qwen3-ASR")
+        import torch
+        from transformers import AutoModelForCausalLM, AutoProcessor
 
-        # Pick best dtype/device
         if torch.cuda.is_available():
-            device, dtype = "cuda:0", torch.bfloat16
+            self._device, dtype = "cuda:0", torch.bfloat16
         elif torch.backends.mps.is_available():
-            device, dtype = "mps", torch.float16
+            self._device, dtype = "mps", torch.float16
         else:
-            device, dtype = "cpu", torch.float32
+            self._device, dtype = "cpu", torch.float32
 
-        print(f"[qwen3-asr] loading {self.repo_id} on {device} ({dtype})")
-        self._model = Qwen3ASRModel.from_pretrained(
-            self.repo_id,
-            dtype=dtype,
-            device_map=device,
-            max_inference_batch_size=1,
-            max_new_tokens=256,
+        print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype})")
+        self._processor = AutoProcessor.from_pretrained(
+            self.repo_id, trust_remote_code=True
         )
+        self._model = AutoModelForCausalLM.from_pretrained(
+            self.repo_id,
+            torch_dtype=dtype,
+            trust_remote_code=True,
+            low_cpu_mem_usage=True,
+        ).to(self._device).eval()
+
+    def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
+        # Qwen3-ASR uses verbose language names. None = auto-detect.
+        return {"en": "English", "ar": "Arabic", "mixed": None}.get(language or "", None)
 
     def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
-        assert self._model is not None
-        # Map our two-letter language codes to Qwen labels (None = auto-detect)
-        lang_map = {"en": "English", "ar": "Arabic", "mixed": None}
-        qwen_lang = lang_map.get(language, None) if language else None
+        import io
+        import torch
+        import soundfile as sf
+
+        assert self._model is not None and self._processor is not None
+
+        # Load audio, resample to 16 kHz mono if needed.
+        audio, sr = sf.read(str(wav_path), dtype="float32")
+        if audio.ndim > 1:
+            audio = audio.mean(axis=1)
+        if sr != 16000:
+            try:
+                import librosa
+                audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+                sr = 16000
+            except Exception as exc:
+                return Prediction(
+                    text="", inference_seconds=0.0,
+                    extra={"error": f"resample failed: {exc!r}"},
+                )
+
+        # Qwen3-ASR uses a chat-style prompt. The processor knows the
+        # template; we just supply audio + optional language hint.
+        qlang = self._qwen_language_label(language)
+        user_msg = (
+            f"<|audio_1|>Transcribe the audio in {qlang}."
+            if qlang else
+            "<|audio_1|>Transcribe the audio."
+        )
 
         t0 = time.time()
-        results = self._model.transcribe(audio=str(wav_path), language=qwen_lang)
-        elapsed = time.time() - t0
-        r = results[0]
-        return Prediction(
-            text=getattr(r, "text", "").strip(),
-            inference_seconds=elapsed,
-            extra={"detected_language": getattr(r, "language", None)},
-        )
+        try:
+            inputs = self._processor(
+                text=user_msg,
+                audios=[audio],
+                sampling_rate=sr,
+                return_tensors="pt",
+            )
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+            with torch.inference_mode():
+                out_ids = self._model.generate(
+                    **inputs,
+                    max_new_tokens=256,
+                    do_sample=False,
+                )
+            # Strip the prompt tokens so we keep only the generated transcript.
+            input_len = inputs["input_ids"].shape[1] if "input_ids" in inputs else 0
+            gen_ids = out_ids[:, input_len:] if input_len else out_ids
+            text = self._processor.batch_decode(
+                gen_ids, skip_special_tokens=True
+            )[0].strip()
+            return Prediction(
+                text=text,
+                inference_seconds=time.time() - t0,
+                extra={"lang_hint": qlang},
+            )
+        except Exception as exc:
+            return Prediction(
+                text="", inference_seconds=time.time() - t0,
+                extra={"error": repr(exc)},
+            )
+
+
+# ---------------------------------------------------------------------------
+# Backend: Qwen3-ASR-1.7B (base)
+# ---------------------------------------------------------------------------
+
+
+class QwenAsrBackend(_Qwen3AsrBase):
+    name = "qwen3-asr-1.7b"
+    repo_id = "Qwen/Qwen3-ASR-1.7B"
 
 
 # ---------------------------------------------------------------------------
@@ -393,37 +458,13 @@ class WhisperGulfBackend(Backend):
 # ---------------------------------------------------------------------------
 
 
-class QwenKsaBackend(Backend):
+class QwenKsaBackend(_Qwen3AsrBase):
     name = "qwen3-asr-ksa"
+    repo_id = "vadimbelsky/qwen3-asr-arabic-ksa"
 
-    def __init__(self, repo_id: str = "vadimbelsky/qwen3-asr-arabic-ksa"):
-        self.repo_id = repo_id
-        self._model = None
-
-    def prepare(self) -> None:
-        try:
-            from qwen_asr import Qwen3ASRModel
-            import torch
-        except ImportError:
-            raise RuntimeError("qwen-asr package not installed. Run: pip install -U qwen-asr")
-        device = "cuda:0" if __import__("torch").cuda.is_available() else "cpu"
-        dtype = __import__("torch").bfloat16
-        print(f"[qwen3-ksa] loading {self.repo_id} on {device}")
-        self._model = Qwen3ASRModel.from_pretrained(
-            self.repo_id, dtype=dtype, device_map=device,
-            max_inference_batch_size=1, max_new_tokens=256,
-        )
-
-    def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
-        assert self._model is not None
-        # Saudi Arabic model — always use Arabic for ar/mixed, English for en
-        lang = "Arabic" if (language or "en") in ("ar", "mixed") else "English"
-        t0 = time.time()
-        results = self._model.transcribe(audio=str(wav_path), language=lang)
-        r = results[0]
-        return Prediction(text=getattr(r, "text", "").strip(),
-                          inference_seconds=time.time() - t0,
-                          extra={"detected_language": getattr(r, "language", None)})
+    def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
+        # Saudi-tuned model: always force Arabic except for explicit English.
+        return "English" if (language or "") == "en" else "Arabic"
 
 
 # ---------------------------------------------------------------------------
@@ -431,35 +472,13 @@ class QwenKsaBackend(Backend):
 # ---------------------------------------------------------------------------
 
 
-class QwenUaeBackend(Backend):
+class QwenUaeBackend(_Qwen3AsrBase):
     name = "qwen3-asr-uae"
+    repo_id = "vadimbelsky/qwen3-asr-arabic-uae"
 
-    def __init__(self, repo_id: str = "vadimbelsky/qwen3-asr-arabic-uae"):
-        self.repo_id = repo_id
-        self._model = None
-
-    def prepare(self) -> None:
-        try:
-            from qwen_asr import Qwen3ASRModel
-        except ImportError:
-            raise RuntimeError("qwen-asr package not installed. Run: pip install -U qwen-asr")
-        device = "cuda:0" if __import__("torch").cuda.is_available() else "cpu"
-        dtype = __import__("torch").bfloat16
-        print(f"[qwen3-uae] loading {self.repo_id} on {device}")
-        self._model = Qwen3ASRModel.from_pretrained(
-            self.repo_id, dtype=dtype, device_map=device,
-            max_inference_batch_size=1, max_new_tokens=256,
-        )
-
-    def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
-        assert self._model is not None
-        lang = "Arabic" if (language or "en") in ("ar", "mixed") else "English"
-        t0 = time.time()
-        results = self._model.transcribe(audio=str(wav_path), language=lang)
-        r = results[0]
-        return Prediction(text=getattr(r, "text", "").strip(),
-                          inference_seconds=time.time() - t0,
-                          extra={"detected_language": getattr(r, "language", None)})
+    def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
+        # UAE-tuned model: always force Arabic except for explicit English.
+        return "English" if (language or "") == "en" else "Arabic"
 
 
 # ---------------------------------------------------------------------------
