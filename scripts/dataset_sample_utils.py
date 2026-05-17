@@ -14,6 +14,7 @@ import os
 import shutil
 import subprocess
 import sys
+import tempfile
 import zipfile
 from pathlib import Path
 from typing import Any, Dict, Iterable, List, Optional, Sequence, Tuple
@@ -96,7 +97,8 @@ def _audio_from_example(example: Dict[str, Any]) -> Tuple[Optional[np.ndarray], 
         path = audio.get("path")
         if path:
             arr, sr = _read_audio_path(Path(path))
-            return arr, sr, "audio.path"
+            if arr is not None and sr is not None:
+                return arr, sr, "audio.path"
         data = audio.get("bytes")
         if data:
             try:
@@ -105,7 +107,9 @@ def _audio_from_example(example: Dict[str, Any]) -> Tuple[Optional[np.ndarray], 
                 arr, sr = sf.read(io.BytesIO(data), dtype="float32", always_2d=False)
                 return np.asarray(arr, dtype=np.float32), int(sr), "audio.bytes"
             except Exception:
-                return None, None, None
+                suffix = Path(str(audio.get("path") or "audio.bin")).suffix or ".bin"
+                arr, sr = _decode_audio_bytes_with_ffmpeg(data, suffix)
+                return arr, sr, "audio.bytes.ffmpeg"
 
     for key in AUDIO_COLUMNS:
         value = example.get(key)
@@ -122,6 +126,29 @@ def _read_audio_path(path: Path) -> Tuple[Optional[np.ndarray], Optional[int]]:
     try:
         arr, sr = sf.read(str(path), dtype="float32", always_2d=False)
         return np.asarray(arr, dtype=np.float32), int(sr)
+    except Exception:
+        return None, None
+
+
+def _decode_audio_bytes_with_ffmpeg(data: bytes, suffix: str) -> Tuple[Optional[np.ndarray], Optional[int]]:
+    if shutil.which("ffmpeg") is None:
+        return None, None
+    try:
+        with tempfile.NamedTemporaryFile(suffix=suffix) as src, tempfile.NamedTemporaryFile(suffix=".wav") as dst:
+            src.write(data)
+            src.flush()
+            subprocess.run(
+                [
+                    "ffmpeg", "-y", "-nostdin", "-hide_banner", "-loglevel", "error",
+                    "-i", src.name,
+                    "-ac", "1",
+                    "-ar", "16000",
+                    dst.name,
+                ],
+                check=True,
+            )
+            arr, sr = sf.read(dst.name, dtype="float32", always_2d=False)
+            return np.asarray(arr, dtype=np.float32), int(sr)
     except Exception:
         return None, None
 
@@ -205,7 +232,7 @@ def sample_hf_dataset(
     try:
         features = getattr(dataset, "features", {}) or {}
         if "audio" in features:
-            dataset = dataset.cast_column("audio", Audio())
+            dataset = dataset.cast_column("audio", Audio(decode=False))
     except Exception:
         pass
 
@@ -289,12 +316,8 @@ def sample_kaggle_dataset(
     out_dir: Path,
     title: Optional[str] = None,
     notes: str = "",
+    allow_full_download: bool = False,
 ) -> int:
-    if shutil.which("kaggle") is None:
-        print("Missing Kaggle CLI. Run: pip install kaggle", file=sys.stderr)
-        print("Then configure ~/.kaggle/kaggle.json before running this script.", file=sys.stderr)
-        return 1
-
     out_dir.mkdir(parents=True, exist_ok=True)
     audio_dir = out_dir / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
@@ -303,6 +326,21 @@ def sample_kaggle_dataset(
 
     marker = raw_dir / ".downloaded"
     if not marker.exists():
+        if not allow_full_download:
+            print(
+                f"[{slug}] refusing to download the full Kaggle archive for a {limit}-sample preview.",
+                file=sys.stderr,
+            )
+            print(
+                f"[{slug}] Kaggle does not provide streamable row-level sampling through this helper. "
+                "Pass --allow-full-archive-download if you intentionally want the whole archive first.",
+                file=sys.stderr,
+            )
+            return 3
+        if shutil.which("kaggle") is None:
+            print("Missing Kaggle CLI. Run: pip install kaggle", file=sys.stderr)
+            print("Then configure ~/.kaggle/kaggle.json before running this script.", file=sys.stderr)
+            return 1
         _run(["kaggle", "datasets", "download", "-d", kaggle_id, "-p", str(raw_dir), "--unzip"])
         for zip_path in raw_dir.glob("*.zip"):
             with zipfile.ZipFile(zip_path) as archive:

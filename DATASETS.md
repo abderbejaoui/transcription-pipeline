@@ -107,12 +107,42 @@ Each script defaults to **10 samples** and writes into its own folder under
 # Hugging Face sources. Some are gated: run `huggingface-cli login` and
 # accept the dataset terms on Hugging Face before downloading.
 python scripts/download_worldspeech_saudi_samples.py
+python scripts/download_saudilang_scc_samples.py
 python scripts/download_uae_bilingual_samples.py
 python scripts/download_nexdata_uae_sample.py
 
 # Kaggle sources. Requires `pip install kaggle` and ~/.kaggle/kaggle.json.
 python scripts/download_sada2022_samples.py
-python scripts/download_saudilang_scc_samples.py
+```
+
+Or run all target datasets and produce a combined output:
+
+```bash
+python scripts/download_all_target_samples.py --limit 10
+```
+
+The global runner writes:
+
+- `data/dataset_samples/download_summary.json`
+- `data/dataset_samples/combined_manifest.jsonl`
+
+Safety defaults: the global script will not download full Kaggle archives
+or full YouTube episode audio just to preview 10 samples. SADA on Kaggle is
+therefore skipped unless you explicitly allow the full archive, and
+Saudilang SCC defaults to metadata rows only.
+
+Saudilang SCC is different from the other datasets: Hugging Face provides
+CSV segment annotations with YouTube links, not bundled audio files. To cut
+those referenced segments into WAV files, explicitly enable YouTube audio:
+
+```bash
+python scripts/download_all_target_samples.py --limit 10 --download-saudilang-audio
+```
+
+To allow full Kaggle archives before sampling:
+
+```bash
+python scripts/download_all_target_samples.py --limit 10 --allow-full-kaggle-archives
 ```
 
 All scripts accept the same basic options:
@@ -137,7 +167,40 @@ wrapper can be added.
 
 ---
 
-## 4. Arabic medical speech — what does NOT exist
+## 4. Preprocessing pipeline
+
+Run all Saudi base data and the medical layer through the same cleaner so
+the model never sees two transcript formats.
+
+```bash
+python scripts/preprocess_code_switch_asr.py \
+  --manifest data/dataset_samples/sada2022/manifest.jsonl \
+  --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
+  --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
+  --manifest data/dataset_samples/uae_bilingual/manifest.jsonl \
+  --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
+  --out data/preprocessed/saudi_uae_asr
+```
+
+The script writes:
+
+- `audio/` — 16 kHz mono 16-bit PCM WAV files
+- `manifest.jsonl` — clean supervised ASR rows
+- `rejected.jsonl` — dropped rows with reasons
+- `vocab.txt` — unique cleaned word list for artifact/OOV inspection
+- `summary.json` — kept/rejected counts and total hours
+
+The text function is `clean_asr_text(text)` in
+`scripts/preprocess_code_switch_asr.py`. It applies Arabic normalization,
+English lowercasing, Arabic/Latin boundary splitting, digit/unit
+verbalization, punctuation removal, HTML/URL/control cleanup, and final
+duration-to-text filtering. Audio longer than 30 seconds is rejected unless
+you first create aligned chunks; splitting long audio without word alignment
+would corrupt the transcript/audio pair.
+
+---
+
+## 5. Arabic medical speech — what does NOT exist
 
 I did a thorough Semantic Scholar search ("arabic medical speech
 recognition dataset" — 746 results; "arabic medical conversation
@@ -159,7 +222,7 @@ replicate.
 
 ---
 
-## 5. Building medical vocabulary data ourselves
+## 6. Building medical vocabulary data ourselves
 
 Since no free medical Arabic conversational corpus exists, we generate
 the medical vocabulary coverage in three layers:
@@ -219,7 +282,7 @@ carefully and own its IP.
 
 ---
 
-## 6. Fine-tuning approach
+## 7. Fine-tuning approach
 
 The plan, sequenced:
 
@@ -259,7 +322,7 @@ These typically yield 1,000+ hours of clinical Saudi/UAE Arabic but take
 
 ---
 
-## 7. Compute & engineering for the fine-tune
+## 8. Compute & engineering for the fine-tune
 
 ### LoRA fine-tune of Whisper-large-v3-turbo
 - **Model size:** 809M parameters (just the encoder + decoder)
@@ -280,7 +343,7 @@ These typically yield 1,000+ hours of clinical Saudi/UAE Arabic but take
 
 ---
 
-## 8. Evaluation
+## 9. Evaluation
 
 For honest evaluation we need a **held-out Saudi/UAE medical test set**
 that none of the training data has seen.
@@ -310,7 +373,7 @@ that none of the training data has seen.
 
 ---
 
-## 9. Quick links — start here
+## 10. Quick links — start here
 
 1. **[Kaggle SADA](https://www.kaggle.com/datasets/sdaiancai/sada2022)** — start downloading today, 668 hrs Saudi Arabic, free.
 2. **[Kaggle Saudilang Code-Switch](https://www.kaggle.com/datasets/sdaiancai/saudilang-code-switch-corpus-scc)** — same publisher, AR↔EN code-switching.
@@ -323,7 +386,7 @@ that none of the training data has seen.
 
 ---
 
-## 10. Where this leaves us
+## 11. Where this leaves us
 
 **For Saudi/Emirati acoustic adaptation:** SADA is the Saudi backbone;
 WorldSpeech `ar_sa` and Saudilang add Saudi variety/code-switching;
