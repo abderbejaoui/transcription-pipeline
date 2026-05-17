@@ -26,6 +26,7 @@ data/voice_index.npz
 data/voice_index.jsonl
 data/descriptions.jsonl
 data/sessions/
+data/dataset_samples/
 
 # Misc
 *.log

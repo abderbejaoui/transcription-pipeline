@@ -24,3 +24,6 @@ peft>=0.12
 # Open ASR Leaderboard, and NADI 2025 Arabic Shared Task.
 jiwer>=3.0
 num2words>=0.5.13
+
+# Dataset inspection downloads (Kaggle-hosted free corpora)
+kaggle>=1.6
