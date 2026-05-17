@@ -1,0 +1,18 @@
+{
+  "id": "sada_020",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.42,
+  "ref": "اللي جمعته بيمينك وعرق جبينك وشقاك",
+  "ref_normalized": "اللي جمعته بيمينك وعرق جبينك وشقاك",
+  "pred": "اللي جماعته بيمينك وعرق جبينك وشجاع",
+  "pred_normalized": "اللي جماعته بيمينك وعرق جبينك وشجاع",
+  "wer": 0.3333333333333333,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6925029754638672,
+  "rtf": 4.938606939138626,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "sada_048",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 9.09,
+  "ref": "بسم الله طلع اعصاب رجلي بهالقعدة اها",
+  "ref_normalized": "بسم الله طلع اعصاب رجلي بهالقعده اها",
+  "pred": "اسف والله طلعت اعصاب رجلي ما قعد",
+  "pred_normalized": "اسف والله طلعت اعصاب رجلي ما قعد",
+  "wer": 0.7142857142857143,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5273466110229492,
+  "rtf": 17.237239815322184,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

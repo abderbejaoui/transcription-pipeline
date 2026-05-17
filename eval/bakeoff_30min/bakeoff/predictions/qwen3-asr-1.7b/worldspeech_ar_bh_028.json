@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_028",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 3.97,
+  "ref": "الراحل الشيخ عيسي بن سلمان ال خليفه طيب الله",
+  "ref_normalized": "الراحل الشيخ عيسي بن سلمان ال خليفه طيب الله",
+  "pred": "الراحل الشيخ عيسى بن سلمان آل خليفة الطيب الله تراه",
+  "pred_normalized": "الراحل الشيخ عيسي بن سلمان ال خليفه الطيب الله تراه",
+  "wer": 0.2222222222222222,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6668519973754883,
+  "rtf": 5.953344993528735,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

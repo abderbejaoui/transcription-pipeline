@@ -1,0 +1,18 @@
+{
+  "id": "sada_035",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.89,
+  "ref": "اصبر حتى اخليك تصير ابو المذابح",
+  "ref_normalized": "اصبر حتي اخليك تصير ابو المذابح",
+  "pred": "أصبح حتى أخليك تصير أبو المذابع.",
+  "pred_normalized": "اصبح حتي اخليك تصير ابو المذابع",
+  "wer": 0.3333333333333333,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5166630744934082,
+  "rtf": 7.529084604728474,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

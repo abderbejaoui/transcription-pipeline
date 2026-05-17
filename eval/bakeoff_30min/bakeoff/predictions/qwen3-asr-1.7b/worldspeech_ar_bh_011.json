@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_011",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 6.67,
+  "ref": "العربيه خلال الفتره من 26 الي 28 فبراير",
+  "ref_normalized": "العربيه خلال الفتره من 26 الي 28 فبراير",
+  "pred": "العربية خلال الفترة من ستة وعشرين إلى ثمانية وعشرين فبراير ألفين وتسعة عشر.",
+  "pred_normalized": "العربيه خلال الفتره من سته وعشرين الي ثمانيه وعشرين فبراير الفين وتسعه عشر",
+  "wer": 0.875,
+  "medical_term_recall": null,
+  "inference_seconds": 0.9259419441223145,
+  "rtf": 7.203475382381977,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

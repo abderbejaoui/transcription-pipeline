@@ -1,0 +1,18 @@
+{
+  "id": "sada_042",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.406,
+  "ref": "قلت عسى البنت ما سوت بنفسها شيء لا سمح الله",
+  "ref_normalized": "قلت عسي البنت ما سوت بنفسها شي لا سمح الله",
+  "pred": "قلت عسل بنت ما سوت بنفس هالشيء لسمح الله.",
+  "pred_normalized": "قلت عسل بنت ما سوت بنفس هالشي لسمح الله",
+  "wer": 0.6,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6336808204650879,
+  "rtf": 5.374945698214723,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

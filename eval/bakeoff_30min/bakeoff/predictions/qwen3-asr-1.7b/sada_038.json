@@ -1,0 +1,18 @@
+{
+  "id": "sada_038",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.97,
+  "ref": "اللي حارم نفسه وحارم عياله الخيرات",
+  "ref_normalized": "اللي حارم نفسه وحارم عياله الخيرات",
+  "pred": "حار من نفسه وحار من عياله الخيرات.",
+  "pred_normalized": "حار من نفسه وحار من عياله الخيرات",
+  "wer": 0.6666666666666666,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5387232303619385,
+  "rtf": 7.369275680450564,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

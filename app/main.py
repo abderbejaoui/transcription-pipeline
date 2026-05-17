@@ -51,38 +51,6 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
-from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
-
-
-def _build_corrector() -> MedicalCorrector:
-    """Build a MedicalCorrector from the current lexicon on disk.
-
-    Short abbreviation aliases (<= 3 compact characters, e.g. 'asa', 'aml')
-    are stripped here because they match too many common English short words
-    when applied to free-form medical conversation text.  The LLM DETECT
-    / DECIDE pipeline handles those cases when the context is clear.
-    """
-    raw = lexicon.list_terms()
-    entries = []
-    for e in raw:
-        aliases = [
-            a for a in (e.get("aliases") or [])
-            if len(compact(a)) > 3  # drop 2-3 char abbreviations
-        ]
-        entries.append(
-            _LexiconEntry(
-                term=e["term"],
-                type=e.get("type", ""),
-                aliases=tuple(aliases),
-                priority=float(e.get("priority", 1.0)),
-            )
-        )
-    return MedicalCorrector(
-        lexicon=entries,
-        accept_threshold=88.0,         # was 80 — tighter to reduce false positives
-        single_word_score_floor=80.0,  # floor for the strong-phonetic path
-        single_word_phonetic_floor=92.0,
-    )
 
 
 # ---------------------------------------------------------------------------
@@ -94,7 +62,7 @@ STATIC_DIR = PROJECT_ROOT / "app" / "static"
 SESSIONS_DIR = PROJECT_ROOT / "data" / "sessions"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
-DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "base")
+DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 
@@ -498,25 +466,6 @@ def _run_transcribe_pipeline(
     if not words:
         corrected_text = raw_text
 
-    # -----------------------------------------------------------------------
-    # Final pass: text-based corrector.
-    # This catches anything the LLM/voice pipeline missed: direct alias
-    # matches and fuzzy/phonetic near-matches against the lexicon.  It never
-    # makes a correction that is already handled above (the word was already
-    # replaced), so the two passes are complementary and do not conflict.
-    # -----------------------------------------------------------------------
-    try:
-        text_corrector = _build_corrector()
-        tc_result = text_corrector.correct_transcript(corrected_text)
-        text_corrected = tc_result.get("corrected_text", corrected_text)
-        if text_corrected != corrected_text:
-            changes = tc_result.get("suspicious_spans", [])
-            print(f"[transcribe] text-corrector changes: {changes}")
-            tracing.emit("text_correct.done", {"changes": changes, "text": text_corrected})
-            corrected_text = text_corrected
-    except Exception as exc:
-        print(f"[transcribe] text-corrector failed (non-fatal): {exc!r}")
-
     return {
         "session_id": session_id,
         "raw_text": raw_text,
@@ -533,7 +482,7 @@ def _run_transcribe_pipeline(
 
 
 def _apply_word_replacements(
-    words: List[Dict[str, Any]],
+    words: List[Dict, Any],
     replacements: Dict[int, str],
     drop_indices: set,
 ) -> str:

@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_038",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.9,
+  "ref": "وعدم المساس بهزه الماده وعدم الموافكه علي تعديلها",
+  "ref_normalized": "وعدم المساس بهزه الماده وعدم الموافكه علي تعديلها",
+  "pred": "وعدم المساس بهذه المادة وعدم الموافقة على تعديلها",
+  "pred_normalized": "وعدم المساس بهذه الماده وعدم الموافقه علي تعديلها",
+  "wer": 0.25,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5058164596557617,
+  "rtf": 9.687308323921966,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

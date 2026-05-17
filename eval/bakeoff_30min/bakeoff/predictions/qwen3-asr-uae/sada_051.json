@@ -1,0 +1,18 @@
+{
+  "id": "sada_051",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.51,
+  "ref": "وعندك بعد وفا اكثر من هذا هاهاها",
+  "ref_normalized": "وعندك بعد وفا اكثر من هذا هاهاها",
+  "pred": "عندك بعد وفه اكثر من هذا",
+  "pred_normalized": "عندك بعد وفه اكثر من هذا",
+  "wer": 0.42857142857142855,
+  "medical_term_recall": null,
+  "inference_seconds": 0.35861635208129883,
+  "rtf": 9.787618382789969,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

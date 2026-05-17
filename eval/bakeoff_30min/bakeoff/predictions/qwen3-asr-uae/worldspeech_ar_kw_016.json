@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_016",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 9.15,
+  "ref": "ك ونشاركه الهرس كزلك متاز اهسن ما بمكن ما سمعت في ما كراته",
+  "ref_normalized": "ك ونشاركه الهرس كزلك متاز اهسن ما بمكن ما سمعت في ما كراته",
+  "pred": "و نشاركه الحرص كذلك ممتاز احسن ما يمكن ما سمعت فيه ما قرائته",
+  "pred_normalized": "و نشاركه الحرص كذلك ممتاز احسن ما يمكن ما سمعت فيه ما قرايته",
+  "wer": 0.6923076923076923,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7818374633789062,
+  "rtf": 11.703199742381218,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

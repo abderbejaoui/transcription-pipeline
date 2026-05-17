@@ -1,0 +1,18 @@
+{
+  "id": "english_medical_002",
+  "category": "english_medical",
+  "language": "en",
+  "duration_s": 10.752,
+  "ref": "Excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones, as a few accessory muscles are inserted in the clavicle bone.",
+  "ref_normalized": "excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones as a few accessory muscles are inserted in the clavicle bone",
+  "pred": "Excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones, as a few accessory muscles are inserted in the clavicle bone.",
+  "pred_normalized": "excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones as a few accessory muscles are inserted in the clavicle bone",
+  "wer": 0.0,
+  "medical_term_recall": null,
+  "inference_seconds": 7.2931132316589355,
+  "rtf": 1.47426752587993,
+  "extra": {
+    "detected_language": "en",
+    "lang_prob": 1
+  }
+}
