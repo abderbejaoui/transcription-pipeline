@@ -293,7 +293,9 @@ class _Qwen3AsrBase(Backend):
             dtype=dtype,
             device_map=self._device,
             max_inference_batch_size=1,
-            max_new_tokens=256,
+            # 1024 matches the official Qwen3-ASR evaluation (HF model card).
+            # 256 truncated clips longer than ~20s.
+            max_new_tokens=1024,
         )
         self._backend = "qwen_asr"
 
@@ -359,7 +361,8 @@ class _Qwen3AsrBase(Backend):
             inputs = {k: v.to(self._device) for k, v in inputs.items()}
             with torch.inference_mode():
                 out_ids = self._model.generate(
-                    **inputs, max_new_tokens=256, do_sample=False,
+                    # 1024 matches the official Qwen3-ASR evaluation.
+                    **inputs, max_new_tokens=1024, do_sample=False,
                 )
             input_len = inputs["input_ids"].shape[1] if "input_ids" in inputs else 0
             gen_ids = out_ids[:, input_len:] if input_len else out_ids
