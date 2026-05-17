@@ -123,21 +123,22 @@ Clip = Tuple[str, np.ndarray, int, str, float, Dict[str, Any]]
 
 
 def _load_hf(repo_id: str, subset: Optional[str], split: str, streaming: bool):
-    """Load a Hugging Face dataset, robust to recent datasets/fsspec changes.
+    """Load a Hugging Face dataset.
 
-    Newer versions reject the `**` glob and the `trust_remote_code` kwarg.
-    For parquet-based datasets (WorldSpeech, vadimbelsky), list shards
-    explicitly with HfFileSystem and stream them with the parquet builder.
-    For tiny non-parquet datasets (Nexdata's sample audiofolder) we fall
-    back to the regular load_dataset call.
+    For streaming we go straight through the parquet-shard path — we do
+    NOT fall back to `load_dataset(repo_id, ...)` because on some
+    versions of `datasets` + `fsspec` (e.g. 2.21 on NGC) the legacy
+    resolver crashes recursively walking the repo with a
+    `PurePosixPath` AttributeError.
+
+    For non-streaming loads of tiny audiofolder datasets (Nexdata's
+    UAE sample) we still use the legacy path — those repos are small
+    enough that the resolver doesn't crash.
     """
     from datasets import load_dataset
 
     if streaming:
-        try:
-            return _stream_via_parquet_shards(repo_id, subset, split)
-        except Exception:
-            pass
+        return _stream_via_parquet_shards(repo_id, subset, split)
 
     kwargs = {"split": split, "streaming": streaming}
     if subset is None:
@@ -146,42 +147,47 @@ def _load_hf(repo_id: str, subset: Optional[str], split: str, streaming: bool):
 
 
 def _stream_via_parquet_shards(repo_id: str, subset: Optional[str], split: str):
-    """List parquet shards on the HF Hub for `repo_id` and stream them."""
-    from datasets import load_dataset
-    from huggingface_hub import HfFileSystem
+    """List parquet shards on the HF Hub for `repo_id` and stream them.
 
-    fs = HfFileSystem()
-    root = f"datasets/{repo_id}"
+    Bypasses fsspec/HfFileSystem (which has known bugs on some
+    datasets/fsspec/pathlib combos) by calling `list_repo_files` directly.
+    """
+    import fnmatch
+    from datasets import load_dataset
+    from huggingface_hub import hf_hub_url, list_repo_files
+
+    all_files = list_repo_files(repo_id, repo_type="dataset")
     candidates = []
     if subset:
         candidates += [
-            f"{root}/{subset}/{split}-*.parquet",
-            f"{root}/{subset}/{split}/*.parquet",
-            f"{root}/data/{subset}/{split}-*.parquet",
-            f"{root}/data/{subset}/{split}/*.parquet",
-            f"{root}/{subset}/*.parquet",
+            f"{subset}/{split}-*.parquet",
+            f"{subset}/{split}/*.parquet",
+            f"data/{subset}/{split}-*.parquet",
+            f"data/{subset}/{split}/*.parquet",
+            f"{subset}/*.parquet",
         ]
     else:
         candidates += [
-            f"{root}/{split}-*.parquet",
-            f"{root}/{split}/*.parquet",
-            f"{root}/data/{split}-*.parquet",
-            f"{root}/data/{split}/*.parquet",
-            f"{root}/*.parquet",
+            f"{split}-*.parquet",
+            f"{split}/*.parquet",
+            f"data/{split}-*.parquet",
+            f"data/{split}/*.parquet",
+            f"*.parquet",
         ]
-    files: list = []
+    matches: list = []
     for pat in candidates:
-        try:
-            files = sorted(fs.glob(pat))
-        except Exception:
-            files = []
-        if files:
+        matches = sorted(f for f in all_files if fnmatch.fnmatch(f, pat))
+        if matches:
             break
-    if not files:
+    if not matches:
         raise FileNotFoundError(
-            f"no parquet shards under {root} for subset={subset!r} split={split!r}"
+            f"no parquet shards under {repo_id} for subset={subset!r} "
+            f"split={split!r}"
         )
-    urls = [f"hf://{p}" if not str(p).startswith("hf://") else str(p) for p in files]
+    urls = [
+        hf_hub_url(repo_id, filename=rel, repo_type="dataset")
+        for rel in matches
+    ]
     return load_dataset(
         "parquet",
         data_files={split: urls},
