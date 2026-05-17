@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import argparse
+import csv
 import json
 import shutil
 import sys
@@ -39,6 +40,53 @@ def _download_kaggle_file(api, file_name: str, raw_dir: Path) -> Path:
     raise FileNotFoundError(f"Kaggle did not create expected file for {file_name}")
 
 
+def _download_sada_csvs(api, raw_dir: Path) -> list[Path]:
+    paths: list[Path] = []
+    for name in ("train.csv", "valid.csv", "test.csv"):
+        try:
+            paths.append(_download_kaggle_file(api, name, raw_dir))
+        except Exception as exc:
+            print(f"[sada2022] metadata warning: could not download {name}: {exc}", file=sys.stderr)
+    return paths
+
+
+def _load_segments(csv_paths: list[Path], file_names: set[str]) -> dict[str, list[dict]]:
+    by_file = {name: [] for name in file_names}
+    for path in csv_paths:
+        if not path.exists():
+            continue
+        with path.open(newline="", encoding="utf-8-sig") as handle:
+            reader = csv.DictReader(handle)
+            for row in reader:
+                filename = row.get("FileName") or ""
+                if filename in by_file:
+                    by_file[filename].append(row)
+    return by_file
+
+
+def _write_segments(out_dir: Path, sample_id: str, segments: list[dict]) -> str:
+    rel = f"segments/{sample_id}.segments.jsonl"
+    path = out_dir / rel
+    path.parent.mkdir(parents=True, exist_ok=True)
+    with path.open("w", encoding="utf-8") as handle:
+        for segment in segments:
+            handle.write(json.dumps({
+                "segment_id": segment.get("SegmentID"),
+                "start_s": float(segment.get("SegmentStart") or 0),
+                "end_s": float(segment.get("SegmentEnd") or 0),
+                "duration_s": float(segment.get("SegmentLength") or 0),
+                "ground_truth_text": segment.get("GroundTruthText") or "",
+                "processed_text": segment.get("ProcessedText") or "",
+                "speaker": segment.get("Speaker"),
+                "speaker_age": segment.get("SpeakerAge"),
+                "speaker_gender": segment.get("SpeakerGender"),
+                "speaker_dialect": segment.get("SpeakerDialect"),
+                "environment": segment.get("Environment"),
+                "category": segment.get("Category"),
+            }, ensure_ascii=False) + "\n")
+    return rel
+
+
 def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
@@ -74,6 +122,8 @@ def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
         return 2
 
     raw_dir = out_dir / "raw"
+    csv_paths = _download_sada_csvs(api, raw_dir)
+    segments_by_file = _load_segments(csv_paths, set(audio_names))
     audio_dir = out_dir / "audio"
     audio_dir.mkdir(parents=True, exist_ok=True)
     rows = []
@@ -89,6 +139,9 @@ def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
         except Exception as exc:
             print(f"[sada2022] skip {file_name}: {exc}", file=sys.stderr)
             continue
+        segments = segments_by_file.get(file_name, [])
+        texts = [(s.get("ProcessedText") or s.get("GroundTruthText") or "").strip() for s in segments]
+        segments_rel = _write_segments(out_dir, sample_id, segments) if segments else None
         rows.append({
             "id": sample_id,
             "dataset": "sada2022",
@@ -96,7 +149,10 @@ def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
             "batch": batch,
             "audio_path": dest_rel,
             "duration_s": round(float(duration_s), 3),
-            "text": "",
+            "text": " ".join(t for t in texts if t),
+            "text_column": "ProcessedText_joined_by_FileName" if segments else None,
+            "segments_path": segments_rel,
+            "segment_count": len(segments),
             "original_path": file_name,
         })
         print(f"[sada2022] saved {len(rows)}/{limit}: {dest_rel}")
@@ -107,7 +163,7 @@ def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
         "SADA 2022 Saudi Audio Dataset",
         f"kaggle:{DATASET_ID}",
         rows,
-        notes=f"Targeted per-file download from {batch}; transcript metadata was not exposed in this Kaggle file listing.",
+        notes=f"Targeted per-file download from {batch}; segment transcripts are joined from train/valid/test CSV metadata.",
     )
     print(f"[sada2022] done: {len(rows)} samples -> {out_dir}")
     if not rows:
