@@ -397,16 +397,19 @@ class QwenAsrBackend(_Qwen3AsrBase):
 
 
 class VibeVoiceBackend(Backend):
-    """Microsoft VibeVoice-ASR (9B params, custom next-token-diffusion arch).
+    """Microsoft VibeVoice-ASR (8B params, custom vibevoice_asr architecture).
 
-    Uses the transformers-native release `microsoft/VibeVoice-ASR-HF` (March
-    2026). The original `microsoft/VibeVoice-ASR` repo requires the custom
-    `vibevoice` Python package and won't load via stock `AutoModel*`.
+    Uses the transformers-native release `microsoft/VibeVoice-ASR-HF`
+    (registered in transformers >= 5.3.0). The original
+    `microsoft/VibeVoice-ASR` repo needs Microsoft's vibevoice Python
+    package and won't load via stock transformers.
 
     The model is multilingual (51 langs incl. Arabic) and auto-detects
-    language, so we don't pass a language hint. It outputs structured text
-    that may contain `<|speaker|>`, `<|timestamp|>` etc. — we strip those
-    in post-processing so the WER is over plain text only.
+    language — no `language` hint. The processor's
+    `apply_transcription_request(audio=...)` builds the chat-template
+    inputs (same pattern as Voxtral); `processor.decode(...,
+    return_format="transcription_only")` strips the speaker JSON and
+    timestamp metadata so we get plain text for WER scoring.
     """
 
     name = "vibevoice-asr"
@@ -416,13 +419,20 @@ class VibeVoiceBackend(Backend):
         self._model = None
         self._processor = None
         self._device = None
+        self._dtype = None
 
     def prepare(self) -> None:
         try:
             import torch
-            from transformers import AutoModel, AutoProcessor
+            from transformers import (
+                AutoProcessor,
+                VibeVoiceAsrForConditionalGeneration,
+            )
         except ImportError as exc:
-            raise RuntimeError(f"transformers/torch missing: {exc}")
+            raise RuntimeError(
+                "VibeVoice requires transformers >= 5.3.0 "
+                f"(install from git main). Underlying error: {exc}"
+            )
 
         if torch.cuda.is_available():
             self._device, dtype = "cuda:0", torch.bfloat16
@@ -430,58 +440,41 @@ class VibeVoiceBackend(Backend):
             self._device, dtype = "mps", torch.float16
         else:
             self._device, dtype = "cpu", torch.float32
+        self._dtype = dtype
 
         print(f"[vibevoice] loading {self.repo_id} on {self._device} ({dtype})")
-        self._processor = AutoProcessor.from_pretrained(
-            self.repo_id, trust_remote_code=True,
-        )
-        # VibeVoice is a custom arch, not Seq2Seq. Use generic AutoModel.
-        self._model = AutoModel.from_pretrained(
+        self._processor = AutoProcessor.from_pretrained(self.repo_id)
+        self._model = VibeVoiceAsrForConditionalGeneration.from_pretrained(
             self.repo_id,
             torch_dtype=dtype,
-            trust_remote_code=True,
             low_cpu_mem_usage=True,
         ).to(self._device).eval()
-
-    @staticmethod
-    def _strip_structured_tokens(text: str) -> str:
-        # VibeVoice can emit <|speaker_0|>, <|t=12.3|>, etc. Drop them so
-        # the WER score is over content text only.
-        import re as _re
-        text = _re.sub(r"<\|[^|>]+\|>", " ", text)
-        text = _re.sub(r"\s+", " ", text).strip()
-        return text
 
     def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
         assert self._model is not None and self._processor is not None
         import torch
-        import soundfile as sf
-
-        audio, sr = sf.read(str(wav_path), dtype="float32")
-        if audio.ndim > 1:
-            audio = audio.mean(axis=1)
-        if sr != 16000:
-            try:
-                import librosa
-                audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
-                sr = 16000
-            except Exception as exc:
-                return Prediction(text="", inference_seconds=0.0,
-                                  extra={"error": f"resample failed: {exc!r}"})
 
         t0 = time.time()
         try:
-            inputs = self._processor(
-                audio, sampling_rate=sr, return_tensors="pt",
-            )
-            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+            # apply_transcription_request handles audio loading, resampling
+            # (to 24 kHz internally), and chat-template wrapping.
+            inputs = self._processor.apply_transcription_request(
+                audio=str(wav_path),
+            ).to(self._device, self._dtype)
             with torch.inference_mode():
-                output_ids = self._model.generate(**inputs, max_new_tokens=1024)
-            text = self._processor.batch_decode(
-                output_ids, skip_special_tokens=True,
+                output_ids = self._model.generate(
+                    **inputs,
+                    max_new_tokens=1024,
+                    do_sample=False,
+                )
+            generated_ids = output_ids[:, inputs["input_ids"].shape[1]:]
+            # return_format="transcription_only" extracts just the plain
+            # transcribed text, stripping speaker labels + timestamps.
+            text = self._processor.decode(
+                generated_ids, return_format="transcription_only",
             )[0]
             return Prediction(
-                text=self._strip_structured_tokens(text),
+                text=str(text).strip(),
                 inference_seconds=time.time() - t0,
             )
         except Exception as exc:
