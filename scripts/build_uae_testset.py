@@ -114,6 +114,51 @@ def _ffmpeg_resample(arr: np.ndarray, sr: int, out_path: Path) -> float:
     return float(info)
 
 
+def _decode_audio_field(audio: Any) -> Tuple[Optional[np.ndarray], int]:
+    """Return (waveform, sample_rate) from a HuggingFace audio field.
+
+    Handles already-decoded arrays, raw byte payloads (soundfile fallback),
+    and ffmpeg-decoded bytes as a last resort. Mirrors the helper in
+    build_bakeoff_testset.py.
+    """
+    if not isinstance(audio, dict):
+        return None, 0
+    arr = audio.get("array")
+    sr_val = audio.get("sampling_rate")
+    sr = int(sr_val) if sr_val else 0
+    if arr is not None:
+        return np.asarray(arr, dtype=np.float32), sr or 0
+    data = audio.get("bytes")
+    if not data:
+        return None, 0
+    try:
+        import io
+        import soundfile as sf
+        wav, sr_dec = sf.read(io.BytesIO(data), dtype="float32", always_2d=False)
+        if wav.ndim > 1:
+            wav = wav.mean(axis=1)
+        return wav.astype(np.float32), int(sr_dec)
+    except Exception:
+        pass
+    try:
+        import tempfile
+        with tempfile.NamedTemporaryFile(suffix=".bin") as tin, \
+             tempfile.NamedTemporaryFile(suffix=".wav") as tout:
+            tin.write(data); tin.flush()
+            subprocess.run(
+                ["ffmpeg", "-y", "-loglevel", "error", "-i", tin.name,
+                 "-ac", "1", "-ar", str(SR), tout.name],
+                check=True,
+            )
+            import soundfile as sf
+            wav, sr_dec = sf.read(tout.name, dtype="float32", always_2d=False)
+            if wav.ndim > 1:
+                wav = wav.mean(axis=1)
+            return wav.astype(np.float32), int(sr_dec)
+    except Exception:
+        return None, 0
+
+
 # ---------------------------------------------------------------------------
 # Sources
 # ---------------------------------------------------------------------------
@@ -245,9 +290,7 @@ def _iter_uae_dataset(
         seen += 1
         if seen > max_clips * 40:
             break
-        audio = ex.get("audio") or {}
-        arr = audio.get("array")
-        sr = int(audio.get("sampling_rate") or 0)
+        arr, sr = _decode_audio_field(ex.get("audio"))
         text = (
             ex.get("text")
             or ex.get("transcription")
@@ -320,10 +363,7 @@ def iter_worldspeech_uae_neighbors(
             seen += 1
             if seen > max_per_country * 30:
                 break
-            audio = ex.get("audio") or {}
-            arr = audio.get("array")
-            sr_val = audio.get("sampling_rate")
-            sr = int(sr_val) if sr_val else 0
+            arr, sr = _decode_audio_field(ex.get("audio"))
             transcript = (ex.get("human_transcript") or "").strip()
             # Prefer the dataset-published duration so we can filter even when
             # audio decode is lazy / missing.
