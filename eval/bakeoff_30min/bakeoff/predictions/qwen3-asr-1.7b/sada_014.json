@@ -1,0 +1,18 @@
+{
+  "id": "sada_014",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.067,
+  "ref": "ومن قلك انها هي بتقبل بهرشان وغيره",
+  "ref_normalized": "ومن قلك انها هي بتقبل بهرشان وغيره",
+  "pred": "ومنقلك إن هي بتقبل بهرشا وغيرة.",
+  "pred_normalized": "ومنقلك ان هي بتقبل بهرشا وغيره",
+  "wer": 0.5714285714285714,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5037469863891602,
+  "rtf": 8.073497430033491,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

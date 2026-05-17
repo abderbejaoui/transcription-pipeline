@@ -1,0 +1,18 @@
+{
+  "id": "sada_025",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.5,
+  "ref": "اقعد مكتف الايدين ويضحك علينا ويرمينا بالمصايب والبلاوي",
+  "ref_normalized": "اقعد مكتف الايدين ويضحك علينا ويرمينا بالمصايب والبلاوي",
+  "pred": "قاعد مكتفيدين ويضحك علينا ويرمينا بالمصائب والبلاوي.",
+  "pred_normalized": "قاعد مكتفيدين ويضحك علينا ويرمينا بالمصايب والبلاوي",
+  "wer": 0.375,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7251558303833008,
+  "rtf": 4.826548795932565,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

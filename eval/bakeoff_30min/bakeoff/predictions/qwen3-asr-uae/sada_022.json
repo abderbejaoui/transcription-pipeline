@@ -1,0 +1,18 @@
+{
+  "id": "sada_022",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.01,
+  "ref": "زوج حصة لهرشان الليلة",
+  "ref_normalized": "زوج حصه لهرشان الليله",
+  "pred": "زوج حصه الهرشان الليله",
+  "pred_normalized": "زوج حصه الهرشان الليله",
+  "wer": 0.25,
+  "medical_term_recall": null,
+  "inference_seconds": 0.37345075607299805,
+  "rtf": 8.059964937951921,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

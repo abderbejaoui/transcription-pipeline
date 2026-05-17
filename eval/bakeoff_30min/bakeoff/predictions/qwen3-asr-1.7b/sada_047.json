@@ -1,0 +1,18 @@
+{
+  "id": "sada_047",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 7.68,
+  "ref": "اي اي هاها قول كذا من الصبح الله يهديك هاهاها",
+  "ref_normalized": "اي اي هاها قول كذا من الصبح الله يهديك هاهاها",
+  "pred": "أي أي قلت هذا من الصبح علي هديك.",
+  "pred_normalized": "اي اي قلت هذا من الصبح علي هديك",
+  "wer": 0.6,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5008163452148438,
+  "rtf": 15.334962753073443,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_sa_022",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 8.37,
+  "ref": "وانفقوا خيرا النفسكم ومن يوق شح نفسه فاوليك هم المفلحون",
+  "ref_normalized": "وانفقوا خيرا النفسكم ومن يوق شح نفسه فاوليك هم المفلحون",
+  "pred": "وأنفقوا خيرا لأنفسكم ومن يقشح نفسه فأولئك هم المفلحون",
+  "pred_normalized": "وانفقوا خيرا لانفسكم ومن يقشح نفسه فاوليك هم المفلحون",
+  "wer": 0.3,
+  "medical_term_recall": null,
+  "inference_seconds": 0.8663289546966553,
+  "rtf": 9.661457065036862,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

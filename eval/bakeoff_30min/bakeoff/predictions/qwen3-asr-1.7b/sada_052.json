@@ -1,0 +1,18 @@
+{
+  "id": "sada_052",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 5.425,
+  "ref": "الله يهديك كيف ما سميه وفاء ها ها انت عجيب امرك",
+  "ref_normalized": "الله يهديك كيف ما سميه وفا ها ها انت عجيب امرك",
+  "pred": "لا يا عديك كيف ما سمي وفا أنت عجيب نمرك.",
+  "pred_normalized": "لا يا عديك كيف ما سمي وفا انت عجيب نمرك",
+  "wer": 0.6363636363636364,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6420078277587891,
+  "rtf": 8.450052733684494,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}
