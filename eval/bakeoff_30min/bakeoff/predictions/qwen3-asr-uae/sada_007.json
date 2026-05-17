@@ -1,0 +1,18 @@
+{
+  "id": "sada_007",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.56,
+  "ref": "اتسوي شيء و وتبلاني",
+  "ref_normalized": "اتسوي شي و وتبلاني",
+  "pred": "تسوين شيء وتبليني",
+  "pred_normalized": "تسوين شي وتبليني",
+  "wer": 0.75,
+  "medical_term_recall": null,
+  "inference_seconds": 0.29814839363098145,
+  "rtf": 11.940362839607365,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

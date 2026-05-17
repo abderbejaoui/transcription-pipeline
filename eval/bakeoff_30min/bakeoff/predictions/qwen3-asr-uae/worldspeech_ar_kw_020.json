@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_020",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.62,
+  "ref": "ن ورد في البيان انه يجب اتهاز الاجراات التاليه",
+  "ref_normalized": "ن ورد في البيان انه يجب اتهاز الاجراات التاليه",
+  "pred": "لكن ورد في البيان ها انه يجب اتخاذ الإجراءات التالية",
+  "pred_normalized": "لكن ورد في البيان ها انه يجب اتخاذ الاجراات التاليه",
+  "wer": 0.3333333333333333,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6030104160308838,
+  "rtf": 7.661559198943227,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "sada_041",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.58,
+  "ref": "انشغلت علي ها ويش شغل طرفا",
+  "ref_normalized": "انشغلت علي ها ويش شغل طرفا",
+  "pred": "انشقت علي وش من ترفه",
+  "pred_normalized": "انشقت علي وش من ترفه",
+  "wer": 0.8333333333333334,
+  "medical_term_recall": null,
+  "inference_seconds": 0.3942298889160156,
+  "rtf": 11.617586917606078,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

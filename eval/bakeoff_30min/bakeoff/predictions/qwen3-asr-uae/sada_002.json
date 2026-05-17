@@ -1,0 +1,18 @@
+{
+  "id": "sada_002",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 5.5,
+  "ref": "الا بيت ابوها لكن لا تنسى انك حطمت حياتها",
+  "ref_normalized": "الا بيت ابوها لكن لا تنسي انك حطمت حياتها",
+  "pred": "هلا بيتبوها لكن لا تنسى انك حطمت حياتها",
+  "pred_normalized": "هلا بيتبوها لكن لا تنسي انك حطمت حياتها",
+  "wer": 0.3333333333333333,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6079115867614746,
+  "rtf": 9.047368268303837,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

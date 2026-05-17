@@ -1,0 +1,18 @@
+{
+  "id": "sada_012",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.77,
+  "ref": "اذا تبي راحتك وخلاصك من المشاكل والمصايب",
+  "ref_normalized": "اذا تبي راحتك وخلاصك من المشاكل والمصايب",
+  "pred": "إذا تبي راحتك وخلاصك من المشاكل والمصاعب.",
+  "pred_normalized": "اذا تبي راحتك وخلاصك من المشاكل والمصاعب",
+  "wer": 0.14285714285714285,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6303527355194092,
+  "rtf": 5.980778360378699,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

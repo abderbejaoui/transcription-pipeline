@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_035",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.91,
+  "ref": "من الناحيتين الدستوريه والقانونيه وانتهت الي ما يلي",
+  "ref_normalized": "من الناحيتين الدستوريه والقانونيه وانتهت الي ما يلي",
+  "pred": "من الناحيتين الدستورية والقانونية، وانتهت إلى ما يلي.",
+  "pred_normalized": "من الناحيتين الدستوريه والقانونيه وانتهت الي ما يلي",
+  "wer": 0.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6929008960723877,
+  "rtf": 7.086150455038595,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

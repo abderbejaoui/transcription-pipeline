@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_000",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.1,
+  "ref": "بنفتهه نفس ما سار في لجنه الزواهر السلبيه",
+  "ref_normalized": "بنفتهه نفس ما سار في لجنه الزواهر السلبيه",
+  "pred": "بنفتحها نفس ما صار في لجنة الظواهر السلبية.",
+  "pred_normalized": "بنفتحها نفس ما صار في لجنه الظواهر السلبيه",
+  "wer": 0.375,
+  "medical_term_recall": null,
+  "inference_seconds": 0.605964183807373,
+  "rtf": 6.766076460557491,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

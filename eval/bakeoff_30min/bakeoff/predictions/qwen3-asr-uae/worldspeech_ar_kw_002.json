@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_002",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 6.36,
+  "ref": "سيد العدو في كبل ان اعتي الكلمه للسيد العدو ساله عاشو",
+  "ref_normalized": "سيد العدو في كبل ان اعتي الكلمه للسيد العدو ساله عاشو",
+  "pred": "السيد العضو في قبل اني اعطي الكلمه للسيد العضو صالح عاشور",
+  "pred_normalized": "السيد العضو في قبل اني اعطي الكلمه للسيد العضو صالح عاشور",
+  "wer": 0.7272727272727273,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7269423007965088,
+  "rtf": 8.74897497783712,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}
