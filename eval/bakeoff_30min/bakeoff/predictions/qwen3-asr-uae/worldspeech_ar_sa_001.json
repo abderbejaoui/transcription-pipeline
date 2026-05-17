@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_sa_001",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 7.57,
+  "ref": "يومن احدكم حتي يحب الخيو ما يحب لنفسو رواه البخاري ومسلم",
+  "ref_normalized": "يومن احدكم حتي يحب الخيو ما يحب لنفسو رواه البخاري ومسلم",
+  "pred": "لا يؤمن أحدكم حتى يحب لأخيه ما يحب لنفسه رواه البخاري ومسلم",
+  "pred_normalized": "لا يومن احدكم حتي يحب لاخيه ما يحب لنفسه رواه البخاري ومسلم",
+  "wer": 0.2727272727272727,
+  "medical_term_recall": null,
+  "inference_seconds": 0.8212289810180664,
+  "rtf": 9.217891933886179,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

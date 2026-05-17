@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_010",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.52,
+  "ref": "ازا اهنا نكول بالعكس اهنا نبي الوزيره مسووله",
+  "ref_normalized": "ازا اهنا نكول بالعكس اهنا نبي الوزيره مسووله",
+  "pred": "فإذا احنا احنا احنا نقول بالعكس احنا نبي الوزارة مسؤوله كل شئ",
+  "pred_normalized": "فاذا احنا احنا احنا نقول بالعكس احنا نبي الوزاره مسووله كل شي",
+  "wer": 1.125,
+  "medical_term_recall": null,
+  "inference_seconds": 0.982363224029541,
+  "rtf": 5.619102858266206,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

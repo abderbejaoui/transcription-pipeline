@@ -1,0 +1,18 @@
+{
+  "id": "sada_013",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.06,
+  "ref": "اخاف ب اخاف ما تقبل بهرشان",
+  "ref_normalized": "اخاف ب اخاف ما تقبل بهرشان",
+  "pred": "خاف خاف ما تقبل بحيرشان",
+  "pred_normalized": "خاف خاف ما تقبل بحيرشان",
+  "wer": 0.6666666666666666,
+  "medical_term_recall": null,
+  "inference_seconds": 0.41562581062316895,
+  "rtf": 9.76840200061838,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

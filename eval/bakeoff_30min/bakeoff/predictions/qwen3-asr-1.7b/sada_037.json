@@ -1,0 +1,18 @@
+{
+  "id": "sada_037",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.17,
+  "ref": "واتربع بعدها على مالية ابو مسامح",
+  "ref_normalized": "واتربع بعدها علي ماليه ابو مسامح",
+  "pred": "وترطب بعدها لمالية بمسام.",
+  "pred_normalized": "وترطب بعدها لماليه بمسام",
+  "wer": 0.8333333333333334,
+  "medical_term_recall": null,
+  "inference_seconds": 0.4566366672515869,
+  "rtf": 6.942061878384961,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

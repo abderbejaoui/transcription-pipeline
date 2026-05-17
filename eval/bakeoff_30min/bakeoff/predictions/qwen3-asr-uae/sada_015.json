@@ -1,0 +1,18 @@
+{
+  "id": "sada_015",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 5.74,
+  "ref": "اوه ميزر ميزر لا تجيبلي اسمه ولا اسم تاريه",
+  "ref_normalized": "اوه ميزر ميزر لا تجيبلي اسمه ولا اسم تاريه",
+  "pred": "اوه مجزر مجزر لا تجيب لي اسم ولا سنتاري",
+  "pred_normalized": "اوه مجزر مجزر لا تجيب لي اسم ولا سنتاري",
+  "wer": 0.7777777777777778,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5848684310913086,
+  "rtf": 9.814173059896067,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

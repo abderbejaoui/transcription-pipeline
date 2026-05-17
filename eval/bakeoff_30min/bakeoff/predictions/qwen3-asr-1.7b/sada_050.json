@@ -1,0 +1,18 @@
+{
+  "id": "sada_050",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 9.34,
+  "ref": "هاهاها مشكور يا مغيص مشكور انا اشهد انك رجال وفي رجال مخلص",
+  "ref_normalized": "هاهاها مشكور يا مغيص مشكور انا اشهد انك رجال وفي رجال مخلص",
+  "pred": "مشكور يا مغيس مشكور أنا أشهد إنك رجال وفِي رجال مخلص.",
+  "pred_normalized": "مشكور يا مغيس مشكور انا اشهد انك رجال وفي رجال مخلص",
+  "wer": 0.16666666666666666,
+  "medical_term_recall": null,
+  "inference_seconds": 0.77107834815979,
+  "rtf": 12.112906583734702,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

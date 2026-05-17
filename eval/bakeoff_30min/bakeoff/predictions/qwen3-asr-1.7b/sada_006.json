@@ -1,0 +1,18 @@
+{
+  "id": "sada_006",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.13,
+  "ref": "يمكن تسوي شيء لا سمح الله في نفسها",
+  "ref_normalized": "يمكن تسوي شي لا سمح الله في نفسها",
+  "pred": "يمكن سوي شيء لا سمح الله في نفسها.",
+  "pred_normalized": "يمكن سوي شي لا سمح الله في نفسها",
+  "wer": 0.125,
+  "medical_term_recall": null,
+  "inference_seconds": 0.42057085037231445,
+  "rtf": 7.442265666365457,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_003",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 8.92,
+  "ref": "نه ماشي هزا رايه هزا رايه ما عتيته دكيكتين هزا رايه الان",
+  "ref_normalized": "نه ماشي هزا رايه هزا رايه ما عتيته دكيكتين هزا رايه الان",
+  "pred": "ماشي هذا هذا رأي هذا رأي لا هذا معطيت دقيتين هذا رأي الآن",
+  "pred_normalized": "ماشي هذا هذا راي هذا راي لا هذا معطيت دقيتين هذا راي الان",
+  "wer": 1.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.8079578876495361,
+  "rtf": 11.040179366216156,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

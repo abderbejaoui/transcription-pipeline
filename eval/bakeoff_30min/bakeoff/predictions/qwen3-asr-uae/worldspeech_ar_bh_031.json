@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_031",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.56,
+  "ref": "غير العربيه وجات الماده الثانيه تنفيذيه",
+  "ref_normalized": "غير العربيه وجات الماده الثانيه تنفيذيه",
+  "pred": "غير العربية وجاءت المادة الثانية تنفيذية",
+  "pred_normalized": "غير العربيه وجات الماده الثانيه تنفيذيه",
+  "wer": 0.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.3893282413482666,
+  "rtf": 11.712481951497923,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

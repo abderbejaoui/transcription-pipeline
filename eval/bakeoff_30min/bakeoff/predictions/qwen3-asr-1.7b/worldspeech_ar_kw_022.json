@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_022",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 3.08,
+  "ref": "وللاسف اليوم دد الكدايا اللي تدعمها الكويت",
+  "ref_normalized": "وللاسف اليوم دد الكدايا اللي تدعمها الكويت",
+  "pred": "وللأسف اليوم ضد القضايا اللي تدعمها الكويت.",
+  "pred_normalized": "وللاسف اليوم ضد القضايا اللي تدعمها الكويت",
+  "wer": 0.2857142857142857,
+  "medical_term_recall": null,
+  "inference_seconds": 0.535315752029419,
+  "rtf": 5.753613616493644,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

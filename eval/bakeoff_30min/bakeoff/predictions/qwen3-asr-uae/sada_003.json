@@ -1,0 +1,18 @@
+{
+  "id": "sada_003",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.763,
+  "ref": "يبغى انسى انت منين تجيبلي هالكلام الفاضي",
+  "ref_normalized": "يبغي انسي انت منين تجيبلي هالكلام الفاضي",
+  "pred": "يا مغريس انت من تجيب لي هالكلام الفاضي",
+  "pred_normalized": "يا مغريس انت من تجيب لي هالكلام الفاضي",
+  "wer": 0.7142857142857143,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6088745594024658,
+  "rtf": 6.180254934108125,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

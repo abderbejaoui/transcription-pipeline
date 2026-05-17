@@ -1,0 +1,18 @@
+{
+  "id": "sada_044",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.2,
+  "ref": "ازين هاهاها هذا يسهل مهمتنا",
+  "ref_normalized": "ازين هاهاها هذا يسهل مهمتنا",
+  "pred": "عزيزي هذا يسهل مهمتنا.",
+  "pred_normalized": "عزيزي هذا يسهل مهمتنا",
+  "wer": 0.4,
+  "medical_term_recall": null,
+  "inference_seconds": 0.2935624122619629,
+  "rtf": 10.900578092894445,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

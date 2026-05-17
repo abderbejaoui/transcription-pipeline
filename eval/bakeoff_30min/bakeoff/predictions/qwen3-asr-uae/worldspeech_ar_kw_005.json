@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_005",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.78,
+  "ref": "لزلك الاه الرييس انا اعتكد ان لابد من اعاده النزر",
+  "ref_normalized": "لزلك الاه الرييس انا اعتكد ان لابد من اعاده النزر",
+  "pred": "لذلك اخر رئيس انا اعتقد ان لابد من عاده النظر",
+  "pred_normalized": "لذلك اخر رييس انا اعتقد ان لابد من عاده النظر",
+  "wer": 0.6,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6498813629150391,
+  "rtf": 7.355188612517426,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}
