@@ -177,12 +177,26 @@ def _stream_via_parquet_shards(repo_id: str, subset: Optional[str], split: str):
         hf_hub_url(repo_id, filename=rel, repo_type="dataset")
         for rel in matches
     ]
-    return load_dataset(
+    ds = load_dataset(
         "parquet",
         data_files={split: urls},
         split=split,
         streaming=True,
     )
+    # Older `datasets` (e.g. 2.21 on NGC) won't auto-decode the audio
+    # column when streaming parquet — rows come back with `array=None` and
+    # only raw `bytes`. Casting to `Audio()` forces decode on iteration.
+    try:
+        from datasets import Audio
+        if "audio" in (getattr(ds, "features", None) or {}):
+            ds = ds.cast_column("audio", Audio())
+    except Exception:
+        try:
+            from datasets import Audio
+            ds = ds.cast_column("audio", Audio())
+        except Exception:
+            pass
+    return ds
 
 
 def iter_worldspeech_gulf(
