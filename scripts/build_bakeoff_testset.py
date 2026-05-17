@@ -122,73 +122,61 @@ def _ffmpeg_resample(arr: np.ndarray, sr: int, out_path: Path) -> float:
 
 
 def _stream_hf_dataset(repo_id: str, subset: Optional[str], split: str):
-    """Stream a Hugging Face dataset, robust to recent datasets/fsspec changes.
+    """Stream a Hugging Face dataset by listing parquet shards directly.
 
-    Newer versions reject the `**` glob and the `trust_remote_code` kwarg, so
-    for datasets that ship parquet shards (WorldSpeech, SADA22, vadimbelsky)
-    we build the stream by listing files explicitly with HfFileSystem.
+    We do NOT fall back to `load_dataset(repo_id, ...)` because on
+    some versions of `datasets` + `fsspec` (e.g. 2.21 on NGC) the
+    legacy resolver crashes recursively walking the repo with a
+    `PurePosixPath` AttributeError. Failing loudly is better.
     """
-    from datasets import load_dataset
-
-    # Try the explicit parquet-shard path first (works on >=2.20).
-    try:
-        return _stream_via_parquet_shards(repo_id, subset, split)
-    except Exception as parquet_exc:
-        # Fall back to load_dataset with no trust_remote_code so newer
-        # datasets versions don't choke on the kwarg.
-        try:
-            kwargs = {"split": split, "streaming": True}
-            if subset is None:
-                return load_dataset(repo_id, **kwargs)
-            return load_dataset(repo_id, subset, **kwargs)
-        except Exception:
-            raise parquet_exc
+    return _stream_via_parquet_shards(repo_id, subset, split)
 
 
 def _stream_via_parquet_shards(repo_id: str, subset: Optional[str], split: str):
     """List parquet shards on the HF Hub for `repo_id` and stream them.
 
-    Layout we expect (works for WorldSpeech, SADA22, vadimbelsky):
-        datasets/<repo>/<subset>/<split>-*.parquet
-        datasets/<repo>/data/<subset>/<split>-*.parquet
-        datasets/<repo>/<split>-*.parquet (no subset)
+    Bypasses the fsspec / HfFileSystem layer (which has known bugs on some
+    datasets/fsspec/pathlib combos) by calling `list_repo_files` directly
+    and constructing HTTPS resolve URLs from `hf_hub_url`.
     """
+    import fnmatch
     from datasets import load_dataset
-    from huggingface_hub import HfFileSystem
+    from huggingface_hub import hf_hub_url, list_repo_files
 
-    fs = HfFileSystem()
-    root = f"datasets/{repo_id}"
-    # Build candidate glob patterns, most specific first.
+    all_files = list_repo_files(repo_id, repo_type="dataset")
+    # Build candidate glob patterns, most specific first. Patterns are
+    # relative to the dataset repo root (no leading 'datasets/<repo>/').
     candidates = []
     if subset:
         candidates += [
-            f"{root}/{subset}/{split}-*.parquet",
-            f"{root}/{subset}/{split}/*.parquet",
-            f"{root}/data/{subset}/{split}-*.parquet",
-            f"{root}/data/{subset}/{split}/*.parquet",
-            f"{root}/{subset}/*.parquet",
+            f"{subset}/{split}-*.parquet",
+            f"{subset}/{split}/*.parquet",
+            f"data/{subset}/{split}-*.parquet",
+            f"data/{subset}/{split}/*.parquet",
+            f"{subset}/*.parquet",
         ]
     else:
         candidates += [
-            f"{root}/{split}-*.parquet",
-            f"{root}/{split}/*.parquet",
-            f"{root}/data/{split}-*.parquet",
-            f"{root}/data/{split}/*.parquet",
-            f"{root}/*.parquet",
+            f"{split}-*.parquet",
+            f"{split}/*.parquet",
+            f"data/{split}-*.parquet",
+            f"data/{split}/*.parquet",
+            f"*.parquet",
         ]
-    files: list = []
+    matches: list = []
     for pat in candidates:
-        try:
-            files = sorted(fs.glob(pat))
-        except Exception:
-            files = []
-        if files:
+        matches = sorted(f for f in all_files if fnmatch.fnmatch(f, pat))
+        if matches:
             break
-    if not files:
+    if not matches:
         raise FileNotFoundError(
-            f"no parquet shards under {root} for subset={subset!r} split={split!r}"
+            f"no parquet shards under {repo_id} for subset={subset!r} "
+            f"split={split!r}"
         )
-    urls = [f"hf://{p}" if not str(p).startswith("hf://") else str(p) for p in files]
+    urls = [
+        hf_hub_url(repo_id, filename=rel, repo_type="dataset")
+        for rel in matches
+    ]
     return load_dataset(
         "parquet",
         data_files={split: urls},
