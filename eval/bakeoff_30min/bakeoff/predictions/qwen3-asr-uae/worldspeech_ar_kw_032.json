@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_032",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.17,
+  "ref": "من التهرير ايل يومنا زا كان بادي من اول سنه",
+  "ref_normalized": "من التهرير ايل يومنا زا كان بادي من اول سنه",
+  "pred": "ويفترض ان من تحرير اليومنا هذا كان بادي من اول سنه",
+  "pred_normalized": "ويفترض ان من تحرير اليومنا هذا كان بادي من اول سنه",
+  "wer": 0.6,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6635982990264893,
+  "rtf": 7.790857824054829,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

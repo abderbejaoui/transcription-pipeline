@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_006",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 8.14,
+  "ref": "وبات واستوفي جميع المواعيد سوالي هو هل يمكن",
+  "ref_normalized": "وبات واستوفي جميع المواعيد سوالي هو هل يمكن",
+  "pred": "وابات واستوفى جميع المواعيد والسؤال هو هل يمكن الطعام؟",
+  "pred_normalized": "وابات واستوفي جميع المواعيد والسوال هو هل يمكن الطعام",
+  "wer": 0.375,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5534183979034424,
+  "rtf": 14.708582206224785,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

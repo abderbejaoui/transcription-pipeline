@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_007",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.58,
+  "ref": "لي علي اكرار الهييات السياسيه ويعتمد علي اعتماد الكوايم النسبيه",
+  "ref_normalized": "لي علي اكرار الهييات السياسيه ويعتمد علي اعتماد الكوايم النسبيه",
+  "pred": "يعتمد على على اغراض هياط سياسية ويعتمد على اعتماد قوام نسبيه",
+  "pred_normalized": "يعتمد علي علي اغراض هياط سياسيه ويعتمد علي اعتماد قوام نسبيه",
+  "wer": 0.7,
+  "medical_term_recall": null,
+  "inference_seconds": 0.9484894275665283,
+  "rtf": 4.828730681532823,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "id": "sada_041",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.58,
+  "ref": "انشغلت علي ها ويش شغل طرفا",
+  "ref_normalized": "انشغلت علي ها ويش شغل طرفا",
+  "pred": "نشغلت عليه وش من طرفه.",
+  "pred_normalized": "نشغلت عليه وش من طرفه",
+  "wer": 1.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.4001445770263672,
+  "rtf": 11.445862977916116,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

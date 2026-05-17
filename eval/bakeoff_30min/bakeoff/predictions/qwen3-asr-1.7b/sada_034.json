@@ -1,0 +1,18 @@
+{
+  "id": "sada_034",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.44,
+  "ref": "ايه اصبر علي شوي ابو مسامح",
+  "ref_normalized": "ايه اصبر علي شوي ابو مسامح",
+  "pred": "اصبر عليه شوية بوساطة.",
+  "pred_normalized": "اصبر عليه شويه بوساطه",
+  "wer": 0.8333333333333334,
+  "medical_term_recall": null,
+  "inference_seconds": 0.3692443370819092,
+  "rtf": 9.316324326558075,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

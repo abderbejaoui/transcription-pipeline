@@ -12,6 +12,14 @@ import re
 import urllib.request
 from typing import Any, Dict, List, Optional, Sequence
 
+from .llm_config import (
+    get_llm_headers,
+    get_llm_model,
+    get_llm_provider,
+    get_llm_url,
+    parse_chat_content,
+)
+
 
 DEFAULT_OLLAMA_URL = os.environ.get(
     "OLLAMA_URL", "http://100.68.87.28:11434/api/chat"
@@ -99,11 +107,11 @@ def _post_chat(url: str, model: str, system: str, user: str, timeout: float) -> 
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),
-        headers={"Content-Type": "application/json"},
+        headers=get_llm_headers(get_llm_provider()),
     )
     with urllib.request.urlopen(req, timeout=timeout) as resp:
         data = json.loads(resp.read().decode("utf-8"))
-    return data["message"]["content"]
+    return parse_chat_content(data, get_llm_provider())
 
 
 def _parse_choices(content: str) -> Dict[str, str]:
@@ -141,6 +149,9 @@ def rerank(
         return []
     user = _build_user_payload(transcript, items)
     try:
+        provider = get_llm_provider()
+        url = get_llm_url(provider)
+        model = get_llm_model(provider)
         content = _post_chat(url, model, _SYSTEM, user, timeout)
         parsed = _parse_choices(content)
     except Exception as exc:

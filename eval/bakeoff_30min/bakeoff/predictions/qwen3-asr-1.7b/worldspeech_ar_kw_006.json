@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_006",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 3.28,
+  "ref": "لنس الماده 44 من اللايهه الداهليه مجلس الامه",
+  "ref_normalized": "لنس الماده 44 من اللايهه الداهليه مجلس الامه",
+  "pred": "عملاً بمنصة عليه اللائحة الداخلية لمجلس الأمة.",
+  "pred_normalized": "عملا بمنصه عليه اللايحه الداخليه لمجلس الامه",
+  "wer": 0.875,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5453507900238037,
+  "rtf": 6.014477396937177,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

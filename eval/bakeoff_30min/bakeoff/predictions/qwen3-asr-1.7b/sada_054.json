@@ -1,0 +1,18 @@
+{
+  "id": "sada_054",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 5.825,
+  "ref": "الله يكفيني شرك واذاك انت وايش عندك اليوم بعد من جديد",
+  "ref_normalized": "الله يكفيني شرك واذاك انت وايش عندك اليوم بعد من جديد",
+  "pred": "الله يسفيني شرك وذاك أنتواش عندك اليوم بعد من جديد.",
+  "pred_normalized": "الله يسفيني شرك وذاك انتواش عندك اليوم بعد من جديد",
+  "wer": 0.36363636363636365,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7637691497802734,
+  "rtf": 7.626650018105311,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

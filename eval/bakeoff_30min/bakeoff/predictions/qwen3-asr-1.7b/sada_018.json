@@ -1,0 +1,18 @@
+{
+  "id": "sada_018",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 6.95,
+  "ref": "صحيح يخططون ويرسمون وشلون يقضون عليك الى الابد",
+  "ref_normalized": "صحيح يخططون ويرسمون وشلون يقضون عليك الي الابد",
+  "pred": "صحيح يخططون ويرسمون وشلون يقضون عليك إلى الأبد؟",
+  "pred_normalized": "صحيح يخططون ويرسمون وشلون يقضون عليك الي الابد",
+  "wer": 0.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6735773086547852,
+  "rtf": 10.318043542589024,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

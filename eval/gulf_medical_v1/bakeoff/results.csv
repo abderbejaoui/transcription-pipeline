@@ -1,0 +1,4 @@
+model,clip_id,category,language,duration_s,wer,medical_term_recall,inference_seconds,rtf
+whisper-large-v3-turbo,english_medical_001,english_medical,en,17.835,0.03636363636363636,,7.712448596954346,2.3124951532309805
+whisper-large-v3-turbo,english_medical_002,english_medical,en,10.752,0.0,,7.2931132316589355,1.47426752587993
+whisper-large-v3-turbo,english_medical_003,english_medical,en,31.915,0.05555555555555555,,14.435151100158691,2.2109224751827603

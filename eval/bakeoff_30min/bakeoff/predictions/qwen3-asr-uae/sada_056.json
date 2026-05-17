@@ -1,0 +1,18 @@
+{
+  "id": "sada_056",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.935,
+  "ref": "زين ويش هو ويش هو هالشيء اللي انت تقول موزينلي",
+  "ref_normalized": "زين ويش هو ويش هو هالشي اللي انت تقول موزينلي",
+  "pred": "زين وش وش هالشي اللي نتقول مزعج لي",
+  "pred_normalized": "زين وش وش هالشي اللي نتقول مزعج لي",
+  "wer": 0.7,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5683727264404297,
+  "rtf": 8.682682631354638,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

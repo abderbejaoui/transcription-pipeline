@@ -1,0 +1,18 @@
+{
+  "id": "sada_019",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 3.46,
+  "ref": "علشان يتنعمون بحلالك ومالك",
+  "ref_normalized": "علشان يتنعمون بحلالك ومالك",
+  "pred": "علشان يتنعمون بحلالك ومالك.",
+  "pred_normalized": "علشان يتنعمون بحلالك ومالك",
+  "wer": 0.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.48467350006103516,
+  "rtf": 7.138826446183422,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

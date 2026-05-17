@@ -1,0 +1,18 @@
+{
+  "id": "sada_029",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.41,
+  "ref": "بالقوة لا ودير بالك من كلام يفلت من لسانك مثل الكلام هذا",
+  "ref_normalized": "بالقوه لا ودير بالك من كلام يفلت من لسانك مثل الكلام هذا",
+  "pred": "الجوه له ودير بالك من كلام يفلت من إنسانك مثل الكلام هذا.",
+  "pred_normalized": "الجوه له ودير بالك من كلام يفلت من انسانك مثل الكلام هذا",
+  "wer": 0.25,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7860510349273682,
+  "rtf": 5.610322745020605,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

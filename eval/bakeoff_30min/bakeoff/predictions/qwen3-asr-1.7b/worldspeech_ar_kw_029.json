@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_029",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.4,
+  "ref": "بعد امل سرات جتعل مسل ما كالوا بعد االهوا ع املستهك",
+  "ref_normalized": "بعد امل سرات جتعل مسل ما كالوا بعد االهوا ع املستهك",
+  "pred": "بعض المؤثرات تجعل مثل ما قالوا بعض الأخوان غير المستحق.",
+  "pred_normalized": "بعض الموثرات تجعل مثل ما قالوا بعض الاخوان غير المستحق",
+  "wer": 0.9090909090909091,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6035721302032471,
+  "rtf": 7.28993235409717,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

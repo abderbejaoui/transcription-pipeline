@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_031",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 10.74,
+  "ref": "ان الاستجوابات اللي تسل الي مستوي يركي لتره السكه",
+  "ref_normalized": "ان الاستجوابات اللي تسل الي مستوي يركي لتره السكه",
+  "pred": "إن الاستجوابات اللي تصل إلى مستوى يرق للطرح الثقة.",
+  "pred_normalized": "ان الاستجوابات اللي تصل الي مستوي يرق للطرح الثقه",
+  "wer": 0.4444444444444444,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5870151519775391,
+  "rtf": 18.29595022176011,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

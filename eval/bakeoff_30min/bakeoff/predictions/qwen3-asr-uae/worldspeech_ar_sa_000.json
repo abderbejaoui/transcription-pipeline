@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_sa_000",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 6.14,
+  "ref": "ادعج العينين يعني سواد في بياض اهدب",
+  "ref_normalized": "ادعج العينين يعني سواد في بياض اهدب",
+  "pred": "ادعبل العينين يعني سواد في بياض اهدب الاشفار اهدب",
+  "pred_normalized": "ادعبل العينين يعني سواد في بياض اهدب الاشفار اهدب",
+  "wer": 0.42857142857142855,
+  "medical_term_recall": null,
+  "inference_seconds": 0.8043241500854492,
+  "rtf": 7.63373821281843,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

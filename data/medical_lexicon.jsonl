@@ -229,3 +229,18 @@
 {"term": "Biobsy", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
 {"term": "biobci", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
 {"term": "some effiralgon", "type": "drug", "aliases": ["Sami Firal gone"], "priority": 1.0}
+{"term": "collarbone", "type": "anatomy", "aliases": ["collarbones"], "priority": 1.0}
+{"term": "clavicle", "type": "anatomy", "aliases": ["clavicle bone"], "priority": 1.0}
+{"term": "stents", "type": "device", "aliases": ["stent", "heart stents"], "priority": 1.0}
+{"term": "heart attack", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "spinal column", "type": "anatomy", "aliases": ["spine"], "priority": 1.0}
+{"term": "extravasation", "type": "diagnosis", "aliases": ["extravization"], "priority": 1.0}
+{"term": "dermatologist", "type": "specialty", "aliases": [], "priority": 1.0}
+{"term": "kidney stones", "type": "diagnosis", "aliases": [], "priority": 1.0}
+{"term": "thyroid function test", "type": "test", "aliases": ["TFT"], "priority": 1.0}
+{"term": "constipation", "type": "symptom", "aliases": [], "priority": 1.0}
+{"term": "cold intolerance", "type": "symptom", "aliases": [], "priority": 1.0}
+{"term": "myofascial pain syndrome", "type": "diagnosis", "aliases": ["myofacial pain"], "priority": 1.0}
+{"term": "nervous system", "type": "anatomy", "aliases": [], "priority": 1.0}
+{"term": "respiration", "type": "anatomy", "aliases": [], "priority": 1.0}
+{"term": "Efferalgan", "type": "drug", "aliases": ["Effiralgon", "Effiralgan", "Eferalgon"], "priority": 1.0}

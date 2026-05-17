@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_sa_037",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.12,
+  "ref": "انا خير منو خلقتني من نار وخلقتو من طين",
+  "ref_normalized": "انا خير منو خلقتني من نار وخلقتو من طين",
+  "pred": "أنا خير منه خلقتني من نار وخلقته من طين",
+  "pred_normalized": "انا خير منه خلقتني من نار وخلقته من طين",
+  "wer": 0.2222222222222222,
+  "medical_term_recall": null,
+  "inference_seconds": 0.666337251663208,
+  "rtf": 7.683796736892989,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}
