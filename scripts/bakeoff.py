@@ -397,12 +397,21 @@ class QwenAsrBackend(_Qwen3AsrBase):
 
 
 class VibeVoiceBackend(Backend):
-    """Loads VibeVoice via transformers. The model auto-detects language and
-    natively handles code-switching (matches our use case)."""
+    """Microsoft VibeVoice-ASR (9B params, custom next-token-diffusion arch).
+
+    Uses the transformers-native release `microsoft/VibeVoice-ASR-HF` (March
+    2026). The original `microsoft/VibeVoice-ASR` repo requires the custom
+    `vibevoice` Python package and won't load via stock `AutoModel*`.
+
+    The model is multilingual (51 langs incl. Arabic) and auto-detects
+    language, so we don't pass a language hint. It outputs structured text
+    that may contain `<|speaker|>`, `<|timestamp|>` etc. — we strip those
+    in post-processing so the WER is over plain text only.
+    """
 
     name = "vibevoice-asr"
 
-    def __init__(self, repo_id: str = "microsoft/VibeVoice-ASR"):
+    def __init__(self, repo_id: str = "microsoft/VibeVoice-ASR-HF"):
         self.repo_id = repo_id
         self._model = None
         self._processor = None
@@ -411,7 +420,7 @@ class VibeVoiceBackend(Backend):
     def prepare(self) -> None:
         try:
             import torch
-            from transformers import AutoModelForSpeechSeq2Seq, AutoProcessor
+            from transformers import AutoModel, AutoProcessor
         except ImportError as exc:
             raise RuntimeError(f"transformers/torch missing: {exc}")
 
@@ -423,12 +432,25 @@ class VibeVoiceBackend(Backend):
             self._device, dtype = "cpu", torch.float32
 
         print(f"[vibevoice] loading {self.repo_id} on {self._device} ({dtype})")
-        self._processor = AutoProcessor.from_pretrained(self.repo_id, trust_remote_code=True)
-        self._model = AutoModelForSpeechSeq2Seq.from_pretrained(
+        self._processor = AutoProcessor.from_pretrained(
+            self.repo_id, trust_remote_code=True,
+        )
+        # VibeVoice is a custom arch, not Seq2Seq. Use generic AutoModel.
+        self._model = AutoModel.from_pretrained(
             self.repo_id,
             torch_dtype=dtype,
             trust_remote_code=True,
+            low_cpu_mem_usage=True,
         ).to(self._device).eval()
+
+    @staticmethod
+    def _strip_structured_tokens(text: str) -> str:
+        # VibeVoice can emit <|speaker_0|>, <|t=12.3|>, etc. Drop them so
+        # the WER score is over content text only.
+        import re as _re
+        text = _re.sub(r"<\|[^|>]+\|>", " ", text)
+        text = _re.sub(r"\s+", " ", text).strip()
+        return text
 
     def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
         assert self._model is not None and self._processor is not None
@@ -448,12 +470,25 @@ class VibeVoiceBackend(Backend):
                                   extra={"error": f"resample failed: {exc!r}"})
 
         t0 = time.time()
-        inputs = self._processor(audio, sampling_rate=sr, return_tensors="pt")
-        inputs = {k: v.to(self._device) for k, v in inputs.items()}
-        with torch.inference_mode():
-            output_ids = self._model.generate(**inputs, max_new_tokens=400)
-        text = self._processor.batch_decode(output_ids, skip_special_tokens=True)[0]
-        return Prediction(text=text.strip(), inference_seconds=time.time() - t0)
+        try:
+            inputs = self._processor(
+                audio, sampling_rate=sr, return_tensors="pt",
+            )
+            inputs = {k: v.to(self._device) for k, v in inputs.items()}
+            with torch.inference_mode():
+                output_ids = self._model.generate(**inputs, max_new_tokens=1024)
+            text = self._processor.batch_decode(
+                output_ids, skip_special_tokens=True,
+            )[0]
+            return Prediction(
+                text=self._strip_structured_tokens(text),
+                inference_seconds=time.time() - t0,
+            )
+        except Exception as exc:
+            return Prediction(
+                text="", inference_seconds=time.time() - t0,
+                extra={"error": repr(exc)},
+            )
 
 
 # ---------------------------------------------------------------------------
