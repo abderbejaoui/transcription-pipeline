@@ -66,14 +66,6 @@ DATASETS: List[DatasetJob] = [
         notes="Optional neighbor-Gulf augmentation; formal/parliamentary domain.",
     ),
     DatasetJob(
-        slug="uae_bilingual",
-        script="download_uae_bilingual_samples.py",
-        dialect="emirati_uae",
-        hours=120.0,
-        source="hf:vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k",
-        notes="May require HF login and accepted terms. Hours are estimated.",
-    ),
-    DatasetJob(
         slug="nexdata_uae_sample",
         script="download_nexdata_uae_sample.py",
         dialect="emirati_uae",

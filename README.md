@@ -219,7 +219,9 @@ and rejects timestamp spans outside the same 1-30 second ASR limit.
 
 The preprocessor outputs 16 kHz mono PCM16 WAV clips with normalized
 Arabic-English transcripts and grouped train/validation/test manifests for the
-full DGX pipeline.
+full DGX pipeline. The DGX script also writes
+`data/dgx_full/download_hours_summary.json` immediately after downloading so
+contributors can verify total hours per dataset before preprocessing.
 
 ## Known limitations
 
