@@ -28,6 +28,7 @@ data/descriptions.jsonl
 data/sessions/
 data/dataset_samples/
 data/preprocessed_audios/
+data/dgx_full/
 
 # Misc
 *.log

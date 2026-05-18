@@ -43,7 +43,8 @@ def main() -> int:
 
     wav_files = [f for f in files if f.lower().endswith(".wav")]
     rows = []
-    for rel in wav_files[: args.limit]:
+    selected_wav_files = wav_files if args.limit <= 0 else wav_files[: args.limit]
+    for rel in selected_wav_files:
         sample_id = f"nexdata_uae_sample_{len(rows):05d}"
         stem = Path(rel).stem
         try:
@@ -91,7 +92,8 @@ def main() -> int:
             "segment_count": len(segments),
             "original_path": rel,
         })
-        print(f"[nexdata_uae_sample] saved {len(rows)}/{args.limit}: {dest_rel}")
+        target = "all" if args.limit <= 0 else str(args.limit)
+        print(f"[nexdata_uae_sample] saved {len(rows)}/{target}: {dest_rel}")
 
     write_manifest(out_dir, rows)
     write_readme(
