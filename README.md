@@ -31,6 +31,19 @@ source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
+For dataset download/preprocessing workflows, also configure external tools:
+
+```bash
+# Required for audio conversion and clipping
+ffmpeg -version | head -1
+
+# Required for SADA Kaggle downloads
+.venv/bin/kaggle auth login
+
+# Optional for gated Hugging Face datasets. Current CLI is `hf`.
+.venv/bin/hf auth login
+```
+
 ## Configuration
 
 Environment variables (all optional, sensible defaults):
@@ -149,10 +162,41 @@ data/
 
 scripts/
   seed_voice_db.py              one-time: precompute descriptions + (optional) TTS voice fingerprints
+  download_all_target_samples.py        10-sample Saudi/UAE dataset preview runner
+  preprocess_code_switch_asr.py         ASR audio/text cleaning pipeline
+  prepare_dgx_full_asr_dataset.py       full DGX download/preprocess/split pipeline
 
 eval/                           regression tests for the older text-only corrector
 legacy/                         older sound-pipeline experiments, kept for reference
 ```
+
+## Dataset Pipeline
+
+The Saudi/UAE ASR data workflow is documented in [DATASETS.md](DATASETS.md).
+
+Quick preview run:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py --limit 10
+.venv/bin/python scripts/preprocess_code_switch_asr.py \
+  --manifest data/dataset_samples/sada2022/manifest.jsonl \
+  --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
+  --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
+  --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
+  --out data/preprocessed_audios
+```
+
+Full DGX run:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download
+```
+
+The preprocessor outputs 16 kHz mono PCM16 WAV clips with normalized
+Arabic-English transcripts and grouped train/validation/test manifests for the
+full DGX pipeline.
 
 ## Known limitations
 
