@@ -75,14 +75,6 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
   scarce. Use carefully because the domain is formal/parliamentary speech and
   the dialect is not UAE.
 
-### UAE Arabic-English Bilingual Dataset 40k
-- **Hours:** ~120 estimated for train split
-- **Dialect:** UAE / Emirati Arabic with English code-switching
-- **License:** Free/gated on HuggingFace; accept terms before use
-- **Where:** HuggingFace [`vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k`](https://huggingface.co/datasets/vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k)
-- **Why it matters:** The most directly useful free UAE code-switching
-  source for Emirati clinic-style speech.
-
 ### Nexdata UAE Arabic Spontaneous Speech sample
 - **Hours:** <1 in the free sample
 - **Dialect:** UAE / Emirati Arabic
@@ -166,7 +158,6 @@ python scripts/download_worldspeech_saudi_samples.py
 python scripts/download_worldspeech_kuwait_samples.py
 python scripts/download_worldspeech_bahrain_samples.py
 python scripts/download_saudilang_scc_samples.py
-python scripts/download_uae_bilingual_samples.py
 python scripts/download_nexdata_uae_sample.py
 python scripts/download_mixat_emirati_samples.py
 
@@ -217,7 +208,7 @@ All scripts accept the same basic options:
 ```bash
 python scripts/download_sada2022_samples.py --limit 10
 python scripts/download_worldspeech_saudi_samples.py --limit 50 --out data/my_check/worldspeech_saudi
-python scripts/download_uae_bilingual_samples.py --split validation
+python scripts/download_mixat_emirati_samples.py --limit 10 --split train
 ```
 
 Each output folder contains:
@@ -236,14 +227,6 @@ Metadata layout after the sample run:
 | `worldspeech_kuwait` / `worldspeech_bahrain` | same schema as `worldspeech_saudi`; optional neighbor-Gulf augmentation |
 | `nexdata_uae_sample` | `metadata/*.txt`, `metadata/*.metadata`, and `segments/*.segments.jsonl` |
 | `mixat_emirati` | manifest row `text` uses HF `transcript`; row `metadata` preserves `transliteration`, `translation`, `language`, and `duration_ms` |
-
-Current blocked source:
-
-- `uae_bilingual` is not downloadable with the current repo id
-  `vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k`. Hugging Face login
-  was successful, but the Hub still returns "doesn't exist or cannot be
-  accessed". Update `scripts/download_uae_bilingual_samples.py` once the exact
-  dataset URL is verified.
 
 Saudi or Emirati datasets that are listed only as papers or catalogue
 pages, such as Ramsa and Traditional Emirati Arabic, are not scripted here
@@ -378,6 +361,7 @@ archive.
 Outputs:
 
 - `data/dgx_full/raw_datasets/<dataset>/`
+- `data/dgx_full/download_hours_summary.json`
 - `data/dgx_full/preprocessed_audios/manifest.jsonl`
 - `data/dgx_full/preprocessed_audios/rejected.jsonl`
 - `data/dgx_full/preprocessed_audios/vocab.txt`
@@ -385,6 +369,11 @@ Outputs:
 - `data/dgx_full/preprocessed_audios/splits/validation.jsonl`
 - `data/dgx_full/preprocessed_audios/splits/test.jsonl`
 - `data/dgx_full/preprocessed_audios/splits/split_summary.json`
+
+Immediately after the download phase, the script prints and writes total rows,
+audio rows, text rows, minutes, and hours for each downloaded dataset. This makes
+it easy to confirm the DGX run pulled the expected amount of audio before the
+preprocessing stage starts.
 
 Default split ratio is `90/5/5`. You can override it:
 
@@ -429,12 +418,24 @@ To include Kuwait and Bahrain as optional neighbor-Gulf augmentation:
   --include-neighbor-gulf
 ```
 
-You can combine both optional flags:
+Saudilang SCC is **not** downloaded as audio by default in the DGX run because
+the audio is referenced through YouTube links, not bundled in the dataset. To
+include it as audio, explicitly enable cutting the YouTube segments:
 
 ```bash
 .venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
   --work-dir data/dgx_full \
   --confirm-full-download \
+  --include-saudilang-audio
+```
+
+You can combine optional flags:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-saudilang-audio \
   --include-neighbor-gulf \
   --include-mansour
 ```
@@ -532,7 +533,7 @@ The plan, sequenced:
 2. Download Saudilang SCC from Kaggle (Saudi AR↔EN code-switching, free).
 3. Download WorldSpeech `ar_sa` (Saudi split, free/gated on HuggingFace).
 4. Download MixAT (`sqrk/mixat-tri`) + Nexdata UAE sample (Emirati/UAE).
-5. Add UAE bilingual, Ramsa, or Traditional Emirati Arabic only after a direct machine-download
+5. Add Ramsa or Traditional Emirati Arabic only after a direct machine-download
   URL is verified.
 6. Generate Layer A TTS-augmented Saudi/Emirati medical readings (~50 hrs).
 7. **First LoRA fine-tune** of `whisper-large-v3-turbo` on the combined
@@ -621,10 +622,9 @@ that none of the training data has seen.
 3. **[WorldSpeech](https://huggingface.co/datasets/disco-eth/WorldSpeech)** — use config `ar_sa` only.
 4. **[MixAT / PolyWER MixAT-Tri](https://huggingface.co/datasets/sqrk/mixat-tri)** — Emirati-English code-switching, 15 hrs.
 5. **[Nexdata UAE Arabic sample](https://huggingface.co/datasets/Nexdata/UAE_Arabic_Spontaneous_Speech_Data)** — tiny but authentic UAE sample.
-6. **[UAE Arabic-English Bilingual Dataset 40k](https://huggingface.co/datasets/vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k)** — currently blocked until exact repo/access is verified.
-7. **[SADA paper](https://www.semanticscholar.org/paper/SADA%3A-Saudi-Audio-Dataset-for-Arabic-Alharbi-Alowisheq/de2508f2d48ea42653fe11011f24f9f227d38e71)** — read this before fine-tuning.
-8. **[Whisper fine-tune tutorial](https://huggingface.co/blog/fine-tune-whisper)** — official HuggingFace guide.
-9. **[PEFT / LoRA library](https://github.com/huggingface/peft)** — the actual fine-tuning machinery.
+6. **[SADA paper](https://www.semanticscholar.org/paper/SADA%3A-Saudi-Audio-Dataset-for-Arabic-Alharbi-Alowisheq/de2508f2d48ea42653fe11011f24f9f227d38e71)** — read this before fine-tuning.
+7. **[Whisper fine-tune tutorial](https://huggingface.co/blog/fine-tune-whisper)** — official HuggingFace guide.
+8. **[PEFT / LoRA library](https://github.com/huggingface/peft)** — the actual fine-tuning machinery.
 
 ---
 

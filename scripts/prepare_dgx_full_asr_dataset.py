@@ -22,6 +22,10 @@ AVAILABLE_AUDIO_DATASETS = (
     "mixat_emirati",
 )
 
+OPTIONAL_SAUDILANG_AUDIO_DATASETS = (
+    "saudilang_scc",
+)
+
 NEIGHBOR_GULF_AUDIO_DATASETS = (
     "worldspeech_kuwait",
     "worldspeech_bahrain",
@@ -48,10 +52,58 @@ def _write_jsonl(path: Path, rows: Iterable[Dict]) -> None:
             handle.write(json.dumps(row, ensure_ascii=False) + "\n")
 
 
+def _manifest_dataset_name(manifest: Path) -> str:
+    return manifest.parent.name
+
+
+def summarize_downloaded_manifests(manifests: Sequence[Path], out_path: Path) -> Dict:
+    datasets = []
+    total_seconds = 0.0
+    total_rows = 0
+    for manifest in manifests:
+        rows = _read_jsonl(manifest)
+        seconds = sum(float(row.get("duration_s") or 0.0) for row in rows)
+        audio_rows = sum(1 for row in rows if row.get("audio_path"))
+        text_rows = sum(1 for row in rows if str(row.get("text") or "").strip())
+        item = {
+            "dataset": _manifest_dataset_name(manifest),
+            "manifest": str(manifest),
+            "rows": len(rows),
+            "audio_rows": audio_rows,
+            "text_rows": text_rows,
+            "seconds": round(seconds, 3),
+            "minutes": round(seconds / 60.0, 3),
+            "hours": round(seconds / 3600.0, 6),
+        }
+        datasets.append(item)
+        total_seconds += seconds
+        total_rows += len(rows)
+    summary = {
+        "total_rows": total_rows,
+        "total_seconds": round(total_seconds, 3),
+        "total_minutes": round(total_seconds / 60.0, 3),
+        "total_hours": round(total_seconds / 3600.0, 6),
+        "datasets": datasets,
+    }
+    out_path.parent.mkdir(parents=True, exist_ok=True)
+    out_path.write_text(json.dumps(summary, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+    print("\n=== Downloaded Dataset Hours ===")
+    for item in datasets:
+        print(
+            f"{item['dataset']}: rows={item['rows']} audio={item['audio_rows']} "
+            f"text={item['text_rows']} hours={item['hours']:.4f}"
+        )
+    print(f"TOTAL: rows={total_rows} hours={summary['total_hours']:.4f}")
+    print(f"download summary: {out_path}")
+    return summary
+
+
 def _dataset_dirs(work_dir: Path) -> Dict[str, Path]:
     raw_dir = work_dir / "raw_datasets"
     return {
         "sada2022": raw_dir / "sada2022",
+        "saudilang_scc": raw_dir / "saudilang_scc",
         "worldspeech_saudi": raw_dir / "worldspeech_saudi",
         "worldspeech_kuwait": raw_dir / "worldspeech_kuwait",
         "worldspeech_bahrain": raw_dir / "worldspeech_bahrain",
@@ -65,6 +117,7 @@ def download_available_audio_datasets(
     *,
     include_mansour: bool = False,
     include_neighbor_gulf: bool = False,
+    include_saudilang_audio: bool = False,
 ) -> List[Path]:
     dirs = _dataset_dirs(work_dir)
     commands = [
@@ -95,6 +148,14 @@ def download_available_audio_datasets(
             "--out", dirs["mixat_emirati"],
         ],
     ]
+    if include_saudilang_audio:
+        commands.append([
+            sys.executable,
+            PROJECT_ROOT / "scripts" / "download_saudilang_scc_samples.py",
+            "--limit", "0",
+            "--download-audio",
+            "--out", dirs["saudilang_scc"],
+        ])
     if include_neighbor_gulf:
         commands.extend([
             [
@@ -120,6 +181,8 @@ def download_available_audio_datasets(
     for cmd in commands:
         _run(cmd)
     dataset_names = list(AVAILABLE_AUDIO_DATASETS)
+    if include_saudilang_audio:
+        dataset_names.extend(OPTIONAL_SAUDILANG_AUDIO_DATASETS)
     if include_neighbor_gulf:
         dataset_names.extend(NEIGHBOR_GULF_AUDIO_DATASETS)
     if include_mansour:
@@ -279,6 +342,8 @@ def main() -> int:
                         help="Also prepare Mansour Emirati cartoon audio from PDF/YouTube transcripts. Requires permission.")
     parser.add_argument("--include-neighbor-gulf", action="store_true",
                         help="Also include WorldSpeech Kuwait and Bahrain as auxiliary neighbor-Gulf data.")
+    parser.add_argument("--include-saudilang-audio", action="store_true",
+                        help="Also download/cut Saudilang YouTube audio. Default excludes it because audio is not bundled.")
     args = parser.parse_args()
 
     work_dir = args.work_dir.resolve()
@@ -301,7 +366,10 @@ def main() -> int:
             work_dir,
             include_mansour=args.include_mansour,
             include_neighbor_gulf=args.include_neighbor_gulf,
+            include_saudilang_audio=args.include_saudilang_audio,
         )
+
+    summarize_downloaded_manifests(manifests, work_dir / "download_hours_summary.json")
 
     if not args.skip_preprocess:
         if preprocessed_dir.exists():
