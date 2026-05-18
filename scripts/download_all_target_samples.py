@@ -50,6 +50,22 @@ DATASETS: List[DatasetJob] = [
         notes="May require HF login and accepted terms.",
     ),
     DatasetJob(
+        slug="worldspeech_kuwait",
+        script="download_worldspeech_kuwait_samples.py",
+        dialect="neighbor_gulf_kuwaiti",
+        hours=175.5,
+        source="hf:disco-eth/WorldSpeech config ar_kw",
+        notes="Optional neighbor-Gulf augmentation; formal/parliamentary domain.",
+    ),
+    DatasetJob(
+        slug="worldspeech_bahrain",
+        script="download_worldspeech_bahrain_samples.py",
+        dialect="neighbor_gulf_bahraini",
+        hours=272.5,
+        source="hf:disco-eth/WorldSpeech config ar_bh",
+        notes="Optional neighbor-Gulf augmentation; formal/parliamentary domain.",
+    ),
+    DatasetJob(
         slug="uae_bilingual",
         script="download_uae_bilingual_samples.py",
         dialect="emirati_uae",
@@ -156,10 +172,15 @@ def main() -> int:
                         help="Allow Kaggle scripts to download full archives before sampling. Can be very large.")
     parser.add_argument("--download-saudilang-audio", action="store_true",
                         help="Use yt-dlp to download/cut Saudilang YouTube audio. Default writes metadata only.")
+    parser.add_argument("--include-neighbor-gulf", action="store_true",
+                        help="Include optional WorldSpeech Kuwait/Bahrain preview sources in all-target runs.")
     args = parser.parse_args()
 
     args.out_root.mkdir(parents=True, exist_ok=True)
+    neighbor_slugs = {"worldspeech_kuwait", "worldspeech_bahrain"}
     selected = [job for job in DATASETS if not args.only or job.slug in set(args.only)]
+    if not args.only and not args.include_neighbor_gulf:
+        selected = [job for job in selected if job.slug not in neighbor_slugs]
     summaries: List[Dict] = []
 
     for job in selected:

@@ -66,6 +66,15 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
 - **Why it matters:** Small but directly Saudi, with clean transcripts and
   useful metadata.
 
+### WorldSpeech — Kuwait and Bahrain Arabic splits
+- **Hours:** Kuwait `ar_kw` ~175.5; Bahrain `ar_bh` ~272.5
+- **Dialect:** Neighbor Gulf Arabic, close to Emirati but not a replacement
+- **License:** CC BY-NC 4.0 / source-specific parliamentary/public-record terms
+- **Where:** HuggingFace [`disco-eth/WorldSpeech`](https://huggingface.co/datasets/disco-eth/WorldSpeech), configs `ar_kw`, `ar_bh`
+- **Why it matters:** Useful optional acoustic augmentation when Emirati data is
+  scarce. Use carefully because the domain is formal/parliamentary speech and
+  the dialect is not UAE.
+
 ### UAE Arabic-English Bilingual Dataset 40k
 - **Hours:** ~120 estimated for train split
 - **Dialect:** UAE / Emirati Arabic with English code-switching
@@ -104,6 +113,16 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
 - **Where:** [aclanthology.org/2025.icnlsp-1.5](https://aclanthology.org/2025.icnlsp-1.5/)
 - **Why it matters:** Heritage and literary register; complements
   modern conversational data.
+
+### Mansour Emirati cartoon transcripts
+- **Hours:** depends on selected episodes
+- **Dialect:** Emirati Arabic
+- **License/rights:** use only with explicit permission for model training
+- **Where:** [Gulf Arabic Resources — Mansour](https://gulfarabicresources.com/mansour/)
+- **Why it matters:** Useful auxiliary Emirati dialect exposure when the goal is
+  dialect adaptation rather than medical vocabulary. It is scripted/cartoon
+  speech, so keep it separate and audit it before assigning a high training
+  weight.
 
 ---
 
@@ -144,6 +163,8 @@ Each script defaults to **10 samples** and writes into its own folder under
 # Hugging Face sources. Some are gated: run `.venv/bin/hf auth login` and
 # accept the dataset terms on Hugging Face before downloading.
 python scripts/download_worldspeech_saudi_samples.py
+python scripts/download_worldspeech_kuwait_samples.py
+python scripts/download_worldspeech_bahrain_samples.py
 python scripts/download_saudilang_scc_samples.py
 python scripts/download_uae_bilingual_samples.py
 python scripts/download_nexdata_uae_sample.py
@@ -157,6 +178,14 @@ Or run all target datasets and produce a combined output:
 
 ```bash
 .venv/bin/python scripts/download_all_target_samples.py --limit 10
+```
+
+Add optional Kuwait/Bahrain neighbor-Gulf previews:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py \
+  --limit 10 \
+  --include-neighbor-gulf
 ```
 
 The global runner writes:
@@ -204,6 +233,7 @@ Metadata layout after the sample run:
 | `sada2022` | `raw/train.csv`, `raw/valid.csv`, `raw/test.csv`, and per-sample `segments/*.segments.jsonl` |
 | `saudilang_scc` | `raw/scc_testset.csv`; manifest rows contain transcript + YouTube segment timestamps |
 | `worldspeech_saudi` | manifest row `metadata` contains source URL, segment times, CER/SNR, and transcripts; raw README copied to `raw/README.md` |
+| `worldspeech_kuwait` / `worldspeech_bahrain` | same schema as `worldspeech_saudi`; optional neighbor-Gulf augmentation |
 | `nexdata_uae_sample` | `metadata/*.txt`, `metadata/*.metadata`, and `segments/*.segments.jsonl` |
 | `mixat_emirati` | manifest row `text` uses HF `transcript`; row `metadata` preserves `transliteration`, `translation`, `language`, and `duration_ms` |
 
@@ -220,6 +250,26 @@ pages, such as Ramsa and Traditional Emirati Arabic, are not scripted here
 because this file does not currently include a direct public machine-download
 URL for them. Add the actual repository URL once verified and a matching
 wrapper can be added.
+
+Mansour is handled separately because it is not a packaged ASR dataset. It has
+PDF transcripts with timestamps and YouTube links. With permission, prepare it
+like this:
+
+```bash
+# Metadata/chunk preview only: parses PDFs and writes timestamped rows.
+.venv/bin/python scripts/prepare_mansour_emirati.py \
+  --limit-episodes 1 \
+  --out data/dataset_samples/mansour_emirati
+
+# With audio cutting from linked YouTube videos.
+.venv/bin/python scripts/prepare_mansour_emirati.py \
+  --limit-episodes 1 \
+  --download-audio \
+  --out data/dataset_samples/mansour_emirati
+```
+
+The script rejects segments outside `1-30s`; long timestamp spans need further
+alignment before they should be used for ASR training.
 
 ---
 
@@ -357,6 +407,37 @@ official HF splits are `train` and `test`; the DGX script downloads both by
 calling `download_mixat_emirati_samples.py --limit 0 --split all`, then uses
 grouped duration balancing with the rest of the corpus for one unified set of
 manifests.
+
+To include Mansour in the DGX run after confirming permission:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-mansour
+```
+
+Mansour audio is prepared from PDF timestamps and linked YouTube videos, then
+fed into the same preprocessing/audit/split stage as the packaged datasets.
+
+To include Kuwait and Bahrain as optional neighbor-Gulf augmentation:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-neighbor-gulf
+```
+
+You can combine both optional flags:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-neighbor-gulf \
+  --include-mansour
+```
 
 ---
 
@@ -552,8 +633,9 @@ that none of the training data has seen.
 **For Saudi/Emirati acoustic adaptation:** SADA is the Saudi backbone;
 WorldSpeech `ar_sa` and Saudilang add Saudi variety/code-switching;
 MixAT supplies the strongest currently available Emirati-English code-switch
-signal, with Nexdata as a tiny spontaneous UAE sample. Non-target Arabic corpora
-are intentionally excluded.
+signal, with Nexdata as a tiny spontaneous UAE sample. WorldSpeech Kuwait and
+Bahrain can be used as neighbor-Gulf augmentation, but should be weighted below
+true UAE/Emirati sources. Non-target Arabic corpora are intentionally excluded.
 
 **For medical vocabulary:** $1–2k of TTS augmentation + pilot data
 collection over 3–6 months bridges the gap.

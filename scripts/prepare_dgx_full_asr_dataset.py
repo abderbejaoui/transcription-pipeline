@@ -22,6 +22,11 @@ AVAILABLE_AUDIO_DATASETS = (
     "mixat_emirati",
 )
 
+NEIGHBOR_GULF_AUDIO_DATASETS = (
+    "worldspeech_kuwait",
+    "worldspeech_bahrain",
+)
+
 
 def _run(cmd: Sequence[str]) -> None:
     print("$ " + " ".join(str(c) for c in cmd), flush=True)
@@ -48,12 +53,19 @@ def _dataset_dirs(work_dir: Path) -> Dict[str, Path]:
     return {
         "sada2022": raw_dir / "sada2022",
         "worldspeech_saudi": raw_dir / "worldspeech_saudi",
+        "worldspeech_kuwait": raw_dir / "worldspeech_kuwait",
+        "worldspeech_bahrain": raw_dir / "worldspeech_bahrain",
         "nexdata_uae_sample": raw_dir / "nexdata_uae_sample",
         "mixat_emirati": raw_dir / "mixat_emirati",
+        "mansour_emirati": raw_dir / "mansour_emirati",
     }
 
-
-def download_available_audio_datasets(work_dir: Path) -> List[Path]:
+def download_available_audio_datasets(
+    work_dir: Path,
+    *,
+    include_mansour: bool = False,
+    include_neighbor_gulf: bool = False,
+) -> List[Path]:
     dirs = _dataset_dirs(work_dir)
     commands = [
         [
@@ -83,9 +95,36 @@ def download_available_audio_datasets(work_dir: Path) -> List[Path]:
             "--out", dirs["mixat_emirati"],
         ],
     ]
+    if include_neighbor_gulf:
+        commands.extend([
+            [
+                sys.executable,
+                PROJECT_ROOT / "scripts" / "download_worldspeech_kuwait_samples.py",
+                "--limit", "0",
+                "--out", dirs["worldspeech_kuwait"],
+            ],
+            [
+                sys.executable,
+                PROJECT_ROOT / "scripts" / "download_worldspeech_bahrain_samples.py",
+                "--limit", "0",
+                "--out", dirs["worldspeech_bahrain"],
+            ],
+        ])
+    if include_mansour:
+        commands.append([
+            sys.executable,
+            PROJECT_ROOT / "scripts" / "prepare_mansour_emirati.py",
+            "--out", dirs["mansour_emirati"],
+            "--download-audio",
+        ])
     for cmd in commands:
         _run(cmd)
-    manifests = [dirs[name] / "manifest.jsonl" for name in AVAILABLE_AUDIO_DATASETS]
+    dataset_names = list(AVAILABLE_AUDIO_DATASETS)
+    if include_neighbor_gulf:
+        dataset_names.extend(NEIGHBOR_GULF_AUDIO_DATASETS)
+    if include_mansour:
+        dataset_names.append("mansour_emirati")
+    manifests = [dirs[name] / "manifest.jsonl" for name in dataset_names]
     missing = [str(path) for path in manifests if not path.exists()]
     if missing:
         raise RuntimeError("missing downloaded manifests: " + ", ".join(missing))
@@ -236,6 +275,10 @@ def main() -> int:
     parser.add_argument("--skip-preprocess", action="store_true")
     parser.add_argument("--confirm-full-download", action="store_true",
                         help="Required unless --skip-download is used. Full SADA is hundreds of GB.")
+    parser.add_argument("--include-mansour", action="store_true",
+                        help="Also prepare Mansour Emirati cartoon audio from PDF/YouTube transcripts. Requires permission.")
+    parser.add_argument("--include-neighbor-gulf", action="store_true",
+                        help="Also include WorldSpeech Kuwait and Bahrain as auxiliary neighbor-Gulf data.")
     args = parser.parse_args()
 
     work_dir = args.work_dir.resolve()
@@ -254,7 +297,11 @@ def main() -> int:
         dirs = _dataset_dirs(work_dir)
         manifests = [dirs[name] / "manifest.jsonl" for name in AVAILABLE_AUDIO_DATASETS]
     else:
-        manifests = download_available_audio_datasets(work_dir)
+        manifests = download_available_audio_datasets(
+            work_dir,
+            include_mansour=args.include_mansour,
+            include_neighbor_gulf=args.include_neighbor_gulf,
+        )
 
     if not args.skip_preprocess:
         if preprocessed_dir.exists():
