@@ -173,6 +173,7 @@ legacy/                         older sound-pipeline experiments, kept for refer
 ## Dataset Pipeline
 
 The Saudi/UAE ASR data workflow is documented in [DATASETS.md](DATASETS.md).
+For GPU/DGX contributors, see [DGX_DATA_PIPELINE.md](DGX_DATA_PIPELINE.md).
 
 Quick preview run:
 
