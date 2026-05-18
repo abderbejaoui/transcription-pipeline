@@ -19,6 +19,7 @@ AVAILABLE_AUDIO_DATASETS = (
     "sada2022",
     "worldspeech_saudi",
     "nexdata_uae_sample",
+    "mixat_emirati",
 )
 
 
@@ -48,6 +49,7 @@ def _dataset_dirs(work_dir: Path) -> Dict[str, Path]:
         "sada2022": raw_dir / "sada2022",
         "worldspeech_saudi": raw_dir / "worldspeech_saudi",
         "nexdata_uae_sample": raw_dir / "nexdata_uae_sample",
+        "mixat_emirati": raw_dir / "mixat_emirati",
     }
 
 
@@ -72,6 +74,13 @@ def download_available_audio_datasets(work_dir: Path) -> List[Path]:
             PROJECT_ROOT / "scripts" / "download_nexdata_uae_sample.py",
             "--limit", "0",
             "--out", dirs["nexdata_uae_sample"],
+        ],
+        [
+            sys.executable,
+            PROJECT_ROOT / "scripts" / "download_mixat_emirati_samples.py",
+            "--limit", "0",
+            "--split", "all",
+            "--out", dirs["mixat_emirati"],
         ],
     ]
     for cmd in commands:

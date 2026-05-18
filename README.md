@@ -183,6 +183,7 @@ Quick preview run:
   --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
   --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
   --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
+  --manifest data/dataset_samples/mixat_emirati/manifest.jsonl \
   --out data/preprocessed_audios
 ```
 

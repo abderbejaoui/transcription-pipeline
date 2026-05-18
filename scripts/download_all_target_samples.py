@@ -65,6 +65,14 @@ DATASETS: List[DatasetJob] = [
         source="hf:Nexdata/UAE_Arabic_Spontaneous_Speech_Data",
         notes="Free sample is under 1 hour; counted as 1.0 in percentage upper-bound math.",
     ),
+    DatasetJob(
+        slug="mixat_emirati",
+        script="download_mixat_emirati_samples.py",
+        dialect="emirati_uae_code_switch",
+        hours=15.0,
+        source="hf:sqrk/mixat-tri",
+        notes="Emirati-English code-switched speech. Use `transcript` for ASR training; preserve transliteration/translation as metadata.",
+    ),
 ]
 
 
