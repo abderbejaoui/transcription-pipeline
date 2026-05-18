@@ -50,6 +50,21 @@ def _download_sada_csvs(api, raw_dir: Path) -> list[Path]:
     return paths
 
 
+def _list_all_kaggle_files(api) -> list[str]:
+    names: list[str] = []
+    token = None
+    while True:
+        if token:
+            response = api.dataset_list_files(DATASET_ID, page_size=200, page_token=token)
+        else:
+            response = api.dataset_list_files(DATASET_ID, page_size=200)
+        names.extend(getattr(f, "name", str(f)) for f in response.files)
+        token = response.next_page_token
+        if not token:
+            break
+    return names
+
+
 def _load_segments(csv_paths: list[Path], file_names: set[str]) -> dict[str, list[dict]]:
     by_file = {name: [] for name in file_names}
     for path in csv_paths:
@@ -87,7 +102,7 @@ def _write_segments(out_dir: Path, sample_id: str, segments: list[dict]) -> str:
     return rel
 
 
-def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
+def _sample_batch_one(limit: int, out_dir: Path, batch: str, all_batches: bool = False) -> int:
     try:
         from kaggle.api.kaggle_api_extended import KaggleApi
         import soundfile as sf
@@ -104,19 +119,21 @@ def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
         return 1
 
     try:
-        files = api.dataset_list_files(DATASET_ID).files
+        files = _list_all_kaggle_files(api)
     except Exception as exc:
         print(f"failed to list SADA files: {exc}", file=sys.stderr)
         return 1
 
     prefix = f"{batch.strip('/')}/"
     audio_names = [
-        getattr(f, "name", str(f))
-        for f in files
-        if getattr(f, "name", str(f)).startswith(prefix)
-        and Path(getattr(f, "name", str(f))).suffix.lower() in AUDIO_EXTS
+        name
+        for name in files
+        if (all_batches or name.startswith(prefix))
+        and Path(name).suffix.lower() in AUDIO_EXTS
     ]
-    audio_names = sorted(audio_names)[:limit]
+    audio_names = sorted(audio_names)
+    if limit > 0:
+        audio_names = audio_names[:limit]
     if not audio_names:
         print(f"No SADA audio files found under {prefix!r}", file=sys.stderr)
         return 2
@@ -155,7 +172,8 @@ def _sample_batch_one(limit: int, out_dir: Path, batch: str) -> int:
             "segment_count": len(segments),
             "original_path": file_name,
         })
-        print(f"[sada2022] saved {len(rows)}/{limit}: {dest_rel}")
+        target = "all" if limit <= 0 else str(limit)
+        print(f"[sada2022] saved {len(rows)}/{target}: {dest_rel}")
 
     write_manifest(out_dir, rows)
     write_readme(
@@ -175,11 +193,13 @@ def main() -> int:
     parser = argparse.ArgumentParser(description="Download 10 sample clips from Kaggle SADA 2022.")
     add_common_args(parser, "sada2022")
     parser.add_argument("--batch", default="batch_1", help="Kaggle folder to sample from (default: batch_1).")
+    parser.add_argument("--all-batches", action="store_true",
+                        help="Download from all Kaggle batch folders instead of only --batch.")
     parser.add_argument("--allow-full-archive-download", action="store_true",
                         help="Download the full Kaggle archive before sampling. This can be very large.")
     args = parser.parse_args()
     if not args.allow_full_archive_download:
-        return _sample_batch_one(args.limit, output_dir(args), args.batch)
+        return _sample_batch_one(args.limit, output_dir(args), args.batch, all_batches=args.all_batches)
     return sample_kaggle_dataset(
         slug=args.slug,
         kaggle_id=DATASET_ID,
