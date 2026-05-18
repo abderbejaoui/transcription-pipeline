@@ -16,7 +16,7 @@ field. The downloader scripts in this repo already emit this shape.
 Example:
     python scripts/preprocess_code_switch_asr.py \
         --manifest data/dataset_samples/sada2022/manifest.jsonl \
-        --manifest data/dataset_samples/uae_bilingual/manifest.jsonl \
+        --manifest data/dataset_samples/mixat_emirati/manifest.jsonl \
         --out data/preprocessed/saudi_uae_asr
 
 The most important public API is clean_asr_text(text). Use it for both the
