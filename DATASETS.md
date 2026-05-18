@@ -66,6 +66,15 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
 - **Why it matters:** Small but directly Saudi, with clean transcripts and
   useful metadata.
 
+### WorldSpeech — Kuwait and Bahrain Arabic splits
+- **Hours:** Kuwait `ar_kw` ~175.5; Bahrain `ar_bh` ~272.5
+- **Dialect:** Neighbor Gulf Arabic, close to Emirati but not a replacement
+- **License:** CC BY-NC 4.0 / source-specific parliamentary/public-record terms
+- **Where:** HuggingFace [`disco-eth/WorldSpeech`](https://huggingface.co/datasets/disco-eth/WorldSpeech), configs `ar_kw`, `ar_bh`
+- **Why it matters:** Useful optional acoustic augmentation when Emirati data is
+  scarce. Use carefully because the domain is formal/parliamentary speech and
+  the dialect is not UAE.
+
 ### UAE Arabic-English Bilingual Dataset 40k
 - **Hours:** ~120 estimated for train split
 - **Dialect:** UAE / Emirati Arabic with English code-switching
@@ -81,6 +90,16 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
 - **Where:** HuggingFace [`Nexdata/UAE_Arabic_Spontaneous_Speech_Data`](https://huggingface.co/datasets/Nexdata/UAE_Arabic_Spontaneous_Speech_Data)
 - **Why it matters:** Tiny, but authentic spontaneous UAE speech.
 
+### MixAT / PolyWER MixAT-Tri
+- **Hours:** 15
+- **Dialect:** Emirati Arabic ↔ English code-switching
+- **License:** CC BY-NC-SA 4.0
+- **Where:** Original repo [`mbzuai-nlp/mixat`](https://github.com/mbzuai-nlp/mixat), updated HF dataset [`sqrk/mixat-tri`](https://huggingface.co/datasets/sqrk/mixat-tri)
+- **Why it matters:** The strongest currently available Emirati-English
+  code-switch source. Use `transcript` for ASR training. Preserve
+  `transliteration` and `translation` as metadata only; they are useful for
+  PolyWER-style evaluation but conflict with our strict-Latin training target.
+
 ### Ramsa — Emirati Arabic Speech Corpus
 - **Coverage:** Large; 10% subset used as ASR/TTS baseline
 - **Dialect:** Emirati Arabic
@@ -94,6 +113,16 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
 - **Where:** [aclanthology.org/2025.icnlsp-1.5](https://aclanthology.org/2025.icnlsp-1.5/)
 - **Why it matters:** Heritage and literary register; complements
   modern conversational data.
+
+### Mansour Emirati cartoon transcripts
+- **Hours:** depends on selected episodes
+- **Dialect:** Emirati Arabic
+- **License/rights:** use only with explicit permission for model training
+- **Where:** [Gulf Arabic Resources — Mansour](https://gulfarabicresources.com/mansour/)
+- **Why it matters:** Useful auxiliary Emirati dialect exposure when the goal is
+  dialect adaptation rather than medical vocabulary. It is scripted/cartoon
+  speech, so keep it separate and audit it before assigning a high training
+  weight.
 
 ---
 
@@ -134,9 +163,12 @@ Each script defaults to **10 samples** and writes into its own folder under
 # Hugging Face sources. Some are gated: run `.venv/bin/hf auth login` and
 # accept the dataset terms on Hugging Face before downloading.
 python scripts/download_worldspeech_saudi_samples.py
+python scripts/download_worldspeech_kuwait_samples.py
+python scripts/download_worldspeech_bahrain_samples.py
 python scripts/download_saudilang_scc_samples.py
 python scripts/download_uae_bilingual_samples.py
 python scripts/download_nexdata_uae_sample.py
+python scripts/download_mixat_emirati_samples.py
 
 # Kaggle sources. Requires `pip install kaggle` and ~/.kaggle/kaggle.json.
 python scripts/download_sada2022_samples.py
@@ -146,6 +178,14 @@ Or run all target datasets and produce a combined output:
 
 ```bash
 .venv/bin/python scripts/download_all_target_samples.py --limit 10
+```
+
+Add optional Kuwait/Bahrain neighbor-Gulf previews:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py \
+  --limit 10 \
+  --include-neighbor-gulf
 ```
 
 The global runner writes:
@@ -193,7 +233,9 @@ Metadata layout after the sample run:
 | `sada2022` | `raw/train.csv`, `raw/valid.csv`, `raw/test.csv`, and per-sample `segments/*.segments.jsonl` |
 | `saudilang_scc` | `raw/scc_testset.csv`; manifest rows contain transcript + YouTube segment timestamps |
 | `worldspeech_saudi` | manifest row `metadata` contains source URL, segment times, CER/SNR, and transcripts; raw README copied to `raw/README.md` |
+| `worldspeech_kuwait` / `worldspeech_bahrain` | same schema as `worldspeech_saudi`; optional neighbor-Gulf augmentation |
 | `nexdata_uae_sample` | `metadata/*.txt`, `metadata/*.metadata`, and `segments/*.segments.jsonl` |
+| `mixat_emirati` | manifest row `text` uses HF `transcript`; row `metadata` preserves `transliteration`, `translation`, `language`, and `duration_ms` |
 
 Current blocked source:
 
@@ -209,6 +251,26 @@ because this file does not currently include a direct public machine-download
 URL for them. Add the actual repository URL once verified and a matching
 wrapper can be added.
 
+Mansour is handled separately because it is not a packaged ASR dataset. It has
+PDF transcripts with timestamps and YouTube links. With permission, prepare it
+like this:
+
+```bash
+# Metadata/chunk preview only: parses PDFs and writes timestamped rows.
+.venv/bin/python scripts/prepare_mansour_emirati.py \
+  --limit-episodes 1 \
+  --out data/dataset_samples/mansour_emirati
+
+# With audio cutting from linked YouTube videos.
+.venv/bin/python scripts/prepare_mansour_emirati.py \
+  --limit-episodes 1 \
+  --download-audio \
+  --out data/dataset_samples/mansour_emirati
+```
+
+The script rejects segments outside `1-30s`; long timestamp spans need further
+alignment before they should be used for ASR training.
+
 ---
 
 ## 4. Preprocessing pipeline
@@ -222,6 +284,7 @@ the model never sees two transcript formats.
   --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
   --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
   --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
+  --manifest data/dataset_samples/mixat_emirati/manifest.jsonl \
   --out data/preprocessed_audios
 ```
 
@@ -295,6 +358,7 @@ downloads the three currently available audio sources in full:
 - `sada2022`
 - `worldspeech_saudi`
 - `nexdata_uae_sample`
+- `mixat_emirati`
 
 Then it preprocesses all aligned clips and writes grouped train/validation/test
 splits. Segments from the same source recording stay in the same split to avoid
@@ -337,6 +401,43 @@ Splitting is grouped by source recording: all segments cut from one original
 SADA/Nexdata recording stay in the same train/validation/test split. This
 prevents leakage where near-identical context from the same 10-minute source
 recording appears in both training and evaluation.
+
+MixAT already ships utterance-level clips, so it is not segment-expanded. Its
+official HF splits are `train` and `test`; the DGX script downloads both by
+calling `download_mixat_emirati_samples.py --limit 0 --split all`, then uses
+grouped duration balancing with the rest of the corpus for one unified set of
+manifests.
+
+To include Mansour in the DGX run after confirming permission:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-mansour
+```
+
+Mansour audio is prepared from PDF timestamps and linked YouTube videos, then
+fed into the same preprocessing/audit/split stage as the packaged datasets.
+
+To include Kuwait and Bahrain as optional neighbor-Gulf augmentation:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-neighbor-gulf
+```
+
+You can combine both optional flags:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-neighbor-gulf \
+  --include-mansour
+```
 
 ---
 
@@ -430,8 +531,8 @@ The plan, sequenced:
 1. Download SADA from Kaggle (668 hrs, free).
 2. Download Saudilang SCC from Kaggle (Saudi AR↔EN code-switching, free).
 3. Download WorldSpeech `ar_sa` (Saudi split, free/gated on HuggingFace).
-4. Download UAE bilingual + Nexdata UAE sample (Emirati/UAE, free/gated).
-5. Add Ramsa / Traditional Emirati Arabic only after a direct machine-download
+4. Download MixAT (`sqrk/mixat-tri`) + Nexdata UAE sample (Emirati/UAE).
+5. Add UAE bilingual, Ramsa, or Traditional Emirati Arabic only after a direct machine-download
   URL is verified.
 6. Generate Layer A TTS-augmented Saudi/Emirati medical readings (~50 hrs).
 7. **First LoRA fine-tune** of `whisper-large-v3-turbo` on the combined
@@ -518,11 +619,12 @@ that none of the training data has seen.
 1. **[Kaggle SADA](https://www.kaggle.com/datasets/sdaiancai/sada2022)** — start downloading today, 668 hrs Saudi Arabic, free.
 2. **[Kaggle Saudilang Code-Switch](https://www.kaggle.com/datasets/sdaiancai/saudilang-code-switch-corpus-scc)** — same publisher, AR↔EN code-switching.
 3. **[WorldSpeech](https://huggingface.co/datasets/disco-eth/WorldSpeech)** — use config `ar_sa` only.
-4. **[UAE Arabic-English Bilingual Dataset 40k](https://huggingface.co/datasets/vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k)** — Emirati/UAE code-switching.
+4. **[MixAT / PolyWER MixAT-Tri](https://huggingface.co/datasets/sqrk/mixat-tri)** — Emirati-English code-switching, 15 hrs.
 5. **[Nexdata UAE Arabic sample](https://huggingface.co/datasets/Nexdata/UAE_Arabic_Spontaneous_Speech_Data)** — tiny but authentic UAE sample.
-6. **[SADA paper](https://www.semanticscholar.org/paper/SADA%3A-Saudi-Audio-Dataset-for-Arabic-Alharbi-Alowisheq/de2508f2d48ea42653fe11011f24f9f227d38e71)** — read this before fine-tuning.
-7. **[Whisper fine-tune tutorial](https://huggingface.co/blog/fine-tune-whisper)** — official HuggingFace guide.
-8. **[PEFT / LoRA library](https://github.com/huggingface/peft)** — the actual fine-tuning machinery.
+6. **[UAE Arabic-English Bilingual Dataset 40k](https://huggingface.co/datasets/vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k)** — currently blocked until exact repo/access is verified.
+7. **[SADA paper](https://www.semanticscholar.org/paper/SADA%3A-Saudi-Audio-Dataset-for-Arabic-Alharbi-Alowisheq/de2508f2d48ea42653fe11011f24f9f227d38e71)** — read this before fine-tuning.
+8. **[Whisper fine-tune tutorial](https://huggingface.co/blog/fine-tune-whisper)** — official HuggingFace guide.
+9. **[PEFT / LoRA library](https://github.com/huggingface/peft)** — the actual fine-tuning machinery.
 
 ---
 
@@ -530,8 +632,10 @@ that none of the training data has seen.
 
 **For Saudi/Emirati acoustic adaptation:** SADA is the Saudi backbone;
 WorldSpeech `ar_sa` and Saudilang add Saudi variety/code-switching;
-UAE bilingual/Nexdata/Ramsa-style sources supply the Emirati side once
-access is confirmed. Non-target Arabic corpora are intentionally excluded.
+MixAT supplies the strongest currently available Emirati-English code-switch
+signal, with Nexdata as a tiny spontaneous UAE sample. WorldSpeech Kuwait and
+Bahrain can be used as neighbor-Gulf augmentation, but should be weighted below
+true UAE/Emirati sources. Non-target Arabic corpora are intentionally excluded.
 
 **For medical vocabulary:** $1–2k of TTS augmentation + pilot data
 collection over 3–6 months bridges the gap.
