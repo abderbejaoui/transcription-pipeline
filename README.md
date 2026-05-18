@@ -183,6 +183,7 @@ Quick preview run:
   --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
   --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
   --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
+  --manifest data/dataset_samples/mixat_emirati/manifest.jsonl \
   --out data/preprocessed_audios
 ```
 
@@ -193,6 +194,28 @@ Full DGX run:
   --work-dir data/dgx_full \
   --confirm-full-download
 ```
+
+Optional neighbor-Gulf augmentation with WorldSpeech Kuwait/Bahrain:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-neighbor-gulf
+```
+
+To include the optional Mansour Emirati cartoon corpus after confirming rights:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-mansour
+```
+
+The Mansour path parses Gulf Arabic Resources PDFs, extracts timestamps and
+dialogue, downloads linked YouTube audio only when requested by the DGX flag,
+and rejects timestamp spans outside the same 1-30 second ASR limit.
 
 The preprocessor outputs 16 kHz mono PCM16 WAV clips with normalized
 Arabic-English transcripts and grouped train/validation/test manifests for the
