@@ -99,12 +99,39 @@ excluded unless it can be narrowed to Saudi or Emirati clips.
 
 ## 3. Quick 10-sample download scripts
 
+### Contributor setup
+
+Install dependencies and make sure `ffmpeg` is available:
+
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+ffmpeg -version | head -1
+```
+
+Authenticate with Kaggle before using SADA:
+
+```bash
+.venv/bin/kaggle auth login
+```
+
+Hugging Face access is optional for the currently working public sources, but
+some mirrors are gated. The new CLI is `hf`; `huggingface-cli` may print a
+deprecation warning:
+
+```bash
+.venv/bin/hf auth login
+```
+
+Never paste tokens into chat. Enter secrets directly in the terminal.
+
 Use these scripts to inspect the Saudi and Emirati/UAE datasets one by one.
 Each script defaults to **10 samples** and writes into its own folder under
 `data/dataset_samples/<dataset>/`:
 
 ```bash
-# Hugging Face sources. Some are gated: run `huggingface-cli login` and
+# Hugging Face sources. Some are gated: run `.venv/bin/hf auth login` and
 # accept the dataset terms on Hugging Face before downloading.
 python scripts/download_worldspeech_saudi_samples.py
 python scripts/download_saudilang_scc_samples.py
@@ -118,7 +145,7 @@ python scripts/download_sada2022_samples.py
 Or run all target datasets and produce a combined output:
 
 ```bash
-python scripts/download_all_target_samples.py --limit 10
+.venv/bin/python scripts/download_all_target_samples.py --limit 10
 ```
 
 The global runner writes:
@@ -126,23 +153,23 @@ The global runner writes:
 - `data/dataset_samples/download_summary.json`
 - `data/dataset_samples/combined_manifest.jsonl`
 
-Safety defaults: the global script will not download full Kaggle archives
-or full YouTube episode audio just to preview 10 samples. SADA on Kaggle is
-therefore skipped unless you explicitly allow the full archive, and
-Saudilang SCC defaults to metadata rows only.
+Safety defaults: the global script will not download full YouTube episode
+audio just to preview 10 samples. SADA is sampled by targeted Kaggle per-file
+downloads from `batch_1`, so it does **not** require downloading the full SADA
+archive for previews. Saudilang SCC defaults to metadata rows only.
 
 Saudilang SCC is different from the other datasets: Hugging Face provides
 CSV segment annotations with YouTube links, not bundled audio files. To cut
 those referenced segments into WAV files, explicitly enable YouTube audio:
 
 ```bash
-python scripts/download_all_target_samples.py --limit 10 --download-saudilang-audio
+.venv/bin/python scripts/download_all_target_samples.py --limit 10 --download-saudilang-audio
 ```
 
-To allow full Kaggle archives before sampling:
+To force SADA full-archive mode instead of targeted per-file sampling:
 
 ```bash
-python scripts/download_all_target_samples.py --limit 10 --allow-full-kaggle-archives
+.venv/bin/python scripts/download_all_target_samples.py --limit 10 --allow-full-kaggle-archives
 ```
 
 All scripts accept the same basic options:
@@ -159,6 +186,23 @@ Each output folder contains:
 - `manifest.jsonl` — one row per saved sample, with transcript text when found
 - `README.md` — source and sample summary
 
+Metadata layout after the sample run:
+
+| Dataset | Metadata location |
+|---|---|
+| `sada2022` | `raw/train.csv`, `raw/valid.csv`, `raw/test.csv`, and per-sample `segments/*.segments.jsonl` |
+| `saudilang_scc` | `raw/scc_testset.csv`; manifest rows contain transcript + YouTube segment timestamps |
+| `worldspeech_saudi` | manifest row `metadata` contains source URL, segment times, CER/SNR, and transcripts; raw README copied to `raw/README.md` |
+| `nexdata_uae_sample` | `metadata/*.txt`, `metadata/*.metadata`, and `segments/*.segments.jsonl` |
+
+Current blocked source:
+
+- `uae_bilingual` is not downloadable with the current repo id
+  `vadimbelsky/UAE_Arabic_English_Bilingual_Dataset_40k`. Hugging Face login
+  was successful, but the Hub still returns "doesn't exist or cannot be
+  accessed". Update `scripts/download_uae_bilingual_samples.py` once the exact
+  dataset URL is verified.
+
 Saudi or Emirati datasets that are listed only as papers or catalogue
 pages, such as Ramsa and Traditional Emirati Arabic, are not scripted here
 because this file does not currently include a direct public machine-download
@@ -173,13 +217,12 @@ Run all Saudi base data and the medical layer through the same cleaner so
 the model never sees two transcript formats.
 
 ```bash
-python scripts/preprocess_code_switch_asr.py \
+.venv/bin/python scripts/preprocess_code_switch_asr.py \
   --manifest data/dataset_samples/sada2022/manifest.jsonl \
   --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
   --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
-  --manifest data/dataset_samples/uae_bilingual/manifest.jsonl \
   --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
-  --out data/preprocessed/saudi_uae_asr
+  --out data/preprocessed_audios
 ```
 
 The script writes:
@@ -197,6 +240,103 @@ verbalization, punctuation removal, HTML/URL/control cleanup, and final
 duration-to-text filtering. Audio longer than 30 seconds is rejected unless
 you first create aligned chunks; splitting long audio without word alignment
 would corrupt the transcript/audio pair.
+
+For rows with `segments_path`, the preprocessor expands long recordings into
+aligned short clips before applying duration and text filters. This is what
+makes SADA and Nexdata usable: their downloaded WAV files are long recordings,
+but their metadata gives timestamped transcript segments.
+
+Sample-run output as of the latest audit:
+
+```text
+data/preprocessed_audios/
+  audio/                 # 16 kHz mono PCM16 WAV clips
+  manifest.jsonl         # clean ASR training rows
+  rejected.jsonl         # rejected rows/segments with reasons
+  vocab.txt              # final cleaned vocabulary
+  summary.json           # preprocessing summary
+  audit_report.json      # mechanical audit report
+```
+
+Latest sample audit:
+
+```text
+clips: 1154
+hours: 1.4653
+sample_rates: {16000: 1154}
+channels: {1: 1154}
+formats: {'WAV': 1154}
+subtypes: {'PCM_16': 1154}
+duration min/max/mean/p50/p95: 1.0 / 29.32 / 4.571 / 3.625 / 9.53 sec
+audio failures: none
+text failures: none
+```
+
+The audit checks:
+
+- 16 kHz sample rate
+- mono audio
+- WAV / PCM16 format
+- 1 to 30 second duration
+- <=0.5 second edge silence
+- no diacritics, tatweel, punctuation, digits, uppercase English, HTML, emoji,
+  Cyrillic, or Arabic/Latin attached tokens
+- duration-to-text ratio between 1 and 25 characters per second
+
+The only semantic item not fully machine-verifiable is whether Arabic-script
+drug transliterations such as `باراسيتامول` should be converted to Latin
+`paracetamol`. That needs a medical lexicon or manual review layer.
+
+### DGX full-data run
+
+On the DGX Spark / 128 GB VRAM machine, use the full pipeline script. It
+downloads the three currently available audio sources in full:
+
+- `sada2022`
+- `worldspeech_saudi`
+- `nexdata_uae_sample`
+
+Then it preprocesses all aligned clips and writes grouped train/validation/test
+splits. Segments from the same source recording stay in the same split to avoid
+train/eval leakage.
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download
+```
+
+The script refuses to run full downloads without `--confirm-full-download`.
+This is intentional because full SADA is large. It uses targeted per-file
+Kaggle downloads across all SADA batch folders rather than pulling one giant
+archive.
+
+Outputs:
+
+- `data/dgx_full/raw_datasets/<dataset>/`
+- `data/dgx_full/preprocessed_audios/manifest.jsonl`
+- `data/dgx_full/preprocessed_audios/rejected.jsonl`
+- `data/dgx_full/preprocessed_audios/vocab.txt`
+- `data/dgx_full/preprocessed_audios/splits/train.jsonl`
+- `data/dgx_full/preprocessed_audios/splits/validation.jsonl`
+- `data/dgx_full/preprocessed_audios/splits/test.jsonl`
+- `data/dgx_full/preprocessed_audios/splits/split_summary.json`
+
+Default split ratio is `90/5/5`. You can override it:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --train-ratio 0.9 \
+  --validation-ratio 0.05 \
+  --test-ratio 0.05 \
+  --confirm-full-download
+```
+
+Splitting is grouped by source recording: all segments cut from one original
+SADA/Nexdata recording stay in the same train/validation/test split. This
+prevents leakage where near-identical context from the same 10-minute source
+recording appears in both training and evaluation.
 
 ---
 

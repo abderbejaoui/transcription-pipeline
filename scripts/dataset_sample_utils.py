@@ -258,8 +258,9 @@ def sample_hf_dataset(
             "audio_column": audio_column,
             "metadata": _metadata_from_example(example),
         })
-        print(f"[{slug}] saved {len(rows)}/{limit}: {wav_rel} ({duration_s:.2f}s)")
-        if len(rows) >= limit:
+        target = "all" if limit <= 0 else str(limit)
+        print(f"[{slug}] saved {len(rows)}/{target}: {wav_rel} ({duration_s:.2f}s)")
+        if limit > 0 and len(rows) >= limit:
             break
 
     write_manifest(out_dir, rows)
@@ -353,7 +354,8 @@ def sample_kaggle_dataset(
     audio_files = sorted(p for p in raw_dir.rglob("*") if p.is_file() and p.suffix.lower() in AUDIO_EXTS)
 
     rows: List[Dict[str, Any]] = []
-    for source_path in audio_files[:limit]:
+    selected_audio_files = audio_files if limit <= 0 else audio_files[:limit]
+    for source_path in selected_audio_files:
         sample_id = f"{slug}_{len(rows):05d}"
         dest_rel = f"audio/{sample_id}{source_path.suffix.lower()}"
         dest_path = out_dir / dest_rel
@@ -373,7 +375,8 @@ def sample_kaggle_dataset(
             "text": transcript_by_stem.get(source_path.stem.lower(), ""),
             "original_path": str(source_path.relative_to(raw_dir)),
         })
-        print(f"[{slug}] saved {len(rows)}/{limit}: {dest_rel}")
+        target = "all" if limit <= 0 else str(limit)
+        print(f"[{slug}] saved {len(rows)}/{target}: {dest_rel}")
 
     write_manifest(out_dir, rows)
     write_readme(out_dir, title or slug, f"kaggle:{kaggle_id}", rows, notes=notes)
