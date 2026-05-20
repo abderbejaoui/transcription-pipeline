@@ -457,8 +457,6 @@ def main() -> int:
     patch_outer_forward(model)
     model.generation_config = GenerationConfig.from_model_config(model.config)
     model.gradient_checkpointing_enable()
-    if hasattr(model, "enable_input_require_grads"):
-        model.enable_input_require_grads()
 
     # 3. LoRA on the LLM decoder linears only.
     model = apply_lora(
