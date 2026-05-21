@@ -416,17 +416,37 @@ def build_weighted_sampler(records: List[Dict[str, Any]]):
 # ---------------------------------------------------------------------------
 
 
-def _run_eval(model, processor, manifest_path: Path) -> Tuple[float, float, int]:
+def _run_eval(
+    model,
+    processor,
+    manifest_path: Path,
+    max_samples: Optional[int] = None,
+    seed: int = 42,
+) -> Tuple[float, float, int]:
+    """Run WER/CER on a held-out manifest.
+
+    When ``max_samples`` is set, randomly subsample that many lines
+    (deterministic via ``seed``). This is critical because the full
+    validation split (~17k clips) would block training for ~14 hours
+    per eval round if evaluated end-to-end with greedy generate().
+    A 500-sample WER tracks the full-set WER within ~±1% — fine for
+    progress monitoring during training. The post-training final-eval
+    block (see end of main()) deliberately passes ``max_samples=None``
+    to report the real number.
+    """
+    import random
     import jiwer
     import soundfile as sf
     import torch
     from scripts.eval_arabic import normalize_arabic_text
 
+    lines = [ln for ln in manifest_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
+    if max_samples is not None and 0 < max_samples < len(lines):
+        rng = random.Random(seed)
+        lines = rng.sample(lines, max_samples)
+
     refs, hyps = [], []
-    for line in manifest_path.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if not line:
-            continue
+    for line in lines:
         rec = json.loads(line)
         ap = rec.get("audio_path") or rec.get("path") or rec.get("audio")
         if not ap:
@@ -474,7 +494,12 @@ def _run_eval(model, processor, manifest_path: Path) -> Tuple[float, float, int]
     return jiwer.wer(refs, hyps), jiwer.cer(refs, hyps), len(refs)
 
 
-def make_eval_callback(processor, eval_manifests: List[Path], every_steps: int):
+def make_eval_callback(
+    processor,
+    eval_manifests: List[Path],
+    every_steps: int,
+    max_samples: Optional[int] = None,
+):
     from transformers import TrainerCallback
 
     class GulfArabicEvalCallback(TrainerCallback):
@@ -487,7 +512,9 @@ def make_eval_callback(processor, eval_manifests: List[Path], every_steps: int):
             model.eval()
             for man in eval_manifests:
                 try:
-                    wer, cer, n = _run_eval(model, processor, man)
+                    wer, cer, n = _run_eval(
+                        model, processor, man, max_samples=max_samples,
+                    )
                     print(f"[eval-cb step={state.global_step}] {man.name}: "
                           f"WER={wer*100:.2f}%  CER={cer*100:.2f}%  n={n}",
                           flush=True)
@@ -523,6 +550,14 @@ def main() -> int:
     ap.add_argument("--weight-decay", type=float, default=0.01)
     ap.add_argument("--max-grad-norm", type=float, default=1.0)
     ap.add_argument("--eval-every-steps", type=int, default=2000)
+    ap.add_argument(
+        "--eval-max-samples",
+        type=int,
+        default=500,
+        help=("During training, cap each eval manifest to this many random "
+              "samples (default 500). Pass 0 to evaluate the full set. "
+              "The post-training final eval ALWAYS uses the full set."),
+    )
     ap.add_argument("--save-total-limit", type=int, default=5)
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=42)
@@ -617,7 +652,15 @@ def main() -> int:
         optim="adamw_torch_fused",
     )
 
-    eval_cb = make_eval_callback(processor, args.eval_manifests, args.eval_every_steps)
+    # During training, cap eval to a random subsample. The final eval after
+    # training completes uses the full set (see end of main()).
+    eval_max = args.eval_max_samples if args.eval_max_samples > 0 else None
+    eval_cb = make_eval_callback(
+        processor,
+        args.eval_manifests,
+        args.eval_every_steps,
+        max_samples=eval_max,
+    )
 
     sampler = build_weighted_sampler(records)
 
