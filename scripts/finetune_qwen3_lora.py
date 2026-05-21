@@ -526,6 +526,14 @@ def main() -> int:
     ap.add_argument("--save-total-limit", type=int, default=5)
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=42)
+    ap.add_argument(
+        "--gradient-checkpointing",
+        action="store_true",
+        help=("Enable HF gradient checkpointing. OFF by default: with LoRA "
+              "(~17M trainable params) we have plenty of VRAM, and enabling "
+              "it causes a 'None of the inputs have requires_grad=True' "
+              "silent-no-op when the outer model's forward is patched."),
+    )
     args = ap.parse_args()
 
     import torch
@@ -557,7 +565,8 @@ def main() -> int:
 
     patch_outer_forward(model)
     model.generation_config = GenerationConfig.from_model_config(model.config)
-    model.gradient_checkpointing_enable()
+    if args.gradient_checkpointing:
+        model.gradient_checkpointing_enable()
 
     # 3. LoRA on the LLM decoder linears only.
     model = apply_lora(
@@ -591,7 +600,7 @@ def main() -> int:
         lr_scheduler_type="linear",
         bf16=use_bf16,
         fp16=not use_bf16,
-        gradient_checkpointing=True,
+        gradient_checkpointing=args.gradient_checkpointing,
         logging_steps=50,
         save_strategy="steps",
         save_steps=args.eval_every_steps,
