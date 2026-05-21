@@ -239,8 +239,13 @@ DEFAULT_LORA_TARGET_SUFFIXES = [
 
 def _find_lora_target_modules(model, suffixes: Sequence[str]) -> List[str]:
     """Walk model.named_modules() and return full module paths for every
-    Linear whose name ends in one of `suffixes` AND lives under the
-    language_model sub-tree (NOT under audio_tower).
+    Linear whose name ends in one of `suffixes` AND lives under the LLM
+    decoder transformer blocks (NOT under audio_tower).
+
+    Qwen3-ASR-1.7B exposes its LLM decoder at `thinker.model.layers.*`
+    (verified via scripts.inspect_qwen3_modules). The audio encoder lives
+    at `thinker.audio_tower.layers.*`. We accept anything under
+    `thinker.model.layers` and explicitly reject `audio_tower`/`audio_encoder`.
     """
     import torch.nn as nn
     targets: List[str] = []
@@ -250,8 +255,8 @@ def _find_lora_target_modules(model, suffixes: Sequence[str]) -> List[str]:
         # Skip the audio tower entirely.
         if "audio_tower" in name or "audio_encoder" in name:
             continue
-        # Must live in the LLM decoder (thinker.model.language_model.*).
-        if "language_model" not in name:
+        # Must live in the LLM decoder transformer blocks.
+        if "model.layers" not in name:
             continue
         tail = name.rsplit(".", 1)[-1]
         if tail in suffixes:
@@ -274,7 +279,7 @@ def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropou
     explicit_targets = _find_lora_target_modules(model, target_suffixes)
     if not explicit_targets:
         raise RuntimeError(
-            "Could not find any LoRA target modules under language_model. "
+            "Could not find any LoRA target modules under thinker.model.layers. "
             "Run `python -m scripts.inspect_qwen3_modules` to print the "
             "actual module names from your installed Qwen3-ASR."
         )
