@@ -264,6 +264,67 @@ def _find_lora_target_modules(model, suffixes: Sequence[str]) -> List[str]:
     return targets
 
 
+def _patch_input_embeddings_shim(model) -> None:
+    """Attach `get_input_embeddings` / `set_input_embeddings` to the outer
+    Qwen3ASRForConditionalGeneration instance so that
+    `transformers.PreTrainedModel.enable_input_require_grads()` (called by
+    PEFT during gradient-checkpointing prep) can find the LLM embedding.
+
+    The Qwen3-ASR-1.7B LLM embedding lives at `thinker.model.embed_tokens`
+    (verified via scripts.inspect_qwen3_modules). The outer class does not
+    auto-resolve it, so we provide an explicit shim.
+    """
+    import types
+
+    # Walk known paths to locate the LLM input embedding.
+    candidate_paths = (
+        "thinker.model.embed_tokens",
+        "thinker.model.language_model.embed_tokens",
+        "thinker.language_model.model.embed_tokens",
+    )
+    emb_path = None
+    for path in candidate_paths:
+        obj = model
+        try:
+            for part in path.split("."):
+                obj = getattr(obj, part)
+            emb_path = path
+            break
+        except AttributeError:
+            continue
+    if emb_path is None:
+        # Last resort: scan named_modules for the first nn.Embedding under thinker.
+        import torch.nn as nn
+        for name, mod in model.named_modules():
+            if isinstance(mod, nn.Embedding) and name.startswith("thinker."):
+                emb_path = name
+                break
+    if emb_path is None:
+        raise RuntimeError(
+            "Could not locate LLM input embeddings on Qwen3-ASR model. "
+            "Run `python -m scripts.inspect_qwen3_modules` to inspect."
+        )
+
+    parts = emb_path.split(".")
+    parent_path, attr_name = parts[:-1], parts[-1]
+
+    def _resolve_parent(self):
+        obj = self
+        for part in parent_path:
+            obj = getattr(obj, part)
+        return obj
+
+    def _get_input_embeddings(self):
+        return getattr(_resolve_parent(self), attr_name)
+
+    def _set_input_embeddings(self, value):
+        setattr(_resolve_parent(self), attr_name, value)
+
+    model.get_input_embeddings = types.MethodType(_get_input_embeddings, model)
+    model.set_input_embeddings = types.MethodType(_set_input_embeddings, model)
+    print(f"[lora] patched get_input_embeddings -> {emb_path}")
+
+
 def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropout: float):
     from peft import LoraConfig, get_peft_model, TaskType
 
@@ -285,6 +346,11 @@ def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropou
         )
     print(f"[lora] {len(explicit_targets)} target modules "
           f"(first 3: {explicit_targets[:3]})")
+
+    # PEFT will call model.enable_input_require_grads() which uses
+    # get_input_embeddings(); the outer Qwen3-ASR class doesn't implement
+    # it, so install a shim that points to thinker.model.embed_tokens.
+    _patch_input_embeddings_shim(model)
 
     cfg = LoraConfig(
         r=r,
