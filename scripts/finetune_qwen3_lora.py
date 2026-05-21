@@ -593,7 +593,11 @@ def main() -> int:
                         inputs[k] = v.to(dtype=model_dtype)
             return inputs
 
-        def _get_train_sampler(self):
+        def _get_train_sampler(self, *args, **kwargs):
+            # Signature changed across transformers versions:
+            # older versions: (self)
+            # newer versions: (self, train_dataset)
+            # We accept either and return our pre-built weighted sampler.
             return sampler
 
     trainer = CastFloatInputsTrainer(
