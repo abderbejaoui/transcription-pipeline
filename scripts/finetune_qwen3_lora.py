@@ -54,6 +54,38 @@ PROJECT_ROOT = Path(__file__).resolve().parents[1]
 # ---------------------------------------------------------------------------
 
 
+def _resolve_audio_path(audio_path: str, manifest_path: Path) -> str:
+    """Resolve an audio path against multiple candidate roots.
+
+    Manifests written by our preprocess pipeline store paths like
+    ``audio/foo.wav`` which are relative to the preprocess output dir
+    (the manifest's parent directory, or sometimes the directory
+    containing the splits/ folder). We try several roots in order and
+    return the first one that exists.
+
+    If none exist, we still return the best-guess absolute path
+    (manifest_parent / audio_path) so the downstream error message
+    points at a sensible location.
+    """
+    p = Path(audio_path)
+    if p.is_absolute():
+        return str(p)
+
+    manifest_dir = manifest_path.resolve().parent
+    candidates = [
+        manifest_dir / audio_path,                # splits/audio/foo.wav (unlikely)
+        manifest_dir.parent / audio_path,         # preprocessed_audios_full/audio/foo.wav  <-- expected
+        manifest_dir.parent.parent / audio_path,  # one level up
+        PROJECT_ROOT / audio_path,                # repo root (legacy fallback)
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return str(cand)
+    # Fall back to the most likely location so the eventual error
+    # message is informative.
+    return str(manifest_dir.parent / audio_path)
+
+
 def load_manifest(path: Path) -> List[Dict[str, Any]]:
     """Load our manifest format and emit records ready for the upstream
     preprocess function: {audio: <abs path>, text: <full Qwen3-ASR target>,
@@ -75,8 +107,7 @@ def load_manifest(path: Path) -> List[Dict[str, Any]]:
         text = rec.get("text") or rec.get("target") or ""
         if not audio_path or not text:
             continue
-        if not audio_path.startswith("/"):
-            audio_path = str(PROJECT_ROOT / audio_path)
+        audio_path = _resolve_audio_path(audio_path, path)
         if "<asr_text>" not in text:
             text = f"language Arabic<asr_text>{text}"
         recs.append({
@@ -400,8 +431,7 @@ def _run_eval(model, processor, manifest_path: Path) -> Tuple[float, float, int]
         ap = rec.get("audio_path") or rec.get("path") or rec.get("audio")
         if not ap:
             continue
-        if not ap.startswith("/"):
-            ap = str(PROJECT_ROOT / ap)
+        ap = _resolve_audio_path(ap, manifest_path)
         arr, sr = sf.read(ap, dtype="float32", always_2d=False)
         if arr.ndim > 1:
             arr = arr.mean(axis=1)
