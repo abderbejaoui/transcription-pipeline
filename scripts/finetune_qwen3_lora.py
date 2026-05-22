@@ -223,8 +223,52 @@ class DataCollatorForQwen3ASRFinetuning:
         if pad_id is not None:
             labels[labels == pad_id] = -100
 
+        # One-time sanity checks on the FIRST batch only (cheap, prints
+        # to stdout). Catches the silent flat-loss failure mode early.
+        if not getattr(self.__class__, "_sanity_checked", False):
+            self.__class__._sanity_checked = True
+            self._sanity_check_labels(
+                full_inputs, prefix_inputs, prefix_lens, labels,
+            )
+
         full_inputs["labels"] = labels
         return full_inputs
+
+    def _sanity_check_labels(self, full_inputs, prefix_inputs, prefix_lens, labels):
+        """First-batch sanity prints. Doesn't raise — just logs so a human
+        can see in the first 10 seconds of training whether the labels
+        look right.
+        """
+        import torch
+        n_active = (labels != -100).sum().item()
+        n_total = labels.numel()
+        n_per_sample = ((labels != -100).sum(dim=1)).tolist()
+        # For sample 0: check that input_ids[:prefix_lens[0]] of full_inputs
+        # equals input_ids[:prefix_lens[0]] of prefix_inputs. If not, the
+        # prefix doesn't live at the start of full_inputs and the label
+        # masking is wrong.
+        full_prefix_slice = full_inputs["input_ids"][0, :prefix_lens[0]]
+        ref_prefix_slice = prefix_inputs["input_ids"][0, :prefix_lens[0]]
+        prefix_match = bool(torch.equal(full_prefix_slice, ref_prefix_slice))
+        print(
+            f"[collator-sanity] active labels = {n_active}/{n_total} "
+            f"({100*n_active/n_total:.1f}%), per-sample = {n_per_sample}, "
+            f"prefix tokens match between full and prefix_inputs: {prefix_match}",
+            flush=True,
+        )
+        if not prefix_match:
+            print(
+                "[collator-sanity] *** WARNING *** prefix tokens do NOT match "
+                "between full_inputs and prefix_inputs. Label masking is "
+                "almost certainly wrong. Check padding_side handling.",
+                flush=True,
+            )
+        if n_active < 5 * len(prefix_lens):
+            print(
+                "[collator-sanity] *** WARNING *** less than 5 active labels "
+                "per sample on average. Loss signal will be very weak.",
+                flush=True,
+            )
 
 
 # ---------------------------------------------------------------------------
