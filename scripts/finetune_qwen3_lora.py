@@ -412,7 +412,23 @@ def _patch_input_embeddings_shim(model) -> None:
     print(f"[lora] patched get_input_embeddings -> {emb_path}")
 
 
-def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropout: float):
+def apply_lora(
+    model,
+    target_suffixes: Sequence[str],
+    r: int,
+    alpha: int,
+    dropout: float,
+    use_rslora: bool = False,
+):
+    """Inject LoRA adapters into the LLM decoder linears.
+
+    When ``use_rslora=True``, PEFT uses the rank-stabilized scaling
+    ``lora_alpha/sqrt(r)`` (Kalajdzievski 2023, arXiv:2312.03732). The
+    default LoRA scaling ``lora_alpha/r`` is known to slow learning at
+    higher ranks, causing r>32 to plateau LOWER than smaller ranks.
+    rsLoRA unlocks the benefit of larger ranks (r=64, 128, 256+).
+    Use it whenever ``r > 32``.
+    """
     from peft import LoraConfig, get_peft_model, TaskType
 
     # Freeze everything first.
@@ -433,6 +449,7 @@ def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropou
         )
     print(f"[lora] {len(explicit_targets)} target modules "
           f"(first 3: {explicit_targets[:3]})")
+    print(f"[lora] r={r}  alpha={alpha}  dropout={dropout}  use_rslora={use_rslora}")
 
     # PEFT will call model.enable_input_require_grads() which uses
     # get_input_embeddings(); the outer Qwen3-ASR class doesn't implement
@@ -446,6 +463,7 @@ def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropou
         bias="none",
         task_type=TaskType.CAUSAL_LM,
         target_modules=explicit_targets,  # explicit full paths
+        use_rslora=use_rslora,
     )
     model = get_peft_model(model, cfg)
     model.print_trainable_parameters()
@@ -562,10 +580,43 @@ def make_eval_callback(
     eval_manifests: List[Path],
     every_steps: int,
     max_samples: Optional[int] = None,
+    early_stopping_patience: int = 0,
+    early_stopping_metric: str = "wer",
+    early_stopping_threshold: float = 0.001,
+    output_dir: Optional[Path] = None,
 ):
+    """Build the held-out eval callback.
+
+    Args:
+        processor: Qwen3-ASR processor (for tokenization/decoding).
+        eval_manifests: List of manifests to evaluate. The FIRST manifest is
+            treated as the "primary" — early stopping decisions are based on it.
+        every_steps: Run eval every this many optimizer steps.
+        max_samples: Cap each eval manifest to this many random samples
+            (saves time during training; None means use the full set).
+        early_stopping_patience: If > 0, stop training when the primary
+            manifest's metric has not improved by ``early_stopping_threshold``
+            for this many consecutive evals. 0 disables early stopping.
+        early_stopping_metric: "wer" or "cer". Lower is better.
+        early_stopping_threshold: Minimum improvement to count as "better".
+            Default 0.001 = 0.1 percentage points absolute (WER goes from
+            25.30% to 25.19% counts as improvement; 25.30% to 25.25% does not).
+        output_dir: Where to save the best-adapter checkpoint. If None, no
+            best-adapter saving (the trainer still saves periodic checkpoints).
+    """
     from transformers import TrainerCallback
 
     class GulfArabicEvalCallback(TrainerCallback):
+        def __init__(self):
+            super().__init__()
+            # Per-manifest list of (step, wer, cer) tuples — useful for plotting.
+            self.history: Dict[str, List[Tuple[int, float, float]]] = {
+                m.name: [] for m in eval_manifests
+            }
+            self.best_metric: float = float("inf")
+            self.best_step: int = -1
+            self.evals_without_improvement: int = 0
+
         def on_step_end(self, args, state, control, **kwargs):
             if state.global_step == 0 or state.global_step % every_steps != 0:
                 return control
@@ -573,7 +624,8 @@ def make_eval_callback(
             if model is None:
                 return control
             model.eval()
-            for man in eval_manifests:
+            primary_metric_value: Optional[float] = None
+            for idx, man in enumerate(eval_manifests):
                 try:
                     wer, cer, n = _run_eval(
                         model, processor, man, max_samples=max_samples,
@@ -581,10 +633,50 @@ def make_eval_callback(
                     print(f"[eval-cb step={state.global_step}] {man.name}: "
                           f"WER={wer*100:.2f}%  CER={cer*100:.2f}%  n={n}",
                           flush=True)
+                    self.history[man.name].append((state.global_step, wer, cer))
+                    if idx == 0:  # primary manifest
+                        primary_metric_value = wer if early_stopping_metric == "wer" else cer
                 except Exception as exc:
-                    print(f"[eval-cb step={state.global_step}] {man.name} FAILED: {exc!r}",
-                          flush=True)
+                    print(f"[eval-cb step={state.global_step}] {man.name} FAILED: "
+                          f"{exc!r}", flush=True)
             model.train()
+
+            # Early-stopping bookkeeping (only if enabled and primary eval succeeded).
+            if early_stopping_patience > 0 and primary_metric_value is not None:
+                improved = (self.best_metric - primary_metric_value) > early_stopping_threshold
+                if improved:
+                    prev = self.best_metric
+                    self.best_metric = primary_metric_value
+                    self.best_step = state.global_step
+                    self.evals_without_improvement = 0
+                    print(f"[early-stop] new best {early_stopping_metric}="
+                          f"{primary_metric_value*100:.2f}% (was {prev*100:.2f}%) "
+                          f"at step {state.global_step}", flush=True)
+                    # Save the best adapter immediately so we don't lose it
+                    # if training crashes later.
+                    if output_dir is not None:
+                        best_dir = output_dir / "best_adapter"
+                        try:
+                            model.save_pretrained(best_dir)
+                            processor.save_pretrained(best_dir)
+                            print(f"[early-stop] saved best adapter -> {best_dir}",
+                                  flush=True)
+                        except Exception as exc:
+                            print(f"[early-stop] failed to save best adapter: {exc!r}",
+                                  flush=True)
+                else:
+                    self.evals_without_improvement += 1
+                    print(f"[early-stop] no improvement ({self.evals_without_improvement}/"
+                          f"{early_stopping_patience}) — best {early_stopping_metric}="
+                          f"{self.best_metric*100:.2f}% at step {self.best_step}",
+                          flush=True)
+                    if self.evals_without_improvement >= early_stopping_patience:
+                        print(f"[early-stop] STOPPING — no improvement for "
+                              f"{early_stopping_patience} consecutive evals. "
+                              f"Best {early_stopping_metric}="
+                              f"{self.best_metric*100:.2f}% at step {self.best_step}.",
+                              flush=True)
+                        control.should_training_stop = True
             return control
 
     return GulfArabicEvalCallback()
@@ -604,6 +696,14 @@ def main() -> int:
     ap.add_argument("--lora-r", type=int, default=32)
     ap.add_argument("--lora-alpha", type=int, default=64)
     ap.add_argument("--lora-dropout", type=float, default=0.05)
+    ap.add_argument(
+        "--use-rslora",
+        action="store_true",
+        help=("Use rank-stabilized LoRA scaling (lora_alpha/sqrt(r)) per "
+              "Kalajdzievski 2023. Strongly recommended when r > 32, since "
+              "the default lora_alpha/r scaling causes high-rank adapters "
+              "to learn slower and plateau lower than low-rank ones."),
+    )
     ap.add_argument("--lora-target-suffixes", nargs="+", default=DEFAULT_LORA_TARGET_SUFFIXES)
     ap.add_argument("--per-device-train-batch-size", type=int, default=4)
     ap.add_argument("--gradient-accumulation-steps", type=int, default=16)
@@ -620,6 +720,28 @@ def main() -> int:
         help=("During training, cap each eval manifest to this many random "
               "samples (default 500). Pass 0 to evaluate the full set. "
               "The post-training final eval ALWAYS uses the full set."),
+    )
+    ap.add_argument(
+        "--early-stopping-patience",
+        type=int,
+        default=3,
+        help=("Stop training when the FIRST eval manifest's metric has not "
+              "improved by --early-stopping-threshold for this many consecutive "
+              "evals. Default 3. Pass 0 to disable early stopping."),
+    )
+    ap.add_argument(
+        "--early-stopping-metric",
+        choices=["wer", "cer"],
+        default="wer",
+        help="Metric to monitor for early stopping. Lower is better.",
+    )
+    ap.add_argument(
+        "--early-stopping-threshold",
+        type=float,
+        default=0.001,
+        help=("Minimum absolute improvement to count as 'better'. "
+              "0.001 = 0.1 percentage points (e.g. 25.30%% -> 25.19%% "
+              "counts; 25.30%% -> 25.25%% does not)."),
     )
     ap.add_argument("--save-total-limit", type=int, default=5)
     ap.add_argument("--num-workers", type=int, default=4)
@@ -671,6 +793,7 @@ def main() -> int:
         model,
         target_suffixes=args.lora_target_suffixes,
         r=args.lora_r, alpha=args.lora_alpha, dropout=args.lora_dropout,
+        use_rslora=args.use_rslora,
     )
 
     # 4. Dataset via upstream preprocess.
@@ -723,6 +846,10 @@ def main() -> int:
         args.eval_manifests,
         args.eval_every_steps,
         max_samples=eval_max,
+        early_stopping_patience=args.early_stopping_patience,
+        early_stopping_metric=args.early_stopping_metric,
+        early_stopping_threshold=args.early_stopping_threshold,
+        output_dir=args.output_dir,
     )
 
     sampler = build_weighted_sampler(records)
