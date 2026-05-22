@@ -193,13 +193,25 @@ class DataCollatorForQwen3ASRFinetuning:
         full_texts = [pfx + tgt + eos for pfx, tgt in zip(prefix_texts, targets)]
         audios = [_load_audio_librosa(p, sr=self.sampling_rate) for p in audio_paths]
 
+        # CRITICAL: force right-padding. The Qwen3ASRProcessor defaults to
+        # left-padding (text_kwargs.padding_side="left"), which would put
+        # the actual prefix tokens at the END of the padded sequence, not
+        # the start. The subsequent `labels[i, :pl] = -100` line assumes
+        # the prefix lives at positions [0, pl), so left-padding silently
+        # produces a label tensor where loss is computed against the
+        # prefix itself instead of the target. Training looks like it
+        # runs but loss never decreases (sits at ~16 for vocab of ~152k,
+        # i.e. WORSE than random because gradients pull the model toward
+        # predicting prefix tokens it can't possibly know).
         full_inputs = self.processor(
             text=full_texts, audio=audios,
             return_tensors="pt", padding=True, truncation=False,
+            padding_side="right",
         )
         prefix_inputs = self.processor(
             text=prefix_texts, audio=audios,
             return_tensors="pt", padding=True, truncation=False,
+            padding_side="right",
         )
 
         prefix_lens = prefix_inputs["attention_mask"].sum(dim=1).tolist()
@@ -438,7 +450,14 @@ def _run_eval(
     import jiwer
     import soundfile as sf
     import torch
-    from scripts.eval_arabic import normalize_arabic_text
+    # Robust import: when launched as `python scripts/finetune_qwen3_lora.py`,
+    # the `scripts.` package isn't on sys.path. Add the repo root then import.
+    try:
+        from scripts.eval_arabic import normalize_arabic_text
+    except ModuleNotFoundError:
+        import sys
+        sys.path.insert(0, str(PROJECT_ROOT))
+        from scripts.eval_arabic import normalize_arabic_text
 
     lines = [ln for ln in manifest_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     if max_samples is not None and 0 < max_samples < len(lines):
