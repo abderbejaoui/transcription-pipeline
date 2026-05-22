@@ -412,7 +412,23 @@ def _patch_input_embeddings_shim(model) -> None:
     print(f"[lora] patched get_input_embeddings -> {emb_path}")
 
 
-def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropout: float):
+def apply_lora(
+    model,
+    target_suffixes: Sequence[str],
+    r: int,
+    alpha: int,
+    dropout: float,
+    use_rslora: bool = False,
+):
+    """Inject LoRA adapters into the LLM decoder linears.
+
+    When ``use_rslora=True``, PEFT uses the rank-stabilized scaling
+    ``lora_alpha/sqrt(r)`` (Kalajdzievski 2023, arXiv:2312.03732). The
+    default LoRA scaling ``lora_alpha/r`` is known to slow learning at
+    higher ranks, causing r>32 to plateau LOWER than smaller ranks.
+    rsLoRA unlocks the benefit of larger ranks (r=64, 128, 256+).
+    Use it whenever ``r > 32``.
+    """
     from peft import LoraConfig, get_peft_model, TaskType
 
     # Freeze everything first.
@@ -433,6 +449,7 @@ def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropou
         )
     print(f"[lora] {len(explicit_targets)} target modules "
           f"(first 3: {explicit_targets[:3]})")
+    print(f"[lora] r={r}  alpha={alpha}  dropout={dropout}  use_rslora={use_rslora}")
 
     # PEFT will call model.enable_input_require_grads() which uses
     # get_input_embeddings(); the outer Qwen3-ASR class doesn't implement
@@ -446,6 +463,7 @@ def apply_lora(model, target_suffixes: Sequence[str], r: int, alpha: int, dropou
         bias="none",
         task_type=TaskType.CAUSAL_LM,
         target_modules=explicit_targets,  # explicit full paths
+        use_rslora=use_rslora,
     )
     model = get_peft_model(model, cfg)
     model.print_trainable_parameters()
@@ -604,6 +622,14 @@ def main() -> int:
     ap.add_argument("--lora-r", type=int, default=32)
     ap.add_argument("--lora-alpha", type=int, default=64)
     ap.add_argument("--lora-dropout", type=float, default=0.05)
+    ap.add_argument(
+        "--use-rslora",
+        action="store_true",
+        help=("Use rank-stabilized LoRA scaling (lora_alpha/sqrt(r)) per "
+              "Kalajdzievski 2023. Strongly recommended when r > 32, since "
+              "the default lora_alpha/r scaling causes high-rank adapters "
+              "to learn slower and plateau lower than low-rank ones."),
+    )
     ap.add_argument("--lora-target-suffixes", nargs="+", default=DEFAULT_LORA_TARGET_SUFFIXES)
     ap.add_argument("--per-device-train-batch-size", type=int, default=4)
     ap.add_argument("--gradient-accumulation-steps", type=int, default=16)
@@ -671,6 +697,7 @@ def main() -> int:
         model,
         target_suffixes=args.lora_target_suffixes,
         r=args.lora_r, alpha=args.lora_alpha, dropout=args.lora_dropout,
+        use_rslora=args.use_rslora,
     )
 
     # 4. Dataset via upstream preprocess.
