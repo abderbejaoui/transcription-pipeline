@@ -1,24 +1,28 @@
-"""FastAPI app — LLM-driven medical transcript correction grounded by voice.
+"""FastAPI app — ASR post-correction pipeline for medical transcripts.
 
 Pipeline
 --------
-1. /api/transcribe
-   - Save uploaded audio under data/sessions/<session_id>.<ext>
-   - faster-whisper -> text + word-level timestamps + per-word probability
-   - LLM DETECT (one call): identify suspicious medical-term spans by index
-   - For each span:
-       slice audio at timestamps -> wav2vec2 embedding -> top-K voice index hits
-       attach the description metadata of each hit
-   - LLM DECIDE (one batched call): pick the candidate that fits the
-     patient's clinical context, or NO_CHANGE
-   - Apply chosen replacements
-   - Return raw_text, corrected_text, session_id, words, suspicious
+Stage 1: Transcription & flagging
+    - ASR returns text + word-level confidence
+    - Words below the confidence threshold are flagged
+    - Confident words never go to the LLM
 
-2. /api/learn_from_edit
-   - Word-level diff vs the cached session audio
-   - For each replaced span, slice audio -> wav2vec2 -> store in voice index
-     under the new canonical term (with an LLM-generated description if
-     not already cached).
+Stage 2: Error lexicon (no LLM)
+    - SQLite lexicon from doctor-confirmed corrections
+    - Lookup: exact match -> Double Metaphone -> fuzzy similarity
+    - Apply corrections immediately when matched
+
+Stage 3: Routing & LLM correction
+    - Suspected medical entities: fuzzy KG lookup first
+    - If KG misses, call Calme with a strict medical prompt
+    - General language errors go to Calme with full sentence context
+    - Ambiguous/short words are queued for human review
+    - LLM corrections below the confidence threshold are not auto-applied
+
+Stage 4: Verification & doctor queue
+    - Calme verifies coherence between raw and corrected text
+    - If coherence confidence is low, revert to original transcript
+    - Any correction touching drug names is queued for doctor review
 
 Endpoints
 ---------
@@ -27,9 +31,9 @@ GET  /api/healthz
 GET  /api/lexicon
 POST /api/teach              (kept for compatibility; updates lexicon only)
 POST /api/transcribe         audio in -> corrected transcript out
-POST /api/learn_from_edit    teach the system from a user edit
-GET  /api/voices             list voice index (without embeddings)
-POST /api/voices/reset       wipe voice index (testing)
+POST /api/learn_from_edit    write confirmed corrections to the error lexicon
+GET  /api/voices             list voice index (legacy)
+POST /api/voices/reset       wipe voice index (legacy)
 """
 
 from __future__ import annotations
@@ -50,7 +54,20 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import (
+    asr,
+    descriptions,
+    error_lexicon,
+    kg_lookup,
+    lexicon,
+    llm_correct,
+    llm_runtime,
+    llm_verify,
+    review_queue,
+    suspect,
+    tracing,
+    voice_match,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -66,14 +83,22 @@ DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 
-# Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
-# scale (normalized Levenshtein over greedy wav2vec2-base-960h transcripts).
-# Empirically: same word / different voice -> 0.55-0.85, same word / same
-# voice -> 0.85-1.00, different words -> < 0.40. The LLM remains the
-# final filter; we just keep candidates loose enough to feed it.
-AUDIO_RETRIEVE_THRESHOLD_USER = 0.55
-AUDIO_RETRIEVE_THRESHOLD_SEED = 0.45
-AUDIO_AUTOFIX_THRESHOLD = 0.85  # short-circuit when very strong USER match
+WORD_CONFIDENCE_THRESHOLD = float(os.environ.get("WORD_CONFIDENCE_THRESHOLD", "0.70"))
+LLM_CONFIDENCE_THRESHOLD = float(os.environ.get("LLM_CONFIDENCE_THRESHOLD", "0.70"))
+COHERENCE_THRESHOLD = float(os.environ.get("COHERENCE_THRESHOLD", "0.60"))
+KG_AUTOFIX_THRESHOLD = float(os.environ.get("KG_AUTOFIX_THRESHOLD", "90"))
+KG_SUSPECT_THRESHOLD = float(os.environ.get("KG_SUSPECT_THRESHOLD", "80"))
+FLAG_MERGE_GAP_S = float(os.environ.get("FLAG_MERGE_GAP_S", "0.10"))
+MIN_AMBIGUOUS_CHARS = int(os.environ.get("MIN_AMBIGUOUS_CHARS", "3"))
+
+AMBIGUOUS_WORDS = {
+    "uh",
+    "um",
+    "er",
+    "ah",
+    "eh",
+    "hmm",
+}
 
 _LEARN_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9'-]+")
 
@@ -123,9 +148,10 @@ def _prewarm() -> None:
             print(f"[startup] faster-whisper '{DEFAULT_WHISPER_SIZE}' ready.")
         except Exception as exc:
             print(f"[startup] Whisper warmup failed: {exc}")
+        if USE_LLM:
+            llm_runtime.warm_up()
 
     threading.Thread(target=_bg, daemon=True).start()
-    voice_match.warm_up()
 
 
 @app.get("/", include_in_schema=False)
@@ -176,26 +202,83 @@ class CorrectRequest(BaseModel):
 @app.post("/api/correct")
 def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
     """Text-only quick path. No audio means no voice retrieval; the LLM
-    DECIDE step will see only NO_CHANGE candidates per span — so this
-    endpoint is mostly for showing the DETECT output. Real corrections
-    require audio."""
+    stages are skipped because we have no word-level confidences. This
+    endpoint is mostly for UI smoke tests."""
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text must not be empty")
     fake_words = []
     for tok in req.text.split():
         fake_words.append({"word": " " + tok, "start": 0.0, "end": 0.0, "probability": 1.0})
-    spans = []
-    if USE_LLM and fake_words:
-        try:
-            spans = llm_detect.detect(fake_words)
-        except Exception as exc:
-            print(f"[correct] DETECT failed: {exc!r}")
+    spans: List[Dict[str, Any]] = []
     return {
         "raw_text": req.text,
         "corrected_text": req.text,
         "suspicious": spans,
-        "note": "text-only mode: voice retrieval is disabled without audio",
+        "note": "text-only mode: no word confidence without audio",
     }
+
+
+def _clean_token(text: str) -> str:
+    return re.sub(r"^[\s\W_]+|[\s\W_]+$", "", text)
+
+
+def _flag_low_confidence(
+    words: List[Dict[str, Any]],
+    *,
+    threshold: float,
+) -> List[Dict[str, Any]]:
+    out: List[Dict[str, Any]] = []
+    for i, w in enumerate(words):
+        prob = w.get("probability")
+        prob_val = float(prob) if isinstance(prob, (int, float)) else 1.0
+        if prob_val >= threshold:
+            continue
+        raw = w.get("word") or ""
+        clean = _clean_token(raw)
+        if not clean:
+            continue
+        out.append(
+            {
+                "index": i,
+                "text": clean,
+                "start": float(w.get("start") or 0.0),
+                "end": float(w.get("end") or 0.0),
+                "probability": prob_val,
+                "reason": "low_confidence",
+            }
+        )
+    return out
+
+
+def _is_sentence_break(token_text: str) -> bool:
+    return bool(re.search(r"[.!?]", token_text))
+
+
+def _sentence_bounds(words: List[Dict[str, Any]], i0: int, i1: int) -> Tuple[int, int]:
+    start = max(0, i0)
+    end = min(len(words) - 1, i1)
+    while start > 0 and not _is_sentence_break(words[start - 1].get("word") or ""):
+        start -= 1
+    while end < len(words) - 1 and not _is_sentence_break(words[end].get("word") or ""):
+        end += 1
+    return start, end
+
+
+def _sentence_text(words: List[Dict[str, Any]], i0: int, i1: int) -> str:
+    if not words:
+        return ""
+    start, end = _sentence_bounds(words, i0, i1)
+    return "".join((w.get("word") or "") for w in words[start : end + 1]).strip()
+
+
+def _is_ambiguous(span_text: str) -> bool:
+    stripped = _clean_token(span_text)
+    alpha = re.sub(r"[^A-Za-z]", "", stripped)
+    if len(alpha) < MIN_AMBIGUOUS_CHARS:
+        return True
+    if alpha.lower() in AMBIGUOUS_WORDS:
+        return True
+    return False
 
 
 # ---------------------------------------------------------------------------
@@ -209,7 +292,6 @@ def _run_transcribe_pipeline(
     """The full pipeline. Calls into services that emit trace events via
     `app.services.tracing`, so this function can be run with or without an
     active Tracer."""
-    # 1) Whisper.
     tracing.emit("asr.start", {
         "session_id": session_id,
         "audio_path": str(session_path),
@@ -228,249 +310,259 @@ def _run_transcribe_pipeline(
     })
     print(f"[transcribe] raw text: {raw_text!r}  ({len(words)} tokens)")
 
-    # 2a) Voice-first scan: for every SINGLE word, check the voice DB.
-    # Similarity is now phonetic (CTC transcript distance), so we can be
-    # more confident: same word should score >= 0.75 even across speakers,
-    # while unrelated words drop below 0.45. We still only scan single
-    # words to keep the scan fast and unambiguous.
-    voice_first_spans: List[Dict[str, Any]] = []
-    if voice_match.list_voices() and words:
-        VF_THRESHOLD = 0.80
-        for i, tok in enumerate(words):
-            start = tok.get("start")
-            end = tok.get("end")
-            if not isinstance(start, (int, float)) or not isinstance(end, (int, float)):
-                continue
-            if end - start < 0.15:
-                # too short to embed reliably
-                continue
-            try:
-                hits = voice_match.match(
-                    session_path,
-                    start_s=float(start),
-                    end_s=float(end),
-                    threshold=VF_THRESHOLD,
-                    top_k=1,
-                )
-            except Exception:
-                hits = []
-            if not hits or hits[0].get("source") != "user":
-                continue
-            voice_first_spans.append({
-                "index_start": i,
-                "index_end": i + 1,
-                "text": (tok.get("word") or "").strip(),
-                "start_s": float(start),
-                "end_s": float(end),
-                "probability_min": 1.0,
-                "reason": f"voice_match:{hits[0]['term']}@{hits[0]['similarity']:.2f}",
-            })
+    suspicious_words = _flag_low_confidence(words, threshold=WORD_CONFIDENCE_THRESHOLD)
+    spans = suspect.merge_adjacent(suspicious_words, max_gap_s=FLAG_MERGE_GAP_S)
+    tracing.emit("flagging.done", {
+        "threshold": WORD_CONFIDENCE_THRESHOLD,
+        "spans": spans,
+    })
+    print(f"[transcribe] low-conf spans: {[(s['index_first'], s['index_last'], s['text']) for s in spans]}")
 
-    # 2b) DETECT — LLM call #1.
-    detect_spans: List[Dict[str, Any]] = []
-    if USE_LLM and words:
-        try:
-            detect_spans = llm_detect.detect(words)
-        except Exception as exc:
-            print(f"[transcribe] DETECT failed: {exc!r}")
-            detect_spans = []
-
-    # 2c) Combine voice-first + DETECT spans WITHOUT losing words.
-    #
-    # A confident voice-first hit is a stop sign: it pinpoints exactly which
-    # token an existing fingerprint matches. If the LLM returned a wider span
-    # that engulfs that token (e.g. "gripex, maxilas" overlapping a voice hit
-    # on just "gripex"), we MUST NOT merge them — that would allow the
-    # voice-chosen replacement to swallow the other token. Instead we split
-    # the LLM span around the voice-first tokens.
-    voice_indices = {s["index_start"] for s in voice_first_spans}
-
-    def _make_span(i0: int, i1: int, reason: str) -> Optional[Dict[str, Any]]:
-        if i1 <= i0:
-            return None
-        toks = words[i0:i1]
-        starts = [t.get("start") for t in toks if isinstance(t.get("start"), (int, float))]
-        ends = [t.get("end") for t in toks if isinstance(t.get("end"), (int, float))]
-        if not starts or not ends:
-            return None
-        probs = [t.get("probability") for t in toks if isinstance(t.get("probability"), (int, float))]
-        return {
-            "index_start": i0,
-            "index_end": i1,
-            "text": " ".join((t.get("word") or "").strip() for t in toks).strip(),
-            "start_s": float(min(starts)),
-            "end_s": float(max(ends)),
-            "probability_min": float(min(probs)) if probs else 1.0,
-            "reason": reason,
-        }
-
-    # Carry voice-first spans through unchanged.
-    final_spans: List[Dict[str, Any]] = list(voice_first_spans)
-    # Split each DETECT span around any voice indices it covers.
-    for d in detect_spans:
-        i0, i1 = d["index_start"], d["index_end"]
-        cur = i0
-        for vi in sorted(voice_indices):
-            if vi < cur or vi >= i1:
-                continue
-            piece = _make_span(cur, vi, d.get("reason", ""))
-            if piece is not None:
-                final_spans.append(piece)
-            cur = vi + 1
-        if cur < i1:
-            piece = _make_span(cur, i1, d.get("reason", ""))
-            if piece is not None:
-                final_spans.append(piece)
-
-    # Dedup: if voice-first and a DETECT piece end up on the exact same
-    # range, prefer the voice-first version.
-    seen_ranges: Dict[Tuple[int, int], Dict[str, Any]] = {}
-    for s in final_spans:
-        key = (s["index_start"], s["index_end"])
-        prev = seen_ranges.get(key)
-        if prev is None:
-            seen_ranges[key] = s
-        else:
-            prefer = prev if prev.get("reason", "").startswith("voice_match") else s
-            other = s if prev is prefer else prev
-            seen_ranges[key] = prefer
-            if other.get("reason") and other["reason"] not in prefer.get("reason", ""):
-                prefer["reason"] = (prefer.get("reason", "") + "+" + other["reason"]).strip("+")
-
-    spans = sorted(seen_ranges.values(), key=lambda s: s["index_start"])
-    tracing.emit("voice_first.spans", {"spans": voice_first_spans})
-    tracing.emit("detect.spans", {"spans": detect_spans})
-    tracing.emit("spans.merged", {"spans": spans})
-    print(f"[transcribe] voice_first: {[(s['index_start'], s['index_end'], s['text']) for s in voice_first_spans]}")
-    print(f"[transcribe] DETECT:      {[(s['index_start'], s['index_end'], s['text']) for s in detect_spans]}")
-    print(f"[transcribe] FINAL spans: {[(s['index_start'], s['index_end'], s['text']) for s in spans]}")
-
-    # 3) For each span: voice retrieval -> candidates with descriptions.
-    items_for_decide: List[Dict[str, Any]] = []
-    span_meta: List[Dict[str, Any]] = []
-    auto_choices: Dict[str, str] = {}
-    tracing.emit("retrieve.start", {"n_spans": len(spans)})
-    for s in spans:
-        try:
-            user_hits = voice_match.match(
-                session_path,
-                start_s=s["start_s"],
-                end_s=s["end_s"],
-                threshold=AUDIO_RETRIEVE_THRESHOLD_USER,
-                top_k=8,
-            )
-        except Exception as exc:
-            print(f"[transcribe] voice user match failed: {exc!r}")
-            user_hits = []
-        # Strong user-fingerprint match -> short-circuit, skip the LLM.
-        item_id = f"s{len(items_for_decide)}"
-        if user_hits and user_hits[0].get("source") == "user" and user_hits[0]["similarity"] >= AUDIO_AUTOFIX_THRESHOLD:
-            auto_choices[item_id] = user_hits[0]["term"]
-            span_meta.append({"id": item_id, "span": s, "hits": user_hits, "auto": True})
-            items_for_decide.append({"id": item_id, "span": s["text"], "candidates": []})
-            tracing.emit("retrieve.span", {
-                "span_id": item_id,
-                "span_text": s["text"],
-                "start_s": s["start_s"],
-                "end_s": s["end_s"],
-                "user_hits": user_hits,
-                "auto": True,
-                "chosen": user_hits[0]["term"],
-            })
-            continue
-
-        # Otherwise also pull seed (TTS-derived) hits at a more lenient floor.
-        try:
-            all_hits = voice_match.match(
-                session_path,
-                start_s=s["start_s"],
-                end_s=s["end_s"],
-                threshold=AUDIO_RETRIEVE_THRESHOLD_SEED,
-                top_k=8,
-            )
-        except Exception as exc:
-            print(f"[transcribe] voice fallback match failed: {exc!r}")
-            all_hits = []
-        # Dedup: keep best similarity per term, prefer user > seed.
-        seen: Dict[str, Dict[str, Any]] = {}
-        for h in (user_hits + all_hits):
-            term = h["term"]
-            prev = seen.get(term)
-            if prev is None or h["similarity"] > prev["similarity"]:
-                seen[term] = h
-        ranked = sorted(seen.values(), key=lambda h: -h["similarity"])
-        top = ranked[:5]
-        # Attach description (use cached one if metadata didn't have it).
-        candidates = []
-        for h in top:
-            desc = h.get("description") or descriptions.get(h["term"]) or ""
-            candidates.append({
-                "term": h["term"],
-                "similarity": h["similarity"],
-                "description": desc,
-                "source": h.get("source", "user"),
-            })
-        items_for_decide.append({"id": item_id, "span": s["text"], "candidates": candidates})
-        span_meta.append({"id": item_id, "span": s, "hits": top, "auto": False})
-        tracing.emit("retrieve.span", {
-            "span_id": item_id,
-            "span_text": s["text"],
-            "start_s": s["start_s"],
-            "end_s": s["end_s"],
-            "user_hits": user_hits,
-            "all_hits": all_hits,
-            "candidates": candidates,
-            "auto": False,
-        })
-
-    # 4) DECIDE — LLM call #2.
-    decisions: Dict[str, Optional[str]] = dict(auto_choices)
-    decide_items = [it for it in items_for_decide if it["id"] not in auto_choices and it["candidates"]]
-    if decide_items and USE_LLM:
-        try:
-            results = llm_decide.decide(raw_text, decide_items)
-            for r in results:
-                decisions[r["id"]] = r["choice"]
-        except Exception as exc:
-            print(f"[transcribe] DECIDE failed: {exc!r}")
-            tracing.emit("decide.error", {"error": repr(exc)})
-
-    tracing.emit("decide.done", {"decisions": decisions, "auto": auto_choices})
-    print(f"[transcribe] decisions: {decisions}")
-
-    # 5) Apply replacements at word-token level.
     word_replacements: Dict[int, str] = {}
     drop_indices: set = set()
     suspicious_out: List[Dict[str, Any]] = []
-    for item, meta in zip(items_for_decide, span_meta):
-        choice = decisions.get(item["id"])
-        suspicious_out.append({
-            "span": meta["span"]["text"],
-            "start_s": meta["span"]["start_s"],
-            "end_s": meta["span"]["end_s"],
-            "reason": meta["span"].get("reason", "near_medical"),
-            "auto_via_voice": bool(meta.get("auto")),
-            "candidates": item["candidates"],
-            "voice_hits": meta["hits"],
-            "chosen": choice,
-        })
-        if not choice:
-            continue
-        i0 = meta["span"]["index_start"]
-        i1 = meta["span"]["index_end"]
-        word_replacements[i0] = choice
+    queued_out: List[Dict[str, Any]] = []
+
+    def _apply(i0: int, i1: int, replacement: str) -> None:
+        word_replacements[i0] = replacement
         for idx in range(i0 + 1, i1):
             drop_indices.add(idx)
+
+    def _queue(
+        *,
+        span_text: str,
+        correction: str,
+        confidence: float,
+        stage: str,
+        reason: str,
+        route: Optional[str],
+        sentence: str,
+        entity_type: Optional[str] = None,
+    ) -> Dict[str, Any]:
+        item = {
+            "session_id": session_id,
+            "span": span_text,
+            "suggested": correction,
+            "confidence": round(confidence, 4),
+            "stage": stage,
+            "route": route,
+            "reason": reason,
+            "sentence": sentence,
+            "entity_type": entity_type,
+        }
+        queued = review_queue.enqueue(item)
+        queued_out.append(queued)
+        tracing.emit("review.queue", {"item": queued})
+        return queued
+
+    for s in spans:
+        span_text = s["text"]
+        i0 = int(s["index_first"])
+        i1 = int(s["index_last"]) + 1
+        start_s = float(s.get("start") or 0.0)
+        end_s = float(s.get("end") or 0.0)
+        sentence = _sentence_text(words, i0, i1 - 1)
+
+        lex_match = error_lexicon.lookup(span_text)
+        if lex_match is not None:
+            correction = lex_match.correct_text
+            confidence = lex_match.similarity / 100.0
+            queued = None
+            applied = False
+            if kg_lookup.is_drug(correction):
+                queued = _queue(
+                    span_text=span_text,
+                    correction=correction,
+                    confidence=confidence,
+                    stage="lexicon",
+                    reason="drug_review",
+                    route=None,
+                    sentence=sentence,
+                    entity_type="drug",
+                )
+            else:
+                _apply(i0, i1, correction)
+                applied = True
+            suspicious_out.append({
+                "span": span_text,
+                "start_s": start_s,
+                "end_s": end_s,
+                "stage": "lexicon",
+                "match_type": lex_match.match_type,
+                "chosen": correction,
+                "confidence": round(confidence, 4),
+                "applied": applied,
+                "queued": queued is not None,
+                "queue_id": queued.get("id") if queued else None,
+                "reason": f"lexicon_{lex_match.match_type}",
+            })
+            tracing.emit("lexicon.match", {
+                "span": span_text,
+                "correction": correction,
+                "match_type": lex_match.match_type,
+                "similarity": lex_match.similarity,
+            })
+            continue
+
+        if _is_ambiguous(span_text):
+            queued = _queue(
+                span_text=span_text,
+                correction="",
+                confidence=0.0,
+                stage="ambiguous",
+                reason="ambiguous",
+                route=None,
+                sentence=sentence,
+            )
+            suspicious_out.append({
+                "span": span_text,
+                "start_s": start_s,
+                "end_s": end_s,
+                "stage": "ambiguous",
+                "chosen": None,
+                "confidence": 0.0,
+                "applied": False,
+                "queued": True,
+                "queue_id": queued.get("id"),
+                "reason": "ambiguous",
+            })
+            tracing.emit("span.ambiguous", {"span": span_text})
+            continue
+
+        kg_match = kg_lookup.find_best(span_text)
+        if kg_match and kg_match["score"] >= KG_AUTOFIX_THRESHOLD:
+            correction = str(kg_match["term"])
+            confidence = float(kg_match["score"]) / 100.0
+            queued = None
+            applied = False
+            entity_type = str(kg_match.get("type") or "term")
+            if kg_lookup.is_drug(correction):
+                queued = _queue(
+                    span_text=span_text,
+                    correction=correction,
+                    confidence=confidence,
+                    stage="kg",
+                    reason="drug_review",
+                    route="medical",
+                    sentence=sentence,
+                    entity_type="drug",
+                )
+            else:
+                _apply(i0, i1, correction)
+                applied = True
+            suspicious_out.append({
+                "span": span_text,
+                "start_s": start_s,
+                "end_s": end_s,
+                "stage": "kg",
+                "chosen": correction,
+                "confidence": round(confidence, 4),
+                "kg_score": round(float(kg_match["score"]), 2),
+                "applied": applied,
+                "queued": queued is not None,
+                "queue_id": queued.get("id") if queued else None,
+                "reason": "kg_fuzzy",
+                "entity_type": entity_type,
+            })
+            tracing.emit("kg.match", {
+                "span": span_text,
+                "correction": correction,
+                "score": kg_match["score"],
+            })
+            continue
+
+        route = "medical" if (kg_match and kg_match["score"] >= KG_SUSPECT_THRESHOLD) else "general"
+        llm_result = {"replacement": "", "confidence": 0.0, "reason": "llm_disabled"}
+        if USE_LLM:
+            try:
+                if route == "medical":
+                    llm_result = llm_correct.correct_medical(span_text, sentence)
+                else:
+                    llm_result = llm_correct.correct_general(span_text, sentence)
+            except Exception as exc:
+                print(f"[transcribe] LLM correct failed: {exc!r}")
+                llm_result = {"replacement": "", "confidence": 0.0, "reason": "llm_error"}
+
+        replacement = str(llm_result.get("replacement") or "").strip()
+        llm_conf = float(llm_result.get("confidence") or 0.0)
+        if replacement and replacement.lower() == span_text.lower():
+            replacement = ""
+
+        queued = None
+        applied = False
+        if replacement and llm_conf >= LLM_CONFIDENCE_THRESHOLD:
+            if kg_lookup.is_drug(replacement):
+                queued = _queue(
+                    span_text=span_text,
+                    correction=replacement,
+                    confidence=llm_conf,
+                    stage="llm",
+                    reason="drug_review",
+                    route=route,
+                    sentence=sentence,
+                    entity_type="drug",
+                )
+            else:
+                _apply(i0, i1, replacement)
+                applied = True
+        else:
+            if replacement or llm_conf > 0.0:
+                queued = _queue(
+                    span_text=span_text,
+                    correction=replacement,
+                    confidence=llm_conf,
+                    stage="llm",
+                    reason="low_confidence",
+                    route=route,
+                    sentence=sentence,
+                )
+
+        suspicious_out.append({
+            "span": span_text,
+            "start_s": start_s,
+            "end_s": end_s,
+            "stage": "llm",
+            "route": route,
+            "chosen": replacement or None,
+            "confidence": round(llm_conf, 4),
+            "applied": applied,
+            "queued": queued is not None,
+            "queue_id": queued.get("id") if queued else None,
+            "reason": str(llm_result.get("reason") or ""),
+        })
+        tracing.emit("llm.correct", {
+            "span": span_text,
+            "route": route,
+            "replacement": replacement,
+            "confidence": llm_conf,
+        })
 
     corrected_text = _apply_word_replacements(words, word_replacements, drop_indices) if words else raw_text
     if not words:
         corrected_text = raw_text
+
+    coherence = {"confidence": 1.0, "issues": []}
+    reverted = False
+    if USE_LLM and corrected_text.strip() and corrected_text.strip() != raw_text.strip():
+        try:
+            coherence = llm_verify.verify(raw_text, corrected_text)
+        except Exception as exc:
+            print(f"[transcribe] coherence check failed: {exc!r}")
+            coherence = {"confidence": 0.0, "issues": ["llm_error"]}
+        if coherence.get("confidence", 0.0) < COHERENCE_THRESHOLD:
+            corrected_text = raw_text
+            reverted = True
+    coherence["threshold"] = COHERENCE_THRESHOLD
+    coherence["reverted"] = reverted
+    tracing.emit("verify.done", {"coherence": coherence})
 
     return {
         "session_id": session_id,
         "raw_text": raw_text,
         "corrected_text": corrected_text.strip(),
         "suspicious": suspicious_out,
+        "review_queue": queued_out,
+        "coherence": coherence,
         "asr": {
             "language": asr_result["language"],
             "language_probability": asr_result["language_probability"],
@@ -482,7 +574,7 @@ def _run_transcribe_pipeline(
 
 
 def _apply_word_replacements(
-    words: List[Dict, Any],
+    words: List[Dict[str, Any]],
     replacements: Dict[int, str],
     drop_indices: set,
 ) -> str:
@@ -602,106 +694,38 @@ def _diff_replacements(raw: str, corrected: str) -> List[Tuple[str, str]]:
     return pairs
 
 
-def _find_session_audio(session_id: str) -> Optional[Path]:
-    matches = list(SESSIONS_DIR.glob(f"{session_id}.*"))
-    return matches[0] if matches else None
-
-
-def _locate_words_in_raw(
-    raw_text: str, old_phrase: str, asr_words: List[Dict[str, Any]]
-) -> List[int]:
-    raw_tokens = _word_tokens(raw_text)
-    old_tokens = _word_tokens(old_phrase)
-    if not old_tokens or not raw_tokens:
-        return []
-    raw_low = [t.lower() for t in raw_tokens]
-    old_low = [t.lower() for t in old_tokens]
-    start_in_raw = -1
-    for i in range(len(raw_low) - len(old_low) + 1):
-        if raw_low[i : i + len(old_low)] == old_low:
-            start_in_raw = i
-            break
-    if start_in_raw < 0:
-        return []
-    word_to_indices: List[int] = []
-    for asr_idx, w in enumerate(asr_words):
-        toks = _word_tokens(w.get("word") or "")
-        for _ in toks:
-            word_to_indices.append(asr_idx)
-    if start_in_raw + len(old_low) > len(word_to_indices):
-        return []
-    asr_indices = word_to_indices[start_in_raw : start_in_raw + len(old_low)]
-    out: List[int] = []
-    for idx in asr_indices:
-        if not out or out[-1] != idx:
-            out.append(idx)
-    return out
-
-
 @app.post("/api/learn_from_edit")
 def learn_from_edit(req: LearnFromEditRequest) -> Dict[str, Any]:
     pairs = _diff_replacements(req.raw_text, req.corrected_text)
     if not pairs:
         return {"ok": True, "learned_text": [], "learned_voices": []}
-
-    session_path = _find_session_audio(req.session_id) if req.session_id else None
-    asr_words: List[Dict[str, Any]] = []
-    if session_path:
-        try:
-            asr_result = asr.transcribe(session_path, model_size=DEFAULT_WHISPER_SIZE, language=None)
-            asr_words = list(asr_result["words"])
-        except Exception as exc:
-            print(f"[learn] re-ASR failed: {exc!r}")
-
-    known_text = {e["term"].lower() for e in lexicon.list_terms()}
-    for e in lexicon.list_terms():
-        for a in e.get("aliases") or []:
-            known_text.add(str(a).lower())
-
     learned_text: List[Dict[str, Any]] = []
-    learned_voices: List[Dict[str, Any]] = []
-
     for new_phrase, old_phrase in pairs:
-        new_lower = new_phrase.lower()
-
-        # 1) Save term in lexicon (text side).
-        if new_lower not in known_text:
-            aliases = []
-            if old_phrase and old_phrase.lower() != new_lower:
-                aliases.append(old_phrase)
-            entry = lexicon.add_term(
-                term=new_phrase, type_=req.type, aliases=aliases, priority=1.0
-            )
-            learned_text.append({"entry": entry, "from_alias": old_phrase or None})
-            known_text.add(new_lower)
-
-        # 2) Generate description (best-effort, cached).
+        if not old_phrase:
+            continue
         try:
-            descriptions.get_or_generate(new_phrase, type_hint=req.type)
+            entry = error_lexicon.add_correction(
+                wrong_text=old_phrase,
+                correct_text=new_phrase,
+                source="doctor",
+            )
+            learned_entry = {
+                "entry": {"term": new_phrase, "type": req.type},
+                "from_alias": old_phrase,
+                "error_lexicon_id": entry.get("id"),
+            }
+            if req.type in {"drug", "diagnosis", "procedure"}:
+                try:
+                    kg_res = kg_lookup.add_entity(
+                        new_phrase,
+                        entity_type=req.type,
+                        alias=old_phrase if req.type == "drug" else None,
+                    )
+                    learned_entry["kg_updated"] = bool(kg_res.get("ok"))
+                except Exception as exc:
+                    print(f"[learn] kg update failed: {exc!r}")
+            learned_text.append(learned_entry)
         except Exception as exc:
-            print(f"[learn] description gen failed: {exc!r}")
-        desc = descriptions.get(new_phrase)
+            print(f"[learn] error lexicon update failed: {exc!r}")
 
-        # 3) Save voice fingerprint if we have audio + matching ASR words.
-        if session_path and asr_words and old_phrase:
-            indices = _locate_words_in_raw(req.raw_text, old_phrase, asr_words)
-            if indices:
-                first_idx = indices[0]
-                last_idx = indices[-1]
-                start_s = float(asr_words[first_idx].get("start") or 0.0)
-                end_s = float(asr_words[last_idx].get("end") or start_s + 0.5)
-                if end_s > start_s:
-                    try:
-                        v = voice_match.register(
-                            term=new_phrase,
-                            audio_path=session_path,
-                            start_s=start_s,
-                            end_s=end_s,
-                            description=desc,
-                            source="user",
-                        )
-                        learned_voices.append({"voice": v, "from_phrase": old_phrase})
-                    except Exception as exc:
-                        print(f"[learn] voice register failed: {exc!r}")
-
-    return {"ok": True, "learned_text": learned_text, "learned_voices": learned_voices}
+    return {"ok": True, "learned_text": learned_text, "learned_voices": []}

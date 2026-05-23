@@ -6,7 +6,7 @@ import os
 from typing import Dict
 
 DEFAULT_OLLAMA_URL = "http://100.68.87.28:11434/api/chat"
-DEFAULT_OLLAMA_MODEL = "hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS"
+DEFAULT_OLLAMA_MODEL = "MaziyarPanahi/Calme-7B-Instruct-v0.2"
 DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini"
 
