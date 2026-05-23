@@ -554,6 +554,17 @@ def _run_eval(
             text=[prefix_text], audio=[arr],
             return_tensors="pt", padding=True,
         ).to(model.device)
+        # Cast floating-point tensors (audio features) to the model's dtype.
+        # The model is loaded in bfloat16 but the processor returns float32,
+        # which causes "Input type (float) and bias type (c10::BFloat16)
+        # should be the same" inside the audio encoder. Training side
+        # handles this via CastFloatInputsTrainer._prepare_inputs; we do
+        # the same here for eval.
+        model_dtype = getattr(model, "dtype", None)
+        if model_dtype is not None:
+            for k, v in list(inputs.items()):
+                if torch.is_tensor(v) and v.is_floating_point():
+                    inputs[k] = v.to(dtype=model_dtype)
         with torch.no_grad():
             gen = model.generate(
                 **inputs, max_new_tokens=448,
@@ -743,6 +754,15 @@ def main() -> int:
               "0.001 = 0.1 percentage points (e.g. 25.30%% -> 25.19%% "
               "counts; 25.30%% -> 25.25%% does not)."),
     )
+    ap.add_argument(
+        "--resume-from-checkpoint",
+        type=Path,
+        default=None,
+        help=("Resume training from a saved checkpoint directory (e.g. "
+              "runs/qwen3_lora_r6/checkpoint-8000). Restores model weights, "
+              "optimizer, scheduler, RNG state, and step count, so training "
+              "picks up exactly where it left off."),
+    )
     ap.add_argument("--save-total-limit", type=int, default=5)
     ap.add_argument("--num-workers", type=int, default=4)
     ap.add_argument("--seed", type=int, default=42)
@@ -882,7 +902,12 @@ def main() -> int:
     )
 
     print("[train] starting")
-    trainer.train()
+    resume_ckpt = getattr(args, "resume_from_checkpoint", None)
+    if resume_ckpt:
+        print(f"[train] resuming from checkpoint: {resume_ckpt}")
+        trainer.train(resume_from_checkpoint=str(resume_ckpt))
+    else:
+        trainer.train()
     print("[train] done — saving final adapter")
     final_dir = args.output_dir / "final_adapter"
     model.save_pretrained(final_dir)
