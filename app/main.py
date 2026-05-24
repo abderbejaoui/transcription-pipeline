@@ -63,6 +63,7 @@ from .services import (
     llm_correct,
     llm_runtime,
     llm_verify,
+    medspeakian,
     review_queue,
     suspect,
     tracing,
@@ -88,6 +89,8 @@ LLM_CONFIDENCE_THRESHOLD = float(os.environ.get("LLM_CONFIDENCE_THRESHOLD", "0.7
 COHERENCE_THRESHOLD = float(os.environ.get("COHERENCE_THRESHOLD", "0.60"))
 KG_AUTOFIX_THRESHOLD = float(os.environ.get("KG_AUTOFIX_THRESHOLD", "90"))
 KG_SUSPECT_THRESHOLD = float(os.environ.get("KG_SUSPECT_THRESHOLD", "80"))
+MEDSPEAK_AUTO_THRESHOLD = float(os.environ.get("MEDSPEAK_AUTO_THRESHOLD", "0.90"))
+MEDSPEAK_MIN_SCORE = float(os.environ.get("MEDSPEAK_MIN_SCORE", "0.60"))
 FLAG_MERGE_GAP_S = float(os.environ.get("FLAG_MERGE_GAP_S", "0.10"))
 MIN_AMBIGUOUS_CHARS = int(os.environ.get("MIN_AMBIGUOUS_CHARS", "3"))
 
@@ -433,36 +436,20 @@ def _run_transcribe_pipeline(
         if kg_match and kg_match["score"] >= KG_AUTOFIX_THRESHOLD:
             correction = str(kg_match["term"])
             confidence = float(kg_match["score"]) / 100.0
-            queued = None
-            applied = False
-            entity_type = str(kg_match.get("type") or "term")
-            if kg_lookup.is_drug(correction):
-                queued = _queue(
-                    span_text=span_text,
-                    correction=correction,
-                    confidence=confidence,
-                    stage="kg",
-                    reason="drug_review",
-                    route="medical",
-                    sentence=sentence,
-                    entity_type="drug",
-                )
-            else:
-                _apply(i0, i1, correction)
-                applied = True
+            _apply(i0, i1, correction)
             suspicious_out.append({
                 "span": span_text,
                 "start_s": start_s,
                 "end_s": end_s,
-                "stage": "kg",
+                "stage": "local_kg",
                 "chosen": correction,
                 "confidence": round(confidence, 4),
                 "kg_score": round(float(kg_match["score"]), 2),
-                "applied": applied,
-                "queued": queued is not None,
-                "queue_id": queued.get("id") if queued else None,
-                "reason": "kg_fuzzy",
-                "entity_type": entity_type,
+                "applied": True,
+                "queued": False,
+                "queue_id": None,
+                "reason": "local_kg_exact",
+                "entity_type": str(kg_match.get("type") or "term"),
             })
             tracing.emit("kg.match", {
                 "span": span_text,
@@ -471,7 +458,90 @@ def _run_transcribe_pipeline(
             })
             continue
 
-        route = "medical" if (kg_match and kg_match["score"] >= KG_SUSPECT_THRESHOLD) else "general"
+        if kg_match and kg_match["score"] >= KG_SUSPECT_THRESHOLD:
+            correction = str(kg_match["term"])
+            confidence = float(kg_match["score"]) / 100.0
+            queued = _queue(
+                span_text=span_text,
+                correction=correction,
+                confidence=confidence,
+                stage="local_kg",
+                reason="local_kg_low_confidence",
+                route="medical",
+                sentence=sentence,
+                entity_type=str(kg_match.get("type") or "term"),
+            )
+            suspicious_out.append({
+                "span": span_text,
+                "start_s": start_s,
+                "end_s": end_s,
+                "stage": "local_kg",
+                "chosen": correction,
+                "confidence": round(confidence, 4),
+                "kg_score": round(float(kg_match["score"]), 2),
+                "applied": False,
+                "queued": True,
+                "queue_id": queued.get("id"),
+                "reason": "local_kg_low_confidence",
+                "entity_type": str(kg_match.get("type") or "term"),
+            })
+            tracing.emit("kg.match", {
+                "span": span_text,
+                "correction": correction,
+                "score": kg_match["score"],
+            })
+            continue
+
+        medspeak_match: Optional[Dict[str, Any]] = None
+        try:
+            medspeak_match = medspeakian.retrieve(span_text)
+        except Exception as exc:
+            print(f"[transcribe] MedSpeak retrieval failed: {exc!r}")
+            medspeak_match = None
+
+        if medspeak_match is not None and medspeak_match.get("score") is not None:
+            med_score = float(medspeak_match.get("score") or 0.0)
+            if med_score >= MEDSPEAK_MIN_SCORE:
+                correction = str(medspeak_match.get("term") or "").strip()
+                applied = False
+                queued = None
+                if correction and med_score >= MEDSPEAK_AUTO_THRESHOLD:
+                    _apply(i0, i1, correction)
+                    applied = True
+                else:
+                    queued = _queue(
+                        span_text=span_text,
+                        correction=correction,
+                        confidence=med_score,
+                        stage="medspeak",
+                        reason="medspeak_low_confidence",
+                        route="medical",
+                        sentence=sentence,
+                    )
+                suspicious_out.append({
+                    "span": span_text,
+                    "start_s": start_s,
+                    "end_s": end_s,
+                    "stage": "medspeak",
+                    "chosen": correction or None,
+                    "confidence": round(med_score, 4),
+                    "phonetic_score": round(float(medspeak_match.get("phonetic_score") or 0.0), 4),
+                    "semantic_score": round(float(medspeak_match.get("semantic_score") or 0.0), 4),
+                    "applied": applied,
+                    "queued": queued is not None,
+                    "queue_id": queued.get("id") if queued else None,
+                    "reason": "medspeak_retrieval",
+                })
+                tracing.emit("medspeak.match", {
+                    "span": span_text,
+                    "correction": correction,
+                    "score": med_score,
+                    "phonetic_score": medspeak_match.get("phonetic_score"),
+                    "semantic_score": medspeak_match.get("semantic_score"),
+                })
+                continue
+
+        route = "medical" if medspeak_match is not None else "general"
         llm_result = {"replacement": "", "confidence": 0.0, "reason": "llm_disabled"}
         if USE_LLM:
             try:
@@ -490,32 +560,32 @@ def _run_transcribe_pipeline(
 
         queued = None
         applied = False
-        if replacement and llm_conf >= LLM_CONFIDENCE_THRESHOLD:
-            if kg_lookup.is_drug(replacement):
+        if route == "medical":
+            if replacement:
                 queued = _queue(
                     span_text=span_text,
                     correction=replacement,
                     confidence=llm_conf,
                     stage="llm",
-                    reason="drug_review",
+                    reason="medical_llm_review",
                     route=route,
                     sentence=sentence,
-                    entity_type="drug",
                 )
-            else:
+        else:
+            if replacement and llm_conf >= LLM_CONFIDENCE_THRESHOLD:
                 _apply(i0, i1, replacement)
                 applied = True
-        else:
-            if replacement or llm_conf > 0.0:
-                queued = _queue(
-                    span_text=span_text,
-                    correction=replacement,
-                    confidence=llm_conf,
-                    stage="llm",
-                    reason="low_confidence",
-                    route=route,
-                    sentence=sentence,
-                )
+            else:
+                if replacement or llm_conf > 0.0:
+                    queued = _queue(
+                        span_text=span_text,
+                        correction=replacement,
+                        confidence=llm_conf,
+                        stage="llm",
+                        reason="low_confidence",
+                        route=route,
+                        sentence=sentence,
+                    )
 
         suspicious_out.append({
             "span": span_text,

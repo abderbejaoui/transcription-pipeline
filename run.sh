@@ -18,6 +18,8 @@ cd "$HERE"
 : "${WHISPER_LANGUAGE:=en}"
 : "${USE_LLM:=1}"
 : "${KG_ENTITIES_PATH:=data/medical_entities.json}"
+: "${MEDSPEAK_KG_SQLITE:=vendor/medspeakian/artifacts/kg_semantic.sqlite}"
+: "${MEDSPEAK_KG_PHONETIC:=vendor/medspeakian/artifacts/kg_phonetic.jsonl}"
 : "${LLM_MODEL_GENERAL:=MaziyarPanahi/Calme-7B-Instruct-v0.2}"
 : "${LLM_MODEL_MEDICAL:=MaziyarPanahi/Calme-7B-Instruct-v0.2}"
 : "${LLM_MODEL_VERIFY:=MaziyarPanahi/Calme-7B-Instruct-v0.2}"
@@ -42,9 +44,11 @@ echo "[run.sh] Starting server on http://${HOST}:${PORT}"
 echo "[run.sh] Whisper:  ${WHISPER_MODEL_SIZE}  (lang=${WHISPER_LANGUAGE})"
 echo "[run.sh] LLM:      ${USE_LLM}  (1=on / 0=off)"
 echo "[run.sh] KG:       ${KG_ENTITIES_PATH}"
+echo "[run.sh] MedSpeak: ${MEDSPEAK_KG_SQLITE} | ${MEDSPEAK_KG_PHONETIC}"
 echo "[run.sh] Models:   ${LLM_MODEL_GENERAL}"
 echo
 
 export WHISPER_MODEL_SIZE WHISPER_LANGUAGE USE_LLM KG_ENTITIES_PATH
+export MEDSPEAK_KG_SQLITE MEDSPEAK_KG_PHONETIC
 export LLM_MODEL_GENERAL LLM_MODEL_MEDICAL LLM_MODEL_VERIFY
 exec uvicorn app.main:app --host "$HOST" --port "$PORT"

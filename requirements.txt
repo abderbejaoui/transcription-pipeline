@@ -20,11 +20,26 @@ transformers>=4.44
 datasets>=2.19
 accelerate>=0.33
 peft>=0.12
+trl>=0.9.4
+bitsandbytes>=0.43.0
 
 # ASR evaluation — industry-standard libraries used by Whisper, HuggingFace
 # Open ASR Leaderboard, and NADI 2025 Arabic Shared Task.
 jiwer>=3.0
 num2words>=0.5.13
+
+# MedSpeak vendor dependencies
+openai-whisper>=20231117
+ffmpeg-python>=0.2.0
+torchaudio>=2.3.0
+pandas>=2.2.2
+pyyaml>=6.0.1
+sqlite-utils>=3.36
+tqdm>=4.66.4
+matplotlib>=3.8.0
+orjson>=3.10.7
+jsonlines>=4.0.0
+python-dateutil>=2.9.0
 
 # Dataset inspection downloads (Kaggle-hosted free corpora)
 kaggle>=1.6
