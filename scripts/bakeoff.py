@@ -592,6 +592,66 @@ class QwenUaeBackend(_Qwen3AsrBase):
 
 
 # ---------------------------------------------------------------------------
+# Backend: our own Gulf-Arabic LoRA fine-tune of Qwen3-ASR-1.7B
+# ---------------------------------------------------------------------------
+
+
+class QwenGulfLoraBackend(_Qwen3AsrBase):
+    """Loads Qwen3-ASR-1.7B and stacks a locally-trained LoRA adapter on top.
+
+    The adapter directory is controlled by the QWEN3_GULF_ADAPTER env var
+    (default: runs/qwen3_lora_r6/final_adapter). It must contain a PEFT
+    `adapter_config.json` and `adapter_model.safetensors` saved via
+    model.save_pretrained(...).
+    """
+
+    name = "qwen3-asr-gulf-lora"
+    repo_id = "Qwen/Qwen3-ASR-1.7B"  # base model
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/final_adapter"
+
+    def __init__(self, adapter_path: Optional[str] = None):
+        super().__init__()
+        self.adapter_path = adapter_path or os.environ.get(
+            "QWEN3_GULF_ADAPTER", self.DEFAULT_ADAPTER
+        )
+
+    def prepare(self) -> None:
+        # Load base model + processor via the parent class.
+        super().prepare()
+        if self._backend != "transformers":
+            raise RuntimeError(
+                "LoRA adapter requires the transformers backend. "
+                "Upgrade transformers so qwen3_asr is registered."
+            )
+
+        # Resolve adapter path against the repo root if it's relative.
+        adapter_dir = Path(self.adapter_path)
+        if not adapter_dir.is_absolute():
+            adapter_dir = (PROJECT_ROOT / adapter_dir).resolve()
+        if not adapter_dir.exists():
+            raise FileNotFoundError(
+                f"Adapter directory not found: {adapter_dir}. Set "
+                f"QWEN3_GULF_ADAPTER or pass --adapter-path."
+            )
+
+        try:
+            from peft import PeftModel
+        except ImportError as exc:
+            raise RuntimeError(
+                "peft is required for LoRA loading. Run: pip install peft"
+            ) from exc
+
+        print(f"[{self.name}] attaching LoRA adapter: {adapter_dir}")
+        self._model = PeftModel.from_pretrained(
+            self._model, str(adapter_dir),
+        ).to(self._device).eval()
+
+    def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
+        # Gulf-tuned model: always force Arabic except for explicit English.
+        return "English" if (language or "") == "en" else "Arabic"
+
+
+# ---------------------------------------------------------------------------
 # Backend: Mistral Voxtral (Voxtral-Mini-3B / Voxtral-Small-24B)
 # ---------------------------------------------------------------------------
 # Uses the official Open Universal Arabic ASR Leaderboard inference recipe:
@@ -919,6 +979,7 @@ BACKENDS: Dict[str, Callable[[], Backend]] = {
     "whisper_gulf":   WhisperGulfBackend,
     "qwen3_ksa":      QwenKsaBackend,
     "qwen3_uae":      QwenUaeBackend,
+    "qwen3_gulf":     QwenGulfLoraBackend,
     "voxtral_mini":   VoxtralMiniBackend,
     "voxtral_small":  VoxtralSmallBackend,
 }
@@ -933,6 +994,7 @@ _MODEL_KEY_TO_DIR: Dict[str, str] = {
     "whisper_gulf":   WhisperGulfBackend.name,
     "qwen3_ksa":      QwenKsaBackend.name,
     "qwen3_uae":      QwenUaeBackend.name,
+    "qwen3_gulf":     QwenGulfLoraBackend.name,
     "voxtral_mini":   VoxtralMiniBackend.name,
     "voxtral_small":  VoxtralSmallBackend.name,
 }
