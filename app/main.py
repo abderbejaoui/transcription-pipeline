@@ -50,7 +50,7 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 
 
@@ -228,6 +228,91 @@ def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
         "suspicious": spans,
         "note": "text-only mode: voice retrieval is disabled without audio",
     }
+
+
+BENCHMARK_PROGRESS: Dict[str, Any] = {}
+
+@app.get("/api/benchmark_progress/{session_id}")
+def get_benchmark_progress(session_id: str) -> Dict[str, Any]:
+    return BENCHMARK_PROGRESS.get(session_id, {"status": "unknown"})
+
+@app.post("/api/benchmark_asr")
+def benchmark_asr(
+    file: UploadFile = File(...),
+    models: Optional[str] = Form(None),
+    client_session_id: Optional[str] = Form(None)
+) -> JSONResponse:
+    target_models = []
+    if models:
+        target_models = [m.strip() for m in models.split(",") if m.strip()]
+    else:
+        target_models = list(asr_benchmark.MODELS.keys())
+        
+    session_id = client_session_id or uuid.uuid4().hex
+    
+    BENCHMARK_PROGRESS[session_id] = {
+        "status": "Receiving audio file...",
+        "completed": 0,
+        "total": len(target_models),
+        "current_model": None
+    }
+    print(f"[{session_id}] Upload received: {file.filename}")
+    
+    ext = ".wav"
+    if file.filename:
+        _, ext = os.path.splitext(file.filename)
+    audio_path = SESSIONS_DIR / f"{session_id}{ext}"
+    
+    try:
+        with open(audio_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+            
+        print(f"[{session_id}] Audio saved to {audio_path}. Starting digestion...")
+        BENCHMARK_PROGRESS[session_id]["status"] = "Audio saved. Initializing models..."
+            
+        results = []
+        for index, model_key in enumerate(target_models):
+            print(f"[{session_id}] Running {index + 1}/{len(target_models)}: {model_key}")
+            BENCHMARK_PROGRESS[session_id].update({
+                "status": f"Running inference on {model_key}...",
+                "current_model": model_key
+            })
+            try:
+                res = asr_benchmark.run_asr(model_key, str(audio_path))
+                print(f"[{session_id}] -> Finished {model_key} in {res.get('duration_s', 0)}s")
+                results.append(res)
+            except Exception as e:
+                 print(f"[{session_id}] -> Failed {model_key}: {e}")
+                 results.append({
+                    "model_key": model_key,
+                    "transcript": "",
+                    "language": None,
+                    "duration_s": 0.0,
+                    "word_timestamps": [],
+                    "error": str(e),
+                })
+                 
+            BENCHMARK_PROGRESS[session_id]["completed"] = index + 1
+                 
+        BENCHMARK_PROGRESS[session_id]["status"] = "Processing completed."
+
+        # Audio duration for extra telemetry, if we can read it
+        audio_duration_s = 0.0
+        try:
+             import soundfile as sf
+             info = sf.info(str(audio_path))
+             audio_duration_s = info.duration
+        except Exception:
+             pass
+
+        return JSONResponse({
+            "audio_filename": file.filename or "uploaded_audio",
+            "audio_duration_s": round(audio_duration_s, 2),
+            "results": results
+        })
+
+    finally:
+        pass
 
 
 # ---------------------------------------------------------------------------
