@@ -29,18 +29,16 @@ def _load_model(model_size: str = "large-v3"):
             "Run: pip install faster-whisper"
         ) from exc
 
-    # Use MPS (Apple Silicon) when available, fall back to CPU.
-    # compute_type must be "int8" for CPU; "float16" for GPU/MPS if supported.
-    default_device = "auto"
-    default_compute = "int8"
-    device = os.environ.get("WHISPER_DEVICE", default_device)
-    compute_type = os.environ.get("WHISPER_COMPUTE_TYPE", default_compute)
+    # CPU + int8 keeps the demo runnable on a laptop without a GPU. On a GPU
+    # box, switch to compute_type="float16".
+    compute_type = os.environ.get("WHISPER_COMPUTE_TYPE", "int8")
+    device = os.environ.get("WHISPER_DEVICE", "cpu")
     _MODEL = WhisperModel(model_size, device=device, compute_type=compute_type)
     _MODEL_NAME = model_size
     return _MODEL
 
 
-def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: Optional[str] = None) -> Dict[str, Any]:
+def transcribe(audio_path: str | Path, model_size: str = "small", language: Optional[str] = None) -> Dict[str, Any]:
     """Transcribe a wav/webm/mp3 file. Returns the transcript and per-word info."""
     model = _load_model(model_size)
     segments, info = model.transcribe(

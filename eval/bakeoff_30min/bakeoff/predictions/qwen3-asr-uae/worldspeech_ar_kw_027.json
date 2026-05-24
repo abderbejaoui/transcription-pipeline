@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_027",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.93,
+  "ref": "الاه الرييس مسل ما التكرير واده بان مسلين الكتاع النفتي",
+  "ref_normalized": "الاه الرييس مسل ما التكرير واده بان مسلين الكتاع النفتي",
+  "pred": "اخر رئيس مثل ما التقرير واضح بأن ممثلي القطاع النفطي",
+  "pred_normalized": "اخر رييس مثل ما التقرير واضح بان ممثلي القطاع النفطي",
+  "wer": 0.8,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5450859069824219,
+  "rtf": 9.0444459063202,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

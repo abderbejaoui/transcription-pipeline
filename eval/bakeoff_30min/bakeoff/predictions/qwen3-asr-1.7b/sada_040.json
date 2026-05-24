@@ -1,0 +1,18 @@
+{
+  "id": "sada_040",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 6.074,
+  "ref": "حياك الله يا ابو مسامح وينك الله يهديك انطيت عليك انشغلت عليك",
+  "ref_normalized": "حياك الله يا ابو مسامح وينك الله يهديك انطيت عليك انشغلت عليك",
+  "pred": "هيا ك الله يقوم سامح وإليك الله يعديك اطيت عليك شغلت عليك",
+  "pred_normalized": "هيا ك الله يقوم سامح واليك الله يعديك اطيت عليك شغلت عليك",
+  "wer": 0.75,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7678689956665039,
+  "rtf": 7.9102034777791985,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

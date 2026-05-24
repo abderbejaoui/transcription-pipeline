@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_039",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.28,
+  "ref": "التي تنس علي التعاون ما بين الكتاع العام والكتاع الهاس",
+  "ref_normalized": "التي تنس علي التعاون ما بين الكتاع العام والكتاع الهاس",
+  "pred": "التي تنص على التعاون ما بين القطاع العام والقطاع الخاص.",
+  "pred_normalized": "التي تنص علي التعاون ما بين القطاع العام والقطاع الخاص",
+  "wer": 0.4,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5179195404052734,
+  "rtf": 8.263831862089793,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

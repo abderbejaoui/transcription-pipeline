@@ -1,0 +1,18 @@
+{
+  "id": "sada_021",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.22,
+  "ref": "بس بس بس لا عاد تسمعني شيء",
+  "ref_normalized": "بس بس بس لا عاد تسمعني شي",
+  "pred": "مرحبا اسرع عاد تسمعني شي",
+  "pred_normalized": "مرحبا اسرع عاد تسمعني شي",
+  "wer": 0.5714285714285714,
+  "medical_term_recall": null,
+  "inference_seconds": 0.4183380603790283,
+  "rtf": 10.087535416157301,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

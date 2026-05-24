@@ -1,0 +1,18 @@
+{
+  "id": "sada_016",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.83,
+  "ref": "لازم اجيبلك تاريه علشان تفكر زين بمشكلة بنتك",
+  "ref_normalized": "لازم اجيبلك تاريه علشان تفكر زين بمشكله بنتك",
+  "pred": "لازم أجيب لك طاريه علشان تفكر زين مشكله بنتك",
+  "pred_normalized": "لازم اجيب لك طاريه علشان تفكر زين مشكله بنتك",
+  "wer": 0.5,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7030849456787109,
+  "rtf": 6.869724675071009,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

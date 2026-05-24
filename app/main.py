@@ -583,25 +583,6 @@ def _run_transcribe_pipeline(
     if not words:
         corrected_text = raw_text
 
-    # -----------------------------------------------------------------------
-    # Final pass: text-based corrector.
-    # This catches anything the LLM/voice pipeline missed: direct alias
-    # matches and fuzzy/phonetic near-matches against the lexicon.  It never
-    # makes a correction that is already handled above (the word was already
-    # replaced), so the two passes are complementary and do not conflict.
-    # -----------------------------------------------------------------------
-    try:
-        text_corrector = _build_corrector()
-        tc_result = text_corrector.correct_transcript(corrected_text)
-        text_corrected = tc_result.get("corrected_text", corrected_text)
-        if text_corrected != corrected_text:
-            changes = tc_result.get("suspicious_spans", [])
-            print(f"[transcribe] text-corrector changes: {changes}")
-            tracing.emit("text_correct.done", {"changes": changes, "text": text_corrected})
-            corrected_text = text_corrected
-    except Exception as exc:
-        print(f"[transcribe] text-corrector failed (non-fatal): {exc!r}")
-
     return {
         "session_id": session_id,
         "raw_text": raw_text,

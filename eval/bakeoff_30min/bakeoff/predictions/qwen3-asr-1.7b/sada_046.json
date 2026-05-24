@@ -1,0 +1,18 @@
+{
+  "id": "sada_046",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.98,
+  "ref": "مهمتي انا وياك مهي مهمتي لحالي انا اتكلم عني وعنك",
+  "ref_normalized": "مهمتي انا وياك مهي مهمتي لحالي انا اتكلم عني وعنك",
+  "pred": "همتي أنا وياك مه مهمة الحالي أنا أتكلم عني وعنك.",
+  "pred_normalized": "همتي انا وياك مه مهمه الحالي انا اتكلم عني وعنك",
+  "wer": 0.4,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7481276988983154,
+  "rtf": 6.656617589929491,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

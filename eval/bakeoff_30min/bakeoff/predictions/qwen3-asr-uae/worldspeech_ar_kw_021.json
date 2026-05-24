@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_021",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.88,
+  "ref": "وما زالت هدانات الامهات الموزفات معتله في مهتلف الجهات الهكوميه",
+  "ref_normalized": "وما زالت هدانات الامهات الموزفات معتله في مهتلف الجهات الهكوميه",
+  "pred": "وما زالت حضانات الأمهات الموظفات معطله في مختلف الجهات الحكوميه",
+  "pred_normalized": "وما زالت حضانات الامهات الموظفات معطله في مختلف الجهات الحكوميه",
+  "wer": 0.5,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7410078048706055,
+  "rtf": 7.9351390921270575,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

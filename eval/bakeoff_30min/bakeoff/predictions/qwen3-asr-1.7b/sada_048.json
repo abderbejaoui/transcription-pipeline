@@ -1,0 +1,18 @@
+{
+  "id": "sada_048",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 9.09,
+  "ref": "بسم الله طلع اعصاب رجلي بهالقعدة اها",
+  "ref_normalized": "بسم الله طلع اعصاب رجلي بهالقعده اها",
+  "pred": "بسم الله، اه اه طلعت عصابة جلية في الجعة.",
+  "pred_normalized": "بسم الله اه اه طلعت عصابه جليه في الجعه",
+  "wer": 1.0,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7191412448883057,
+  "rtf": 12.640076013734722,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}
