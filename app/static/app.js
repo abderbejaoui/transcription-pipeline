@@ -1,5 +1,5 @@
 // ---------------------------------------------------------------------------
-// Voice-grounded medical corrector — minimal client
+// ASR Benchmark UI Logic
 // ---------------------------------------------------------------------------
 
 const $ = (id) => document.getElementById(id);
@@ -11,193 +11,110 @@ const escapeHtml = (s) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-let lastRawText = "";
-let lastSessionId = null;
-
-// ---------------------------------------------------------------------------
-// HTTP helpers
-// ---------------------------------------------------------------------------
-async function postJson(url, body) {
-  const r = await fetch(url, {
-    method: "POST",
-    headers: { "Content-Type": "application/json" },
-    body: JSON.stringify(body),
-  });
-  if (!r.ok) throw new Error((await r.text()) || `HTTP ${r.status}`);
-  return r.json();
+function generateUUID() {
+    return 'xxxxxxxx-xxxx-4xxx-yxxx-xxxxxxxxxxxx'.replace(/[xy]/g, function(c) {
+        var r = Math.random() * 16 | 0, v = c == 'x' ? r : (r & 0x3 | 0x8);
+        return v.toString(16);
+    });
 }
 
-async function postForm(url, form) {
-  const r = await fetch(url, { method: "POST", body: form });
-  if (!r.ok) {
-    let msg = `HTTP ${r.status}`;
-    try {
-      msg = (await r.json()).error || msg;
-    } catch (_) {
-      msg = await r.text();
-    }
-    throw new Error(msg);
-  }
-  return r.json();
-}
-
-function showResult(payload) {
-  $("result").hidden = false;
-  lastRawText = payload.raw_text || "";
-  lastSessionId = payload.session_id || null;
-  $("raw-text").textContent = lastRawText;
-  $("corrected-text").value = payload.corrected_text || "";
-  $("save-status").textContent = "";
-  const tbody = $("spans-table").querySelector("tbody");
-  tbody.innerHTML = "";
-  // /api/transcribe returns `suspicious[]`; /api/correct returns `suspicious_spans[]`.
-  const spans = payload.suspicious || payload.suspicious_spans || [];
-  spans.forEach((span) => {
-    const orig = span.span || span.original_text || "";
-    const chosen = span.chosen || span.possible_correction || "—";
-    const conf =
-      (span.audio_hits && span.audio_hits[0] && `audio sim ${span.audio_hits[0].similarity}`) ||
-      (span.confidence != null ? `conf ${span.confidence}` : "");
-    const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><code>${escapeHtml(orig)}</code></td>
-      <td><code>${escapeHtml(chosen)}</code></td>
-      <td>${escapeHtml(conf)}</td>`;
-    tbody.appendChild(tr);
-  });
-  $("corrected-text").focus();
-}
-
-// ---------------------------------------------------------------------------
-// Recorder
-// ---------------------------------------------------------------------------
-let mediaRecorder = null;
-let mediaStream = null;
-let recordedChunks = [];
-let recordedBlob = null;
-let recordedMime = "audio/webm";
-let recordTimer = null;
-let recordStart = 0;
-
-const PREFERRED_MIMES = [
-  "audio/webm;codecs=opus",
-  "audio/webm",
-  "audio/mp4",
-  "audio/ogg;codecs=opus",
-  "",
-];
-
-function pickMime() {
-  if (typeof MediaRecorder === "undefined") return null;
-  for (const m of PREFERRED_MIMES) {
-    if (m === "" || MediaRecorder.isTypeSupported(m)) return m;
-  }
-  return null;
-}
-
-function setRecordingUI(isRecording) {
-  $("btn-record").hidden = isRecording;
-  $("btn-stop").hidden = !isRecording;
-  $("btn-record").classList.toggle("recording", isRecording);
-}
-
-function fmtTime(ms) {
-  const s = Math.floor(ms / 1000);
-  return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
-}
-
-async function startRecording() {
-  $("record-status").textContent = "";
-
-  if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
-    $("record-status").textContent =
-      "❌ Microphone API not available. Use Chrome/Edge/Safari over http://localhost or https.";
-    return;
-  }
-  if (typeof MediaRecorder === "undefined") {
-    $("record-status").textContent = "❌ MediaRecorder not supported in this browser.";
-    return;
-  }
-
-  const mime = pickMime();
-  let stream;
-  try {
-    stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-  } catch (err) {
-    if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-      $("record-status").textContent = "❌ Microphone permission denied. Allow it in the address bar.";
-    } else if (err.name === "NotFoundError") {
-      $("record-status").textContent = "❌ No microphone found on this device.";
-    } else {
-      $("record-status").textContent = "❌ " + err.message;
-    }
-    return;
-  }
-
-  mediaStream = stream;
-  recordedChunks = [];
-  try {
-    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
-  } catch (err) {
-    $("record-status").textContent = "❌ Recorder failed: " + err.message;
-    stream.getTracks().forEach((t) => t.stop());
-    return;
-  }
-
-  recordedMime = mediaRecorder.mimeType || mime || "audio/webm";
-
-  mediaRecorder.ondataavailable = (e) => {
-    if (e.data && e.data.size > 0) recordedChunks.push(e.data);
-  };
-
-  mediaRecorder.onstop = async () => {
-    clearInterval(recordTimer);
-    setRecordingUI(false);
-    if (mediaStream) {
-      mediaStream.getTracks().forEach((t) => t.stop());
-      mediaStream = null;
-    }
-    if (!recordedChunks.length) {
-      $("record-status").textContent = "❌ No audio captured.";
+$("btn-upload").onclick = async () => {
+    const fileInput = $("upload-file");
+    if (!fileInput.files.length) {
+      alert("Please select an audio file first.");
       return;
     }
-    recordedBlob = new Blob(recordedChunks, { type: recordedMime });
-    const playback = $("record-playback");
-    playback.src = URL.createObjectURL(recordedBlob);
-    playback.hidden = false;
-    $("record-status").textContent = `Transcribing ${(recordedBlob.size / 1024).toFixed(0)} KB...`;
+    
+    const sessionId = generateUUID();
+    $("btn-upload").disabled = true;
+    $("benchmark-status").innerHTML = `<span class="pulse"></span> <strong>Starting benchmark...</strong> (Session: ${sessionId.slice(0, 8)})`;
+    $("results-card").hidden = true;
+    $("results-container").innerHTML = "";
+    
+    // Start polling for progress
+    const progressInterval = setInterval(async () => {
+        try {
+            const res = await fetch(`/api/benchmark_progress/${sessionId}`);
+            if (res.ok) {
+                const data = await res.json();
+                if (data.status && data.status !== "unknown") {
+                    let text = `<span class="pulse"></span> <strong>Status:</strong> ${data.status}`;
+                    if (data.total > 0) {
+                        text += ` <br/><small>Progress: ${data.completed} / ${data.total} models completed.</small>`;
+                    }
+                    $("benchmark-status").innerHTML = text;
+                }
+            }
+        } catch (e) {
+            console.error("Progress poll failed:", e);
+        }
+    }, 1000);
+    
+    const form = new FormData();
+    form.append("file", fileInput.files[0], fileInput.files[0].name);
+    form.append("client_session_id", sessionId);
+    // form.append("models", "faster-whisper-large-v3,Qwen3-ASR-1.7B"); // Optional specific test
+    
     try {
-      await transcribeBlob(recordedBlob);
-      $("record-status").textContent = "Done.";
+        const r = await fetch("/api/benchmark_asr", { method: "POST", body: form });
+        if (!r.ok) {
+            throw new Error(`HTTP ${r.status} - ${(await r.text())}`);
+        }
+        
+        const payload = await r.json();
+        
+        clearInterval(progressInterval);
+        $("benchmark-status").innerHTML = `<strong>✅ Benchmark complete!</strong>`;
+        $("results-card").hidden = false;
+        $("audio-duration-display").textContent = `(Audio Length: ${payload.audio_duration_s}s)`;
+        
+        renderResults(payload.results);
+        
     } catch (err) {
-      $("record-status").textContent = "❌ " + err.message;
+        clearInterval(progressInterval);
+        $("benchmark-status").innerHTML = "❌ " + escapeHtml(err.message);
+    } finally {
+        $("btn-upload").disabled = false;
     }
-  };
+};
 
-  mediaRecorder.onerror = (e) => {
-    $("record-status").textContent = "❌ Recorder error: " + (e.error?.message || "unknown");
-  };
+function renderResults(results) {
+    const container = $("results-container");
+    container.innerHTML = "";
+    
+    results.forEach(res => {
+        const resultCard = document.createElement("div");
+        resultCard.className = "model-result";
+        resultCard.style.padding = "10px";
+        resultCard.style.border = "1px solid var(--border)";
+        resultCard.style.borderRadius = "var(--radius)";
+        resultCard.style.margin = "10px 0";
 
-  mediaRecorder.start(250);
-  recordStart = Date.now();
-  setRecordingUI(true);
-  $("record-status").textContent = "🔴 Recording 00:00";
-  recordTimer = setInterval(() => {
-    $("record-status").textContent = "🔴 Recording " + fmtTime(Date.now() - recordStart);
-  }, 250);
+        const title = document.createElement("h3");
+        title.style.marginTop = "0";
+        title.textContent = res.model_key;
+        
+        const info = document.createElement("div");
+        info.className = "muted small";
+        if (res.error) {
+             info.innerHTML = `<strong>Error:</strong> <span style="color: var(--danger)">${escapeHtml(res.error)}</span>`;
+        } else {
+             info.innerHTML = `<strong>Lang:</strong> ${escapeHtml(res.language)} | <strong>Time:</strong> ${res.duration_s}s`;
+        }
+        
+        const transcript = document.createElement("pre");
+        transcript.style.whiteSpace = "pre-wrap";
+        transcript.style.fontFamily = "var(--font-sans)";
+        transcript.style.marginTop = "10px";
+        transcript.textContent = res.transcript || "(No transcript output)";
+        if (res.error) transcript.style.color = "var(--danger)";
+
+        resultCard.appendChild(title);
+        resultCard.appendChild(info);
+        resultCard.appendChild(transcript);
+        container.appendChild(resultCard);
+    });
 }
-
-function stopRecording() {
-  if (mediaRecorder && mediaRecorder.state !== "inactive") {
-    mediaRecorder.stop();
-  } else {
-    setRecordingUI(false);
-  }
-}
-
-async function transcribeBlob(blob) {
-  const form = new FormData();
-  const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
   form.append("audio", blob, `recording.${ext}`);
   const lang = $("lang").value;
   if (lang) form.append("language", lang);
