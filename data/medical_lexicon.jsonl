@@ -1,246 +1,250 @@
-{"term": "abdominal aortic aneurysm", "type": "diagnosis", "aliases": ["aaa"], "priority": 0.8}
-{"term": "acute myeloid leukemia", "type": "diagnosis", "aliases": ["aml"], "priority": 1.0}
-{"term": "acute promyelocytic leukemia", "type": "diagnosis", "aliases": ["apl", "acute promyelocytic leukaemia"], "priority": 1.0}
-{"term": "acute respiratory distress syndrome", "type": "diagnosis", "aliases": ["ards"], "priority": 0.9}
-{"term": "alzheimer disease", "type": "diagnosis", "aliases": ["alzheimer's disease", "ad"], "priority": 1.0}
-{"term": "anemia", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "aortic dissection", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "appendicitis", "type": "diagnosis", "aliases": ["acute appendicitis"], "priority": 0.9}
-{"term": "aspiration pneumonia", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "asthma", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "atrial fibrillation", "type": "diagnosis", "aliases": ["afib", "a fib", "af"], "priority": 1.0}
-{"term": "bacterial meningitis", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "bronchitis", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "cholecystitis", "type": "diagnosis", "aliases": ["acute cholecystitis"], "priority": 0.9}
-{"term": "choledocholithiasis", "type": "diagnosis", "aliases": ["bile duct stones"], "priority": 0.7}
-{"term": "colorectal cancer", "type": "diagnosis", "aliases": ["colon cancer", "rectal cancer"], "priority": 1.0}
-{"term": "covid-19", "type": "diagnosis", "aliases": ["covid", "sars-cov-2 infection", "coronavirus disease 2019"], "priority": 1.0}
-{"term": "cushing syndrome", "type": "diagnosis", "aliases": ["cushing's syndrome"], "priority": 0.7}
-{"term": "dementia", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "dermatomyositis", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "diabetic ketoacidosis", "type": "diagnosis", "aliases": ["dka"], "priority": 1.0}
-{"term": "disseminated intravascular coagulation", "type": "diagnosis", "aliases": ["dic"], "priority": 0.8}
-{"term": "diverticulitis", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "encephalitis", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "end-stage renal disease", "type": "diagnosis", "aliases": ["esrd", "end stage renal disease"], "priority": 0.9}
-{"term": "endocarditis", "type": "diagnosis", "aliases": [], "priority": 0.7}
-{"term": "granulomatosis with polyangiitis", "type": "diagnosis", "aliases": ["wegener granulomatosis", "gpa"], "priority": 0.7}
-{"term": "hashimoto thyroiditis", "type": "diagnosis", "aliases": ["hashimoto's thyroiditis", "chronic autoimmune thyroiditis"], "priority": 0.7}
-{"term": "hepatocellular carcinoma", "type": "diagnosis", "aliases": ["hcc"], "priority": 0.8}
-{"term": "hiv infection", "type": "diagnosis", "aliases": ["hiv", "human immunodeficiency virus"], "priority": 1.0}
-{"term": "hodgkin lymphoma", "type": "diagnosis", "aliases": ["hodgkin's lymphoma", "hodgkin disease"], "priority": 0.9}
-{"term": "hypercalcemia", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "hypernatremia", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "hyperosmolar hyperglycemic state", "type": "diagnosis", "aliases": ["hhs"], "priority": 0.8}
-{"term": "hyperthyroidism", "type": "diagnosis", "aliases": ["overactive thyroid"], "priority": 0.9}
-{"term": "hypocalcemia", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "hypokalemia", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "infective endocarditis", "type": "diagnosis", "aliases": ["bacterial endocarditis"], "priority": 0.9}
-{"term": "inflammatory bowel disease", "type": "diagnosis", "aliases": ["ibd"], "priority": 1.0}
-{"term": "influenza", "type": "diagnosis", "aliases": ["flu"], "priority": 1.0}
-{"term": "intracerebral hemorrhage", "type": "diagnosis", "aliases": ["ich"], "priority": 0.8}
-{"term": "leukocytoclastic vasculitis", "type": "diagnosis", "aliases": ["hypersensitivity vasculitis"], "priority": 0.9}
-{"term": "lung cancer", "type": "diagnosis", "aliases": ["non-small cell lung cancer", "small cell lung cancer", "nsclc", "sclc"], "priority": 1.0}
-{"term": "migraine", "type": "diagnosis", "aliases": ["migraine headache"], "priority": 0.9}
-{"term": "multiple myeloma", "type": "diagnosis", "aliases": ["mm"], "priority": 0.9}
-{"term": "myasthenia gravis", "type": "diagnosis", "aliases": ["mg"], "priority": 0.8}
-{"term": "myopathy", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "nephritic syndrome", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "nephrotic syndrome", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "non-hodgkin lymphoma", "type": "diagnosis", "aliases": ["non hodgkin lymphoma", "nhl"], "priority": 1.0}
-{"term": "pancreatic cancer", "type": "diagnosis", "aliases": ["pancreatic adenocarcinoma"], "priority": 0.9}
-{"term": "parkinson disease", "type": "diagnosis", "aliases": ["parkinson's disease", "pd"], "priority": 1.0}
-{"term": "peptic ulcer disease", "type": "diagnosis", "aliases": ["pud", "peptic ulcer"], "priority": 0.9}
-{"term": "pericarditis", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "pleural effusion", "type": "diagnosis", "aliases": [], "priority": 0.8}
-{"term": "polymyalgia rheumatica", "type": "diagnosis", "aliases": ["pmr"], "priority": 0.7}
-{"term": "polymyositis", "type": "diagnosis", "aliases": [], "priority": 0.7}
-{"term": "prostate cancer", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "pyelonephritis", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "rheumatoid arthritis", "type": "diagnosis", "aliases": ["ra"], "priority": 1.0}
-{"term": "septic shock", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "status epilepticus", "type": "diagnosis", "aliases": [], "priority": 0.9}
-{"term": "systemic inflammatory response syndrome", "type": "diagnosis", "aliases": ["sirs"], "priority": 0.7}
-{"term": "systemic lupus erythematosus", "type": "diagnosis", "aliases": ["sle", "lupus"], "priority": 1.0}
-{"term": "thrombocytopenia", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "tuberculosis", "type": "diagnosis", "aliases": ["tb", "mycobacterium tuberculosis infection"], "priority": 1.0}
-{"term": "urinary tract infection", "type": "diagnosis", "aliases": ["uti"], "priority": 1.0}
-{"term": "vasculitis", "type": "diagnosis", "aliases": [], "priority": 0.7}
-{"term": "ventilator-associated pneumonia", "type": "diagnosis", "aliases": ["vap"], "priority": 0.8}
-{"term": "acyclovir", "type": "drug", "aliases": ["zovirax"], "priority": 0.9}
-{"term": "amikacin", "type": "drug", "aliases": ["amikin"], "priority": 0.8}
-{"term": "amiodarone", "type": "drug", "aliases": ["cordarone", "pacerone"], "priority": 1.0}
-{"term": "amoxicillin", "type": "drug", "aliases": ["amoxycillin", "amoxil", "trimox"], "priority": 1.0}
-{"term": "amoxicillin-clavulanate", "type": "drug", "aliases": ["augmentin", "co-amoxiclav"], "priority": 1.0}
-{"term": "apixaban", "type": "drug", "aliases": ["eliquis"], "priority": 1.0}
-{"term": "aripiprazole", "type": "drug", "aliases": ["abilify"], "priority": 0.9}
-{"term": "aspirin", "type": "drug", "aliases": ["acetylsalicylic acid", "asa"], "priority": 0.9}
-{"term": "atezolizumab", "type": "drug", "aliases": ["tecentriq"], "priority": 0.8}
-{"term": "azathioprine", "type": "drug", "aliases": ["imuran"], "priority": 0.9}
-{"term": "benzonatate", "type": "drug", "aliases": ["tessalon"], "priority": 0.9}
-{"term": "bevacizumab", "type": "drug", "aliases": ["avastin"], "priority": 0.9}
-{"term": "bisoprolol", "type": "drug", "aliases": ["zebeta", "concor"], "priority": 0.9}
-{"term": "budesonide", "type": "drug", "aliases": ["pulmicort", "entocort", "uceris"], "priority": 0.9}
-{"term": "buprenorphine", "type": "drug", "aliases": ["subutex", "suboxone"], "priority": 0.9}
-{"term": "capecitabine", "type": "drug", "aliases": ["xeloda"], "priority": 0.8}
-{"term": "cephalexin", "type": "drug", "aliases": ["keflex"], "priority": 1.0}
-{"term": "cetuximab", "type": "drug", "aliases": ["erbitux"], "priority": 0.8}
-{"term": "clomipramine", "type": "drug", "aliases": ["anafranil"], "priority": 0.6}
-{"term": "clopidogrel", "type": "drug", "aliases": ["plavix"], "priority": 1.0}
-{"term": "clozapine", "type": "drug", "aliases": ["clozaril"], "priority": 0.7}
-{"term": "colistin", "type": "drug", "aliases": ["colistimethate", "colomycin"], "priority": 0.8}
-{"term": "cyclophosphamide", "type": "drug", "aliases": ["cytoxan"], "priority": 0.9}
-{"term": "dalteparin", "type": "drug", "aliases": ["fragmin"], "priority": 0.7}
-{"term": "dexamethasone", "type": "drug", "aliases": ["decadron"], "priority": 1.0}
-{"term": "dexmedetomidine", "type": "drug", "aliases": ["precedex"], "priority": 0.8}
-{"term": "dextrose", "type": "drug", "aliases": ["glucose", "d5w", "d50"], "priority": 0.5}
-{"term": "diclofenac", "type": "drug", "aliases": ["voltaren", "cataflam"], "priority": 0.9}
-{"term": "digoxin", "type": "drug", "aliases": ["lanoxin"], "priority": 0.8}
-{"term": "diltiazem", "type": "drug", "aliases": ["cardizem", "tiazac"], "priority": 0.9}
-{"term": "diphenhydramine", "type": "drug", "aliases": ["benadryl"], "priority": 1.0}
-{"term": "dobutamine", "type": "drug", "aliases": ["dobutrex"], "priority": 0.9}
-{"term": "docetaxel", "type": "drug", "aliases": ["taxotere"], "priority": 0.8}
-{"term": "dronedarone", "type": "drug", "aliases": ["multaq"], "priority": 0.6}
-{"term": "dulaglutide", "type": "drug", "aliases": ["trulicity"], "priority": 0.8}
-{"term": "duloxetine", "type": "drug", "aliases": ["cymbalta"], "priority": 0.9}
-{"term": "dupilumab", "type": "drug", "aliases": ["dupixent"], "priority": 0.8}
-{"term": "edoxaban", "type": "drug", "aliases": ["savaysa", "lixiana"], "priority": 0.8}
-{"term": "enalapril", "type": "drug", "aliases": ["vasotec"], "priority": 0.9}
-{"term": "epinephrine", "type": "drug", "aliases": ["adrenaline", "epi"], "priority": 1.0}
-{"term": "eplerenone", "type": "drug", "aliases": ["inspra"], "priority": 0.7}
-{"term": "esomeprazole", "type": "drug", "aliases": ["nexium"], "priority": 1.0}
-{"term": "ethambutol", "type": "drug", "aliases": ["myambutol"], "priority": 0.8}
-{"term": "ezetimibe", "type": "drug", "aliases": ["zetia"], "priority": 0.7}
-{"term": "famotidine", "type": "drug", "aliases": ["pepcid"], "priority": 1.0}
-{"term": "fenofibrate", "type": "drug", "aliases": ["tricor"], "priority": 0.6}
-{"term": "fentanyl", "type": "drug", "aliases": ["duragesic", "sublimaze"], "priority": 1.0}
-{"term": "fidaxomicin", "type": "drug", "aliases": ["dificid"], "priority": 0.7}
-{"term": "flecainide", "type": "drug", "aliases": ["tambocor"], "priority": 0.7}
-{"term": "fluoxetine", "type": "drug", "aliases": ["prozac"], "priority": 1.0}
-{"term": "fluticasone", "type": "drug", "aliases": ["flovent", "flonase"], "priority": 1.0}
-{"term": "formoterol", "type": "drug", "aliases": ["foradil"], "priority": 0.7}
-{"term": "gemcitabine", "type": "drug", "aliases": ["gemzar"], "priority": 0.8}
-{"term": "glimepiride", "type": "drug", "aliases": ["amaryl"], "priority": 0.7}
-{"term": "glipizide", "type": "drug", "aliases": ["glucotrol"], "priority": 0.7}
-{"term": "haloperidol", "type": "drug", "aliases": ["haldol"], "priority": 0.9}
-{"term": "heparin", "type": "drug", "aliases": ["unfractionated heparin"], "priority": 1.0}
-{"term": "hydrocodone", "type": "drug", "aliases": ["vicodin", "norco", "lortab"], "priority": 1.0}
-{"term": "hydrocortisone", "type": "drug", "aliases": ["cortef", "solu-cortef"], "priority": 0.9}
-{"term": "ibuprofen", "type": "drug", "aliases": ["advil", "motrin", "brufen", "nurofen"], "priority": 1.0}
-{"term": "imipenem-cilastatin", "type": "drug", "aliases": ["primaxin"], "priority": 0.9}
-{"term": "insulin aspart", "type": "drug", "aliases": ["novolog", "novorapid"], "priority": 1.0}
-{"term": "insulin detemir", "type": "drug", "aliases": ["levemir"], "priority": 0.8}
-{"term": "isavuconazole", "type": "drug", "aliases": ["cresemba"], "priority": 0.8}
-{"term": "ivabradine", "type": "drug", "aliases": ["corlanor"], "priority": 0.6}
-{"term": "labetalol", "type": "drug", "aliases": ["trandate"], "priority": 0.8}
-{"term": "lactulose", "type": "drug", "aliases": ["enulose", "kristalose"], "priority": 0.7}
-{"term": "lansoprazole", "type": "drug", "aliases": ["prevacid"], "priority": 0.9}
-{"term": "levofloxacin", "type": "drug", "aliases": ["levaquin"], "priority": 1.0}
-{"term": "linagliptin", "type": "drug", "aliases": ["tradjenta"], "priority": 0.7}
-{"term": "loratadine", "type": "drug", "aliases": ["claritin"], "priority": 0.9}
-{"term": "magnesium sulfate", "type": "drug", "aliases": [], "priority": 0.7}
-{"term": "metformin", "type": "drug", "aliases": ["glucophage"], "priority": 1.0}
-{"term": "methadone", "type": "drug", "aliases": ["dolophine"], "priority": 0.9}
-{"term": "methotrexate", "type": "drug", "aliases": [], "priority": 1.0}
-{"term": "methylprednisolone", "type": "drug", "aliases": ["solu-medrol", "solumedrol", "medrol"], "priority": 1.0}
-{"term": "metoclopramide", "type": "drug", "aliases": ["reglan"], "priority": 0.9}
-{"term": "milrinone", "type": "drug", "aliases": ["primacor"], "priority": 0.8}
-{"term": "minocycline", "type": "drug", "aliases": ["minocin"], "priority": 0.8}
-{"term": "minoxidil", "type": "drug", "aliases": ["loniten", "rogaine"], "priority": 0.6}
-{"term": "mirtazapine", "type": "drug", "aliases": ["remeron"], "priority": 0.8}
-{"term": "morphine", "type": "drug", "aliases": ["ms contin", "kadian"], "priority": 1.0}
-{"term": "mycophenolate mofetil", "type": "drug", "aliases": ["cellcept"], "priority": 0.9}
-{"term": "naloxone", "type": "drug", "aliases": ["narcan"], "priority": 1.0}
-{"term": "naltrexone", "type": "drug", "aliases": ["vivitrol", "revia"], "priority": 0.8}
-{"term": "nifedipine", "type": "drug", "aliases": ["procardia", "adalat"], "priority": 0.9}
-{"term": "nirmatrelvir-ritonavir", "type": "drug", "aliases": ["paxlovid"], "priority": 1.0}
-{"term": "nitrofurantoin", "type": "drug", "aliases": ["macrobid", "macrodantin"], "priority": 0.9}
-{"term": "nivolumab", "type": "drug", "aliases": ["opdivo"], "priority": 1.0}
-{"term": "norepinephrine", "type": "drug", "aliases": ["noradrenaline", "levophed"], "priority": 1.0}
-{"term": "nortriptyline", "type": "drug", "aliases": ["pamelor"], "priority": 0.7}
-{"term": "ocrelizumab", "type": "drug", "aliases": ["ocrevus"], "priority": 1.0}
-{"term": "olanzapine", "type": "drug", "aliases": ["zyprexa"], "priority": 0.9}
-{"term": "omalizumab", "type": "drug", "aliases": ["xolair"], "priority": 0.8}
-{"term": "ondansetron", "type": "drug", "aliases": ["zofran"], "priority": 1.0}
-{"term": "osimertinib", "type": "drug", "aliases": ["tagrisso"], "priority": 0.8}
-{"term": "oxaliplatin", "type": "drug", "aliases": ["eloxatin"], "priority": 0.8}
-{"term": "oxycodone", "type": "drug", "aliases": ["oxycontin", "percocet", "roxicodone"], "priority": 1.0}
-{"term": "paclitaxel", "type": "drug", "aliases": ["taxol", "abraxane"], "priority": 0.9}
-{"term": "pioglitazone", "type": "drug", "aliases": ["actos"], "priority": 0.7}
-{"term": "posaconazole", "type": "drug", "aliases": ["noxafil"], "priority": 0.8}
-{"term": "prednisolone", "type": "drug", "aliases": [], "priority": 1.0}
-{"term": "prednisone", "type": "drug", "aliases": ["deltasone"], "priority": 1.0}
-{"term": "pregabalin", "type": "drug", "aliases": ["lyrica"], "priority": 1.0}
-{"term": "propylthiouracil", "type": "drug", "aliases": ["ptu"], "priority": 0.7}
-{"term": "pseudoephedrine", "type": "drug", "aliases": ["sudafed"], "priority": 0.7}
-{"term": "quetiapine", "type": "drug", "aliases": ["seroquel"], "priority": 0.9}
-{"term": "rabeprazole", "type": "drug", "aliases": ["aciphex", "pariet"], "priority": 0.7}
-{"term": "ramipril", "type": "drug", "aliases": ["altace", "tritace"], "priority": 0.9}
-{"term": "remdesivir", "type": "drug", "aliases": ["veklury"], "priority": 0.9}
-{"term": "risperidone", "type": "drug", "aliases": ["risperdal"], "priority": 0.9}
-{"term": "sacubitril-valsartan", "type": "drug", "aliases": ["entresto"], "priority": 0.9}
-{"term": "Salem aalaykom", "type": "drug", "aliases": ["Selim alakal"], "priority": 1.0}
-{"term": "salem aleykom", "type": "drug", "aliases": ["Selam naleyk"], "priority": 1.0}
-{"term": "salemou aalaykom", "type": "drug", "aliases": [], "priority": 1.0}
-{"term": "sotalol", "type": "drug", "aliases": ["betapace"], "priority": 0.7}
-{"term": "sulfasalazine", "type": "drug", "aliases": ["azulfidine"], "priority": 0.7}
-{"term": "tacrolimus", "type": "drug", "aliases": ["prograf", "fk506"], "priority": 0.9}
-{"term": "tenecteplase", "type": "drug", "aliases": ["tnkase"], "priority": 0.7}
-{"term": "ticagrelor", "type": "drug", "aliases": ["brilinta"], "priority": 1.0}
-{"term": "tiotropium", "type": "drug", "aliases": ["spiriva"], "priority": 0.9}
-{"term": "tirzepatide", "type": "drug", "aliases": ["mounjaro", "zepbound"], "priority": 0.9}
-{"term": "tofacitinib", "type": "drug", "aliases": ["xeljanz"], "priority": 0.8}
-{"term": "trastuzumab", "type": "drug", "aliases": ["herceptin"], "priority": 1.0}
-{"term": "trazodone", "type": "drug", "aliases": ["desyrel"], "priority": 0.7}
-{"term": "valproic acid", "type": "drug", "aliases": ["depakote", "valproate", "divalproex"], "priority": 0.9}
-{"term": "valsartan", "type": "drug", "aliases": ["diovan"], "priority": 1.0}
-{"term": "vecuronium", "type": "drug", "aliases": ["norcuron"], "priority": 0.7}
-{"term": "venlafaxine", "type": "drug", "aliases": ["effexor"], "priority": 0.9}
-{"term": "verapamil", "type": "drug", "aliases": ["calan", "isoptin"], "priority": 0.8}
-{"term": "warfarin", "type": "drug", "aliases": ["coumadin", "jantoven"], "priority": 1.0}
-{"term": "doliprane", "type": "drug", "aliases": ["Gli prani"], "priority": 1.0}
-{"term": "maxilase", "type": "drug", "aliases": ["maxilas"], "priority": 1.0}
-{"term": "Erythematosus", "type": "drug", "aliases": ["eritimethus"], "priority": 1.0}
-{"term": "salbutamoll", "type": "drug", "aliases": ["submittamol"], "priority": 1.0}
-{"term": "grippex", "type": "drug", "aliases": ["gripex"], "priority": 1.0}
-{"term": "myofascial", "type": "diagnosis", "aliases": ["myofacial", "myofasial", "myofaicial"], "priority": 1.0}
-{"term": "Factor V Leiden", "type": "diagnosis", "aliases": ["factor 5 leiden", "factor v leiden"], "priority": 1.0}
-{"term": "pulmonary embolism", "type": "diagnosis", "aliases": ["pulminary embolism", "pulmonary embolisim"], "priority": 1.0}
-{"term": "International Normalized Ratio", "type": "diagnosis", "aliases": ["INR", "international normalised ratio"], "priority": 1.0}
-{"term": "Acitrom", "type": "drug", "aliases": ["acitram", "acetrom"], "priority": 1.0}
-{"term": "Clopidogrel", "type": "drug", "aliases": ["clopidogral", "clopidogrel"], "priority": 1.0}
-{"term": "gabapentin", "type": "drug", "aliases": ["gabapentine", "gabapenton"], "priority": 1.0}
-{"term": "Savella", "type": "drug", "aliases": ["savela", "savella"], "priority": 1.0}
-{"term": "Percocet", "type": "drug", "aliases": ["percoset", "percacet"], "priority": 1.0}
-{"term": "mebeverine", "type": "drug", "aliases": ["mebeverin", "mebevirine"], "priority": 1.0}
-{"term": "loperamide", "type": "drug", "aliases": ["loperamid", "lopramide"], "priority": 1.0}
-{"term": "fibromyalgia", "type": "diagnosis", "aliases": ["fibromialgia", "fibromyalga"], "priority": 1.0}
-{"term": "hypothyroidism", "type": "diagnosis", "aliases": ["hypthyroidism", "hypothyrodism"], "priority": 1.0}
-{"term": "hyperthyroidism", "type": "diagnosis", "aliases": ["hyperthyrodism", "hyperthyroidizm"], "priority": 1.0}
-{"term": "carotid artery", "type": "diagnosis", "aliases": ["carotid arery", "carotid arterie"], "priority": 1.0}
-{"term": "febrile convulsion", "type": "diagnosis", "aliases": ["febrile convultion", "febral convulsion"], "priority": 1.0}
-{"term": "spinal stenosis", "type": "diagnosis", "aliases": ["spinal stenisis", "spinal stenozis"], "priority": 1.0}
-{"term": "mitral valve prolapse", "type": "diagnosis", "aliases": ["mitral valve prolaps", "mitral valve prolapss"], "priority": 1.0}
-{"term": "Irritable Bowel Syndrome", "type": "diagnosis", "aliases": ["irritable bowel syndrom", "IBS"], "priority": 1.0}
-{"term": "histopathological", "type": "diagnosis", "aliases": ["histopathologic", "histopathologocal"], "priority": 1.0}
-{"term": "coagulation profile", "type": "diagnosis", "aliases": ["coagulation profil", "coagulatoin profile"], "priority": 1.0}
-{"term": "platelet count", "type": "diagnosis", "aliases": ["platlet count", "platelet cnt"], "priority": 1.0}
-{"term": "pictocis", "type": "drug", "aliases": ["pictosis"], "priority": 1.0}
-{"term": "Biobsy", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
-{"term": "biobci", "type": "drug", "aliases": ["biopsy"], "priority": 1.0}
-{"term": "some effiralgon", "type": "drug", "aliases": ["Sami Firal gone"], "priority": 1.0}
-{"term": "collarbone", "type": "anatomy", "aliases": ["collarbones"], "priority": 1.0}
-{"term": "clavicle", "type": "anatomy", "aliases": ["clavicle bone"], "priority": 1.0}
-{"term": "stents", "type": "device", "aliases": ["stent", "heart stents"], "priority": 1.0}
-{"term": "heart attack", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "spinal column", "type": "anatomy", "aliases": ["spine"], "priority": 1.0}
-{"term": "extravasation", "type": "diagnosis", "aliases": ["extravization"], "priority": 1.0}
-{"term": "dermatologist", "type": "specialty", "aliases": [], "priority": 1.0}
-{"term": "kidney stones", "type": "diagnosis", "aliases": [], "priority": 1.0}
-{"term": "thyroid function test", "type": "test", "aliases": ["TFT"], "priority": 1.0}
-{"term": "constipation", "type": "symptom", "aliases": [], "priority": 1.0}
-{"term": "cold intolerance", "type": "symptom", "aliases": [], "priority": 1.0}
-{"term": "myofascial pain syndrome", "type": "diagnosis", "aliases": ["myofacial pain"], "priority": 1.0}
-{"term": "nervous system", "type": "anatomy", "aliases": [], "priority": 1.0}
-{"term": "respiration", "type": "anatomy", "aliases": [], "priority": 1.0}
-{"term": "Efferalgan", "type": "drug", "aliases": ["Effiralgon", "Effiralgan", "Eferalgon"], "priority": 1.0}
+{"term": "abdominal aortic aneurysm", "canonical_form": "abdominal aortic aneurysm", "term_type": "diagnosis", "aliases": ["aaa"], "ipa": "abdominal aortic aneurysm", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.034625Z"}
+{"term": "acute myeloid leukemia", "canonical_form": "acute myeloid leukemia", "term_type": "diagnosis", "aliases": ["aml"], "ipa": "acut myeloid leukemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.034625Z"}
+{"term": "acute promyelocytic leukemia", "canonical_form": "acute promyelocytic leukemia", "term_type": "diagnosis", "aliases": ["apl", "acute promyelocytic leukaemia"], "ipa": "acut promyelocytic leukemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.034625Z"}
+{"term": "acute respiratory distress syndrome", "canonical_form": "acute respiratory distress syndrome", "term_type": "diagnosis", "aliases": ["ards"], "ipa": "acut respiratory distress syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "alzheimer disease", "canonical_form": "alzheimer disease", "term_type": "diagnosis", "aliases": ["alzheimer's disease", "ad"], "ipa": "alzheimer diseas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "anemia", "canonical_form": "anemia", "term_type": "diagnosis", "aliases": [], "ipa": "anemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "aortic dissection", "canonical_form": "aortic dissection", "term_type": "diagnosis", "aliases": [], "ipa": "aortic dissection", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "appendicitis", "canonical_form": "appendicitis", "term_type": "diagnosis", "aliases": ["acute appendicitis"], "ipa": "appendicitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "aspiration pneumonia", "canonical_form": "aspiration pneumonia", "term_type": "diagnosis", "aliases": [], "ipa": "aspiration pneumonia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "asthma", "canonical_form": "asthma", "term_type": "diagnosis", "aliases": [], "ipa": "asθma", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "atrial fibrillation", "canonical_form": "atrial fibrillation", "term_type": "diagnosis", "aliases": ["afib", "a fib", "af"], "ipa": "atrial fibrillation", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "bacterial meningitis", "canonical_form": "bacterial meningitis", "term_type": "diagnosis", "aliases": [], "ipa": "bacterial meniŋitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "bronchitis", "canonical_form": "bronchitis", "term_type": "diagnosis", "aliases": [], "ipa": "brontʃitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "cholecystitis", "canonical_form": "cholecystitis", "term_type": "diagnosis", "aliases": ["acute cholecystitis"], "ipa": "tʃolecystitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "choledocholithiasis", "canonical_form": "choledocholithiasis", "term_type": "diagnosis", "aliases": ["bile duct stones"], "ipa": "tʃoledotʃoliθiasis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
+{"term": "colorectal cancer", "canonical_form": "colorectal cancer", "term_type": "diagnosis", "aliases": ["colon cancer", "rectal cancer"], "ipa": "colorectal cancer", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "covid-19", "canonical_form": "covid-19", "term_type": "diagnosis", "aliases": ["covid", "sars-cov-2 infection", "coronavirus disease 2019"], "ipa": "covid 19", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "cushing syndrome", "canonical_form": "cushing syndrome", "term_type": "diagnosis", "aliases": ["cushing's syndrome"], "ipa": "cuʃiŋ syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "dementia", "canonical_form": "dementia", "term_type": "diagnosis", "aliases": [], "ipa": "dementia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "dermatomyositis", "canonical_form": "dermatomyositis", "term_type": "diagnosis", "aliases": [], "ipa": "dermatomyositis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "diabetic ketoacidosis", "canonical_form": "diabetic ketoacidosis", "term_type": "diagnosis", "aliases": ["dka"], "ipa": "diabetic ketoacidosis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "disseminated intravascular coagulation", "canonical_form": "disseminated intravascular coagulation", "term_type": "diagnosis", "aliases": ["dic"], "ipa": "disseminated intravascular coagulation", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "diverticulitis", "canonical_form": "diverticulitis", "term_type": "diagnosis", "aliases": [], "ipa": "diverticulitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "encephalitis", "canonical_form": "encephalitis", "term_type": "diagnosis", "aliases": [], "ipa": "encefalitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "end-stage renal disease", "canonical_form": "end-stage renal disease", "term_type": "diagnosis", "aliases": ["esrd", "end stage renal disease"], "ipa": "end stag renal diseas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "endocarditis", "canonical_form": "endocarditis", "term_type": "diagnosis", "aliases": [], "ipa": "endocarditis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.038681Z"}
+{"term": "granulomatosis with polyangiitis", "canonical_form": "granulomatosis with polyangiitis", "term_type": "diagnosis", "aliases": ["wegener granulomatosis", "gpa"], "ipa": "granulomatosis wiθ polyaŋiitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hashimoto thyroiditis", "canonical_form": "hashimoto thyroiditis", "term_type": "diagnosis", "aliases": ["hashimoto's thyroiditis", "chronic autoimmune thyroiditis"], "ipa": "haʃimoto θyroiditis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hepatocellular carcinoma", "canonical_form": "hepatocellular carcinoma", "term_type": "diagnosis", "aliases": ["hcc"], "ipa": "hepatocellular carcinoma", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hiv infection", "canonical_form": "hiv infection", "term_type": "diagnosis", "aliases": ["hiv", "human immunodeficiency virus"], "ipa": "hiv infection", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hodgkin lymphoma", "canonical_form": "hodgkin lymphoma", "term_type": "diagnosis", "aliases": ["hodgkin's lymphoma", "hodgkin disease"], "ipa": "hodgkin lymfoma", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hypercalcemia", "canonical_form": "hypercalcemia", "term_type": "diagnosis", "aliases": [], "ipa": "hypercalcemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hypernatremia", "canonical_form": "hypernatremia", "term_type": "diagnosis", "aliases": [], "ipa": "hypernatremia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.040684Z"}
+{"term": "hyperosmolar hyperglycemic state", "canonical_form": "hyperosmolar hyperglycemic state", "term_type": "diagnosis", "aliases": ["hhs"], "ipa": "hyperosmolar hyperglycemic stat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "hyperthyroidism", "canonical_form": "hyperthyroidism", "term_type": "diagnosis", "aliases": ["overactive thyroid"], "ipa": "hyperθyroidism", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "hypocalcemia", "canonical_form": "hypocalcemia", "term_type": "diagnosis", "aliases": [], "ipa": "hypocalcemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "hypokalemia", "canonical_form": "hypokalemia", "term_type": "diagnosis", "aliases": [], "ipa": "hypokalemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "infective endocarditis", "canonical_form": "infective endocarditis", "term_type": "diagnosis", "aliases": ["bacterial endocarditis"], "ipa": "infectiv endocarditis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "inflammatory bowel disease", "canonical_form": "inflammatory bowel disease", "term_type": "diagnosis", "aliases": ["ibd"], "ipa": "inflammatory bowel diseas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "influenza", "canonical_form": "influenza", "term_type": "diagnosis", "aliases": ["flu"], "ipa": "influenza", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.041688Z"}
+{"term": "intracerebral hemorrhage", "canonical_form": "intracerebral hemorrhage", "term_type": "diagnosis", "aliases": ["ich"], "ipa": "intracerebral hemorrhag", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "leukocytoclastic vasculitis", "canonical_form": "leukocytoclastic vasculitis", "term_type": "diagnosis", "aliases": ["hypersensitivity vasculitis"], "ipa": "leukocytoclastic vasculitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "lung cancer", "canonical_form": "lung cancer", "term_type": "diagnosis", "aliases": ["non-small cell lung cancer", "small cell lung cancer", "nsclc", "sclc"], "ipa": "luŋ cancer", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "migraine", "canonical_form": "migraine", "term_type": "diagnosis", "aliases": ["migraine headache"], "ipa": "migrain", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "multiple myeloma", "canonical_form": "multiple myeloma", "term_type": "diagnosis", "aliases": ["mm"], "ipa": "multipl myeloma", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "myasthenia gravis", "canonical_form": "myasthenia gravis", "term_type": "diagnosis", "aliases": ["mg"], "ipa": "myasθenia gravis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "myopathy", "canonical_form": "myopathy", "term_type": "diagnosis", "aliases": [], "ipa": "myopaθy", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "nephritic syndrome", "canonical_form": "nephritic syndrome", "term_type": "diagnosis", "aliases": [], "ipa": "nefritic syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "nephrotic syndrome", "canonical_form": "nephrotic syndrome", "term_type": "diagnosis", "aliases": [], "ipa": "nefrotic syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "non-hodgkin lymphoma", "canonical_form": "non-hodgkin lymphoma", "term_type": "diagnosis", "aliases": ["non hodgkin lymphoma", "nhl"], "ipa": "non hodgkin lymfoma", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "pancreatic cancer", "canonical_form": "pancreatic cancer", "term_type": "diagnosis", "aliases": ["pancreatic adenocarcinoma"], "ipa": "pancreatic cancer", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "parkinson disease", "canonical_form": "parkinson disease", "term_type": "diagnosis", "aliases": ["parkinson's disease", "pd"], "ipa": "parkinson diseas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "peptic ulcer disease", "canonical_form": "peptic ulcer disease", "term_type": "diagnosis", "aliases": ["pud", "peptic ulcer"], "ipa": "peptic ulcer diseas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "pericarditis", "canonical_form": "pericarditis", "term_type": "diagnosis", "aliases": [], "ipa": "pericarditis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "pleural effusion", "canonical_form": "pleural effusion", "term_type": "diagnosis", "aliases": [], "ipa": "pleural effusion", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "polymyalgia rheumatica", "canonical_form": "polymyalgia rheumatica", "term_type": "diagnosis", "aliases": ["pmr"], "ipa": "polymyalgia rheumatica", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "polymyositis", "canonical_form": "polymyositis", "term_type": "diagnosis", "aliases": [], "ipa": "polymyositis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "prostate cancer", "canonical_form": "prostate cancer", "term_type": "diagnosis", "aliases": [], "ipa": "prostat cancer", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "pyelonephritis", "canonical_form": "pyelonephritis", "term_type": "diagnosis", "aliases": [], "ipa": "pyelonefritis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "rheumatoid arthritis", "canonical_form": "rheumatoid arthritis", "term_type": "diagnosis", "aliases": ["ra"], "ipa": "rheumatoid arθritis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "septic shock", "canonical_form": "septic shock", "term_type": "diagnosis", "aliases": [], "ipa": "septic ʃock", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "status epilepticus", "canonical_form": "status epilepticus", "term_type": "diagnosis", "aliases": [], "ipa": "status epilepticus", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "systemic inflammatory response syndrome", "canonical_form": "systemic inflammatory response syndrome", "term_type": "diagnosis", "aliases": ["sirs"], "ipa": "systemic inflammatory respons syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "systemic lupus erythematosus", "canonical_form": "systemic lupus erythematosus", "term_type": "diagnosis", "aliases": ["sle", "lupus"], "ipa": "systemic lupus eryθematosus", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.044243Z"}
+{"term": "thrombocytopenia", "canonical_form": "thrombocytopenia", "term_type": "diagnosis", "aliases": [], "ipa": "θrombocytopenia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.049660Z"}
+{"term": "tuberculosis", "canonical_form": "tuberculosis", "term_type": "diagnosis", "aliases": ["tb", "mycobacterium tuberculosis infection"], "ipa": "tuberculosis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.049660Z"}
+{"term": "urinary tract infection", "canonical_form": "urinary tract infection", "term_type": "diagnosis", "aliases": ["uti"], "ipa": "urinary tract infection", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.049660Z"}
+{"term": "vasculitis", "canonical_form": "vasculitis", "term_type": "diagnosis", "aliases": [], "ipa": "vasculitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "ventilator-associated pneumonia", "canonical_form": "ventilator-associated pneumonia", "term_type": "diagnosis", "aliases": ["vap"], "ipa": "ventilator associated pneumonia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "acyclovir", "canonical_form": "acyclovir", "term_type": "drug", "aliases": ["zovirax"], "ipa": "acyclovir", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "amikacin", "canonical_form": "amikacin", "term_type": "drug", "aliases": ["amikin"], "ipa": "amikacin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "amiodarone", "canonical_form": "amiodarone", "term_type": "drug", "aliases": ["cordarone", "pacerone"], "ipa": "amiodaron", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "amoxicillin", "canonical_form": "amoxicillin", "term_type": "drug", "aliases": ["amoxycillin", "amoxil", "trimox"], "ipa": "amoksicillin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "amoxicillin-clavulanate", "canonical_form": "amoxicillin-clavulanate", "term_type": "drug", "aliases": ["augmentin", "co-amoxiclav"], "ipa": "amoksicillin clavulanat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "apixaban", "canonical_form": "apixaban", "term_type": "drug", "aliases": ["eliquis"], "ipa": "apiksaban", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "aripiprazole", "canonical_form": "aripiprazole", "term_type": "drug", "aliases": ["abilify"], "ipa": "aripiprazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "aspirin", "canonical_form": "aspirin", "term_type": "drug", "aliases": ["acetylsalicylic acid", "asa"], "ipa": "aspirin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "atezolizumab", "canonical_form": "atezolizumab", "term_type": "drug", "aliases": ["tecentriq"], "ipa": "atezolizumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "azathioprine", "canonical_form": "azathioprine", "term_type": "drug", "aliases": ["imuran"], "ipa": "azaθioprin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "benzonatate", "canonical_form": "benzonatate", "term_type": "drug", "aliases": ["tessalon"], "ipa": "benzonatat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "bevacizumab", "canonical_form": "bevacizumab", "term_type": "drug", "aliases": ["avastin"], "ipa": "bevacizumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "bisoprolol", "canonical_form": "bisoprolol", "term_type": "drug", "aliases": ["zebeta", "concor"], "ipa": "bisoprolol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "budesonide", "canonical_form": "budesonide", "term_type": "drug", "aliases": ["pulmicort", "entocort", "uceris"], "ipa": "budesonid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "buprenorphine", "canonical_form": "buprenorphine", "term_type": "drug", "aliases": ["subutex", "suboxone"], "ipa": "buprenorfin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.050261Z"}
+{"term": "capecitabine", "canonical_form": "capecitabine", "term_type": "drug", "aliases": ["xeloda"], "ipa": "capecitabin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "cephalexin", "canonical_form": "cephalexin", "term_type": "drug", "aliases": ["keflex"], "ipa": "cefaleksin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "cetuximab", "canonical_form": "cetuximab", "term_type": "drug", "aliases": ["erbitux"], "ipa": "cetuksimab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "clomipramine", "canonical_form": "clomipramine", "term_type": "drug", "aliases": ["anafranil"], "ipa": "clomipramin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "clopidogrel", "canonical_form": "clopidogrel", "term_type": "drug", "aliases": ["plavix"], "ipa": "clopidogrel", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "clozapine", "canonical_form": "clozapine", "term_type": "drug", "aliases": ["clozaril"], "ipa": "clozapin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "colistin", "canonical_form": "colistin", "term_type": "drug", "aliases": ["colistimethate", "colomycin"], "ipa": "colistin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "cyclophosphamide", "canonical_form": "cyclophosphamide", "term_type": "drug", "aliases": ["cytoxan"], "ipa": "cyclofosfamid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "dalteparin", "canonical_form": "dalteparin", "term_type": "drug", "aliases": ["fragmin"], "ipa": "dalteparin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "dexamethasone", "canonical_form": "dexamethasone", "term_type": "drug", "aliases": ["decadron"], "ipa": "deksameθason", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "dexmedetomidine", "canonical_form": "dexmedetomidine", "term_type": "drug", "aliases": ["precedex"], "ipa": "deksmedetomidin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "dextrose", "canonical_form": "dextrose", "term_type": "drug", "aliases": ["glucose", "d5w", "d50"], "ipa": "dekstros", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "diclofenac", "canonical_form": "diclofenac", "term_type": "drug", "aliases": ["voltaren", "cataflam"], "ipa": "diclofenac", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.054501Z"}
+{"term": "digoxin", "canonical_form": "digoxin", "term_type": "drug", "aliases": ["lanoxin"], "ipa": "digoksin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "diltiazem", "canonical_form": "diltiazem", "term_type": "drug", "aliases": ["cardizem", "tiazac"], "ipa": "diltiazem", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "diphenhydramine", "canonical_form": "diphenhydramine", "term_type": "drug", "aliases": ["benadryl"], "ipa": "difenhydramin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "dobutamine", "canonical_form": "dobutamine", "term_type": "drug", "aliases": ["dobutrex"], "ipa": "dobutamin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "docetaxel", "canonical_form": "docetaxel", "term_type": "drug", "aliases": ["taxotere"], "ipa": "docetaksel", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "dronedarone", "canonical_form": "dronedarone", "term_type": "drug", "aliases": ["multaq"], "ipa": "dronedaron", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "dulaglutide", "canonical_form": "dulaglutide", "term_type": "drug", "aliases": ["trulicity"], "ipa": "dulaglutid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "duloxetine", "canonical_form": "duloxetine", "term_type": "drug", "aliases": ["cymbalta"], "ipa": "duloksetin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "dupilumab", "canonical_form": "dupilumab", "term_type": "drug", "aliases": ["dupixent"], "ipa": "dupilumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "edoxaban", "canonical_form": "edoxaban", "term_type": "drug", "aliases": ["savaysa", "lixiana"], "ipa": "edoksaban", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "enalapril", "canonical_form": "enalapril", "term_type": "drug", "aliases": ["vasotec"], "ipa": "enalapril", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "epinephrine", "canonical_form": "epinephrine", "term_type": "drug", "aliases": ["adrenaline", "epi"], "ipa": "epinefrin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "eplerenone", "canonical_form": "eplerenone", "term_type": "drug", "aliases": ["inspra"], "ipa": "eplerenon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "esomeprazole", "canonical_form": "esomeprazole", "term_type": "drug", "aliases": ["nexium"], "ipa": "esomeprazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "ethambutol", "canonical_form": "ethambutol", "term_type": "drug", "aliases": ["myambutol"], "ipa": "eθambutol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "ezetimibe", "canonical_form": "ezetimibe", "term_type": "drug", "aliases": ["zetia"], "ipa": "ezetimib", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "famotidine", "canonical_form": "famotidine", "term_type": "drug", "aliases": ["pepcid"], "ipa": "famotidin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "fenofibrate", "canonical_form": "fenofibrate", "term_type": "drug", "aliases": ["tricor"], "ipa": "fenofibrat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "fentanyl", "canonical_form": "fentanyl", "term_type": "drug", "aliases": ["duragesic", "sublimaze"], "ipa": "fentanyl", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "fidaxomicin", "canonical_form": "fidaxomicin", "term_type": "drug", "aliases": ["dificid"], "ipa": "fidaksomicin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "flecainide", "canonical_form": "flecainide", "term_type": "drug", "aliases": ["tambocor"], "ipa": "flecainid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "fluoxetine", "canonical_form": "fluoxetine", "term_type": "drug", "aliases": ["prozac"], "ipa": "fluoksetin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "fluticasone", "canonical_form": "fluticasone", "term_type": "drug", "aliases": ["flovent", "flonase"], "ipa": "fluticason", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "formoterol", "canonical_form": "formoterol", "term_type": "drug", "aliases": ["foradil"], "ipa": "formoterol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "gemcitabine", "canonical_form": "gemcitabine", "term_type": "drug", "aliases": ["gemzar"], "ipa": "gemcitabin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "glimepiride", "canonical_form": "glimepiride", "term_type": "drug", "aliases": ["amaryl"], "ipa": "glimepirid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "glipizide", "canonical_form": "glipizide", "term_type": "drug", "aliases": ["glucotrol"], "ipa": "glipizid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "haloperidol", "canonical_form": "haloperidol", "term_type": "drug", "aliases": ["haldol"], "ipa": "haloperidol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.057708Z"}
+{"term": "heparin", "canonical_form": "heparin", "term_type": "drug", "aliases": ["unfractionated heparin"], "ipa": "heparin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "hydrocodone", "canonical_form": "hydrocodone", "term_type": "drug", "aliases": ["vicodin", "norco", "lortab"], "ipa": "hydrocodon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "hydrocortisone", "canonical_form": "hydrocortisone", "term_type": "drug", "aliases": ["cortef", "solu-cortef"], "ipa": "hydrocortison", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "ibuprofen", "canonical_form": "ibuprofen", "term_type": "drug", "aliases": ["advil", "motrin", "brufen", "nurofen"], "ipa": "ibuprofen", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "imipenem-cilastatin", "canonical_form": "imipenem-cilastatin", "term_type": "drug", "aliases": ["primaxin"], "ipa": "imipenem cilastatin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "insulin aspart", "canonical_form": "insulin aspart", "term_type": "drug", "aliases": ["novolog", "novorapid"], "ipa": "insulin aspart", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "insulin detemir", "canonical_form": "insulin detemir", "term_type": "drug", "aliases": ["levemir"], "ipa": "insulin detemir", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "isavuconazole", "canonical_form": "isavuconazole", "term_type": "drug", "aliases": ["cresemba"], "ipa": "isavuconazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "ivabradine", "canonical_form": "ivabradine", "term_type": "drug", "aliases": ["corlanor"], "ipa": "ivabradin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "labetalol", "canonical_form": "labetalol", "term_type": "drug", "aliases": ["trandate"], "ipa": "labetalol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "lactulose", "canonical_form": "lactulose", "term_type": "drug", "aliases": ["enulose", "kristalose"], "ipa": "lactulos", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "lansoprazole", "canonical_form": "lansoprazole", "term_type": "drug", "aliases": ["prevacid"], "ipa": "lansoprazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "levofloxacin", "canonical_form": "levofloxacin", "term_type": "drug", "aliases": ["levaquin"], "ipa": "levofloksacin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "linagliptin", "canonical_form": "linagliptin", "term_type": "drug", "aliases": ["tradjenta"], "ipa": "linagliptin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "loratadine", "canonical_form": "loratadine", "term_type": "drug", "aliases": ["claritin"], "ipa": "loratadin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "magnesium sulfate", "canonical_form": "magnesium sulfate", "term_type": "drug", "aliases": [], "ipa": "magnesium sulfat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "metformin", "canonical_form": "metformin", "term_type": "drug", "aliases": ["glucophage"], "ipa": "metformin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "methadone", "canonical_form": "methadone", "term_type": "drug", "aliases": ["dolophine"], "ipa": "meθadon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "methotrexate", "canonical_form": "methotrexate", "term_type": "drug", "aliases": [], "ipa": "meθotreksat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "methylprednisolone", "canonical_form": "methylprednisolone", "term_type": "drug", "aliases": ["solu-medrol", "solumedrol", "medrol"], "ipa": "meθylprednisolon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "metoclopramide", "canonical_form": "metoclopramide", "term_type": "drug", "aliases": ["reglan"], "ipa": "metoclopramid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "milrinone", "canonical_form": "milrinone", "term_type": "drug", "aliases": ["primacor"], "ipa": "milrinon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "minocycline", "canonical_form": "minocycline", "term_type": "drug", "aliases": ["minocin"], "ipa": "minocyclin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "minoxidil", "canonical_form": "minoxidil", "term_type": "drug", "aliases": ["loniten", "rogaine"], "ipa": "minoksidil", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "mirtazapine", "canonical_form": "mirtazapine", "term_type": "drug", "aliases": ["remeron"], "ipa": "mirtazapin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "morphine", "canonical_form": "morphine", "term_type": "drug", "aliases": ["ms contin", "kadian"], "ipa": "morfin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "mycophenolate mofetil", "canonical_form": "mycophenolate mofetil", "term_type": "drug", "aliases": ["cellcept"], "ipa": "mycofenolat mofetil", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "naloxone", "canonical_form": "naloxone", "term_type": "drug", "aliases": ["narcan"], "ipa": "nalokson", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "naltrexone", "canonical_form": "naltrexone", "term_type": "drug", "aliases": ["vivitrol", "revia"], "ipa": "naltrekson", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "nifedipine", "canonical_form": "nifedipine", "term_type": "drug", "aliases": ["procardia", "adalat"], "ipa": "nifedipin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "nirmatrelvir-ritonavir", "canonical_form": "nirmatrelvir-ritonavir", "term_type": "drug", "aliases": ["paxlovid"], "ipa": "nirmatrelvir ritonavir", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "nitrofurantoin", "canonical_form": "nitrofurantoin", "term_type": "drug", "aliases": ["macrobid", "macrodantin"], "ipa": "nitrofurantoin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "nivolumab", "canonical_form": "nivolumab", "term_type": "drug", "aliases": ["opdivo"], "ipa": "nivolumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "norepinephrine", "canonical_form": "norepinephrine", "term_type": "drug", "aliases": ["noradrenaline", "levophed"], "ipa": "norepinefrin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "nortriptyline", "canonical_form": "nortriptyline", "term_type": "drug", "aliases": ["pamelor"], "ipa": "nortriptylin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "ocrelizumab", "canonical_form": "ocrelizumab", "term_type": "drug", "aliases": ["ocrevus"], "ipa": "ocrelizumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "olanzapine", "canonical_form": "olanzapine", "term_type": "drug", "aliases": ["zyprexa"], "ipa": "olanzapin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "omalizumab", "canonical_form": "omalizumab", "term_type": "drug", "aliases": ["xolair"], "ipa": "omalizumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "ondansetron", "canonical_form": "ondansetron", "term_type": "drug", "aliases": ["zofran"], "ipa": "ondansetron", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "osimertinib", "canonical_form": "osimertinib", "term_type": "drug", "aliases": ["tagrisso"], "ipa": "osimertinib", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "oxaliplatin", "canonical_form": "oxaliplatin", "term_type": "drug", "aliases": ["eloxatin"], "ipa": "oksaliplatin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "oxycodone", "canonical_form": "oxycodone", "term_type": "drug", "aliases": ["oxycontin", "percocet", "roxicodone"], "ipa": "oksycodon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "paclitaxel", "canonical_form": "paclitaxel", "term_type": "drug", "aliases": ["taxol", "abraxane"], "ipa": "paclitaksel", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "pioglitazone", "canonical_form": "pioglitazone", "term_type": "drug", "aliases": ["actos"], "ipa": "pioglitazon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "posaconazole", "canonical_form": "posaconazole", "term_type": "drug", "aliases": ["noxafil"], "ipa": "posaconazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "prednisolone", "canonical_form": "prednisolone", "term_type": "drug", "aliases": [], "ipa": "prednisolon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "prednisone", "canonical_form": "prednisone", "term_type": "drug", "aliases": ["deltasone"], "ipa": "prednison", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "pregabalin", "canonical_form": "pregabalin", "term_type": "drug", "aliases": ["lyrica"], "ipa": "pregabalin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "propylthiouracil", "canonical_form": "propylthiouracil", "term_type": "drug", "aliases": ["ptu"], "ipa": "propylθiouracil", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "pseudoephedrine", "canonical_form": "pseudoephedrine", "term_type": "drug", "aliases": ["sudafed"], "ipa": "pseudoefedrin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "quetiapine", "canonical_form": "quetiapine", "term_type": "drug", "aliases": ["seroquel"], "ipa": "kwetiapin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
+{"term": "rabeprazole", "canonical_form": "rabeprazole", "term_type": "drug", "aliases": ["aciphex", "pariet"], "ipa": "rabeprazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.073497Z"}
+{"term": "ramipril", "canonical_form": "ramipril", "term_type": "drug", "aliases": ["altace", "tritace"], "ipa": "ramipril", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.073497Z"}
+{"term": "remdesivir", "canonical_form": "remdesivir", "term_type": "drug", "aliases": ["veklury"], "ipa": "remdesivir", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.073497Z"}
+{"term": "risperidone", "canonical_form": "risperidone", "term_type": "drug", "aliases": ["risperdal"], "ipa": "risperidon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.073497Z"}
+{"term": "sacubitril-valsartan", "canonical_form": "sacubitril-valsartan", "term_type": "drug", "aliases": ["entresto"], "ipa": "sacubitril valsartan", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.073497Z"}
+{"term": "Salem aalaykom", "canonical_form": "salem aalaykom", "term_type": "drug", "aliases": ["Selim alakal"], "ipa": "salem aalaykom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "salem aleykom", "canonical_form": "salem aleykom", "term_type": "drug", "aliases": ["Selam naleyk"], "ipa": "salem aleykom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "salemou aalaykom", "canonical_form": "salemou aalaykom", "term_type": "drug", "aliases": [], "ipa": "salemou aalaykom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "sotalol", "canonical_form": "sotalol", "term_type": "drug", "aliases": ["betapace"], "ipa": "sotalol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "sulfasalazine", "canonical_form": "sulfasalazine", "term_type": "drug", "aliases": ["azulfidine"], "ipa": "sulfasalazin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "tacrolimus", "canonical_form": "tacrolimus", "term_type": "drug", "aliases": ["prograf", "fk506"], "ipa": "tacrolimus", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "tenecteplase", "canonical_form": "tenecteplase", "term_type": "drug", "aliases": ["tnkase"], "ipa": "tenecteplas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "ticagrelor", "canonical_form": "ticagrelor", "term_type": "drug", "aliases": ["brilinta"], "ipa": "ticagrelor", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "tiotropium", "canonical_form": "tiotropium", "term_type": "drug", "aliases": ["spiriva"], "ipa": "tiotropium", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "tirzepatide", "canonical_form": "tirzepatide", "term_type": "drug", "aliases": ["mounjaro", "zepbound"], "ipa": "tirzepatid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "tofacitinib", "canonical_form": "tofacitinib", "term_type": "drug", "aliases": ["xeljanz"], "ipa": "tofacitinib", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "trastuzumab", "canonical_form": "trastuzumab", "term_type": "drug", "aliases": ["herceptin"], "ipa": "trastuzumab", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "trazodone", "canonical_form": "trazodone", "term_type": "drug", "aliases": ["desyrel"], "ipa": "trazodon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "valproic acid", "canonical_form": "valproic acid", "term_type": "drug", "aliases": ["depakote", "valproate", "divalproex"], "ipa": "valproic acid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "valsartan", "canonical_form": "valsartan", "term_type": "drug", "aliases": ["diovan"], "ipa": "valsartan", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "vecuronium", "canonical_form": "vecuronium", "term_type": "drug", "aliases": ["norcuron"], "ipa": "vecuronium", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "venlafaxine", "canonical_form": "venlafaxine", "term_type": "drug", "aliases": ["effexor"], "ipa": "venlafaksin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "verapamil", "canonical_form": "verapamil", "term_type": "drug", "aliases": ["calan", "isoptin"], "ipa": "verapamil", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "warfarin", "canonical_form": "warfarin", "term_type": "drug", "aliases": ["coumadin", "jantoven"], "ipa": "warfarin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "doliprane", "canonical_form": "doliprane", "term_type": "drug", "aliases": ["Gli prani", "dolly prahn"], "ipa": "dolipran", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "maxilase", "canonical_form": "maxilase", "term_type": "drug", "aliases": ["maxilas"], "ipa": "maksilas", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Erythematosus", "canonical_form": "erythematosus", "term_type": "drug", "aliases": ["eritimethus"], "ipa": "eryθematosus", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "salbutamoll", "canonical_form": "salbutamoll", "term_type": "drug", "aliases": ["submittamol"], "ipa": "salbutamoll", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "grippex", "canonical_form": "grippex", "term_type": "drug", "aliases": ["gripex"], "ipa": "grippeks", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "myofascial", "canonical_form": "myofascial", "term_type": "diagnosis", "aliases": ["myofacial", "myofasial", "myofaicial"], "ipa": "myofascial", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Factor V Leiden", "canonical_form": "factor v leiden", "term_type": "diagnosis", "aliases": ["factor 5 leiden", "factor v leiden"], "ipa": "factor v leiden", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "pulmonary embolism", "canonical_form": "pulmonary embolism", "term_type": "diagnosis", "aliases": ["pulminary embolism", "pulmonary embolisim"], "ipa": "pulmonary embolism", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "International Normalized Ratio", "canonical_form": "international normalized ratio", "term_type": "diagnosis", "aliases": ["INR", "international normalised ratio"], "ipa": "international normalized ratio", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Acitrom", "canonical_form": "acitrom", "term_type": "drug", "aliases": ["acitram", "acetrom"], "ipa": "acitrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Clopidogrel", "canonical_form": "clopidogrel", "term_type": "drug", "aliases": ["clopidogral", "clopidogrel"], "ipa": "clopidogrel", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "gabapentin", "canonical_form": "gabapentin", "term_type": "drug", "aliases": ["gabapentine", "gabapenton"], "ipa": "gabapentin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Savella", "canonical_form": "savella", "term_type": "drug", "aliases": ["savela", "savella"], "ipa": "savella", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Percocet", "canonical_form": "percocet", "term_type": "drug", "aliases": ["percoset", "percacet"], "ipa": "percocet", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "mebeverine", "canonical_form": "mebeverine", "term_type": "drug", "aliases": ["mebeverin", "mebevirine"], "ipa": "mebeverin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "loperamide", "canonical_form": "loperamide", "term_type": "drug", "aliases": ["loperamid", "lopramide"], "ipa": "loperamid", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "fibromyalgia", "canonical_form": "fibromyalgia", "term_type": "diagnosis", "aliases": ["fibromialgia", "fibromyalga"], "ipa": "fibromyalgia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "hypothyroidism", "canonical_form": "hypothyroidism", "term_type": "diagnosis", "aliases": ["hypthyroidism", "hypothyrodism"], "ipa": "hypoθyroidism", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "hyperthyroidism", "canonical_form": "hyperthyroidism", "term_type": "diagnosis", "aliases": ["hyperthyrodism", "hyperthyroidizm"], "ipa": "hyperθyroidism", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "carotid artery", "canonical_form": "carotid artery", "term_type": "diagnosis", "aliases": ["carotid arery", "carotid arterie"], "ipa": "carotid artery", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "febrile convulsion", "canonical_form": "febrile convulsion", "term_type": "diagnosis", "aliases": ["febrile convultion", "febral convulsion"], "ipa": "febril convulsion", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "spinal stenosis", "canonical_form": "spinal stenosis", "term_type": "diagnosis", "aliases": ["spinal stenisis", "spinal stenozis"], "ipa": "spinal stenosis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "mitral valve prolapse", "canonical_form": "mitral valve prolapse", "term_type": "diagnosis", "aliases": ["mitral valve prolaps", "mitral valve prolapss"], "ipa": "mitral valv prolaps", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "Irritable Bowel Syndrome", "canonical_form": "irritable bowel syndrome", "term_type": "diagnosis", "aliases": ["irritable bowel syndrom", "IBS"], "ipa": "irritabl bowel syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "histopathological", "canonical_form": "histopathological", "term_type": "diagnosis", "aliases": ["histopathologic", "histopathologocal"], "ipa": "histopaθological", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "coagulation profile", "canonical_form": "coagulation profile", "term_type": "diagnosis", "aliases": ["coagulation profil", "coagulatoin profile"], "ipa": "coagulation profil", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "platelet count", "canonical_form": "platelet count", "term_type": "diagnosis", "aliases": ["platlet count", "platelet cnt"], "ipa": "platelet count", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.074591Z"}
+{"term": "pictocis", "canonical_form": "pictocis", "term_type": "drug", "aliases": ["pictosis"], "ipa": "pictocis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "Biobsy", "canonical_form": "biobsy", "term_type": "drug", "aliases": ["biopsy"], "ipa": "biobsy", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "biobci", "canonical_form": "biobci", "term_type": "drug", "aliases": ["biopsy"], "ipa": "biobci", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "some effiralgon", "canonical_form": "some effiralgon", "term_type": "drug", "aliases": ["Sami Firal gone"], "ipa": "som effiralgon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "collarbone", "canonical_form": "collarbone", "term_type": "anatomy", "aliases": ["collarbones"], "ipa": "collarbon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "clavicle", "canonical_form": "clavicle", "term_type": "anatomy", "aliases": ["clavicle bone"], "ipa": "clavicl", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "stents", "canonical_form": "stents", "term_type": "device", "aliases": ["stent", "heart stents"], "ipa": "stents", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "heart attack", "canonical_form": "heart attack", "term_type": "diagnosis", "aliases": [], "ipa": "heart attack", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "spinal column", "canonical_form": "spinal column", "term_type": "anatomy", "aliases": ["spine"], "ipa": "spinal column", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "extravasation", "canonical_form": "extravasation", "term_type": "diagnosis", "aliases": ["extravization"], "ipa": "ekstravasation", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "dermatologist", "canonical_form": "dermatologist", "term_type": "specialty", "aliases": [], "ipa": "dermatologist", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "kidney stones", "canonical_form": "kidney stones", "term_type": "diagnosis", "aliases": [], "ipa": "kidney stones", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "thyroid function test", "canonical_form": "thyroid function test", "term_type": "test", "aliases": ["TFT"], "ipa": "θyroid function test", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "constipation", "canonical_form": "constipation", "term_type": "symptom", "aliases": [], "ipa": "constipation", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "cold intolerance", "canonical_form": "cold intolerance", "term_type": "symptom", "aliases": [], "ipa": "cold intoleranc", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "myofascial pain syndrome", "canonical_form": "myofascial pain syndrome", "term_type": "diagnosis", "aliases": ["myofacial pain"], "ipa": "myofascial pain syndrom", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "nervous system", "canonical_form": "nervous system", "term_type": "anatomy", "aliases": [], "ipa": "nervous system", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "respiration", "canonical_form": "respiration", "term_type": "anatomy", "aliases": [], "ipa": "respiration", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "Efferalgan", "canonical_form": "efferalgan", "term_type": "drug", "aliases": ["Effiralgon", "Effiralgan", "Eferalgon"], "ipa": "efferalgan", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.084245Z"}
+{"term": "Doliprane", "canonical_form": "doliprane", "term_type": "drug_brand", "aliases": ["dolly prahn", "dolly brain", "dole preen"], "ipa": "/dɒlipreɪn/", "description": "Paracetamol-based analgesic and antipyretic brand common in France and North Africa.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}
+{"term": "Salbutamol", "canonical_form": "salbutamol", "term_type": "drug_generic", "aliases": ["salbu tamol", "salbutanol", "salbutamul"], "ipa": "/sælˈbjuːtəmɒl/", "description": "Short-acting bronchodilator used to treat asthma, COPD, and wheezing.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}
+{"term": "sphygmomanometer", "canonical_form": "sphygmomanometer", "term_type": "device", "aliases": ["sfigmomanometre", "sphygmomanometre", "sfigmomanometer"], "ipa": "/ˌsfɪɡmoʊməˈnɒmɪtər/", "description": "Medical instrument used to measure arterial blood pressure.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}
+{"term": "amoxicillin", "canonical_form": "amoxicillin", "term_type": "drug_generic", "aliases": ["amoxicilin", "amoxycillin", "amoxicillin"], "ipa": "/əˌmɒksɪˈsɪlɪn/", "description": "Broad-spectrum penicillin antibiotic used to treat bacterial infections.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}

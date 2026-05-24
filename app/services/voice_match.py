@@ -99,6 +99,13 @@ def _load_models():
         model_id = os.environ.get(
             "VOICE_ENCODER_MODEL", "facebook/wav2vec2-base-960h"
         )
+        # Reduce transformers' verbosity during startup load to avoid long
+        # informational reports in the server console.
+        try:
+            from transformers import logging as _tf_logging
+            _tf_logging.set_verbosity_error()
+        except Exception:
+            pass
         print(f"[voice_match] loading CTC {model_id} on {_device}")
         _processor = Wav2Vec2Processor.from_pretrained(model_id)
         _model = Wav2Vec2ForCTC.from_pretrained(model_id).to(_device).eval()
@@ -107,7 +114,14 @@ def _load_models():
 
 
 def warm_up() -> None:
-    """Trigger model load in a background thread."""
+    """Trigger model load in a background thread.
+
+    This is disabled by default to avoid heavy model loads and noisy
+    startup logs. Set the environment variable `VOICE_MATCH_PREWARM=1`
+    to enable prewarming at application start.
+    """
+    if os.environ.get("VOICE_MATCH_PREWARM", "0") != "1":
+        return
     threading.Thread(target=_load_models, daemon=True).start()
 
 

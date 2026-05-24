@@ -46,12 +46,15 @@ from typing import Any, Dict, List, Optional, Tuple
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
+from dataclasses import asdict
 from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
 from .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
+from .pipeline.runner import run_pipeline
+from .pipeline.hitl import apply_human_correction
 
 
 def _build_corrector() -> MedicalCorrector:
@@ -153,16 +156,28 @@ def _prewarm() -> None:
         try:
             asr._load_model(DEFAULT_WHISPER_SIZE)
             print(f"[startup] faster-whisper '{DEFAULT_WHISPER_SIZE}' ready.")
-        except Exception as exc:
-            print(f"[startup] Whisper warmup failed: {exc}")
+        except Exception:
+            # Suppress noisy startup errors by default. Set WHISPER_PREWARM=1
+            # to enable warmup and see errors during development.
+            return
+    # Do not prewarm ASR by default to avoid noisy startup logs. If you
+    # explicitly want model warmup at startup, set `WHISPER_PREWARM=1`.
+    if os.environ.get("WHISPER_PREWARM", "0") == "1":
+        threading.Thread(target=_bg, daemon=True).start()
 
-    threading.Thread(target=_bg, daemon=True).start()
-    voice_match.warm_up()
+    # Only prewarm voice_match if explicitly requested to avoid noisy startup.
+    if os.environ.get("VOICE_MATCH_PREWARM", "0") == "1":
+        voice_match.warm_up()
 
 
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/test", include_in_schema=False)
+def test_ui() -> FileResponse:
+    return FileResponse(STATIC_DIR / "test_ui.html")
 
 
 @app.get("/api/healthz")
@@ -205,6 +220,23 @@ class CorrectRequest(BaseModel):
     text: str = Field(..., description="Raw text without audio.")
 
 
+class CorrectionRequestV2(BaseModel):
+    transcript: str
+    interactive: bool = False
+
+
+class TeachRequestV2(BaseModel):
+    session_id: str
+    wrong_form: str
+    correct_term: str
+    sentence_context: str
+
+
+# Backward-compatible aliases (keep legacy types untouched elsewhere)
+CorrectionRequest = CorrectionRequestV2
+TeachRequest = TeachRequestV2
+
+
 @app.post("/api/correct")
 def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
     """Text-only quick path. No audio means no voice retrieval; the LLM
@@ -228,6 +260,27 @@ def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
         "suspicious": spans,
         "note": "text-only mode: voice retrieval is disabled without audio",
     }
+
+
+@app.post("/api/v2/correct")
+def correct_v2(body: CorrectionRequest) -> Dict[str, Any]:
+    if not body.transcript.strip():
+        raise HTTPException(status_code=400, detail="transcript must not be empty")
+    result = run_pipeline(body.transcript, interactive=body.interactive)
+    # Prefer an explicit to_dict() if provided; otherwise convert dataclass to dict.
+    if hasattr(result, "to_dict"):
+        return result.to_dict()
+    return asdict(result)
+
+
+@app.post("/api/v2/correct/teach")
+def correct_teach_v2(body: TeachRequest) -> Dict[str, Any]:
+    apply_human_correction(
+        wrong_form=body.wrong_form,
+        correct_term=body.correct_term,
+        sentence_context=body.sentence_context,
+    )
+    return {"status": "saved", "term": body.correct_term}
 
 
 BENCHMARK_PROGRESS: Dict[str, Any] = {}

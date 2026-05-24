@@ -1,0 +1,285 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Pipeline Test UI</title>
+  <style>
+    :root{
+      --clr-bg: #ffffff;
+      --clr-surface: #f7f6f3;
+      --clr-border: rgba(0,0,0,0.10);
+      --clr-border-strong: rgba(0,0,0,0.18);
+      --clr-text: #1a1a1a;
+      --clr-muted: #6b6b6b;
+      --clr-hint: #a0a0a0;
+      --clr-green-bg: #EAF3DE;
+      --clr-green-text: #27500A;
+      --clr-amber-bg: #FAEEDA;
+      --clr-amber-text: #633806;
+      --clr-coral-bg: #FAECE7;
+      --clr-coral-text: #993C1D;
+      --clr-coral-border: #F0997B;
+      --clr-blue-bg: #E6F1FB;
+      --clr-blue-text: #185FA5;
+      --radius: 10px;
+      --radius-sm: 6px;
+    }
+    *{box-sizing:border-box;font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,sans-serif}
+    body{background:var(--clr-surface);color:var(--clr-text);margin:16px}
+    .layout{display:flex;gap:16px}
+    .col-main{flex:1;min-width:600px}
+    .col-side{width:360px}
+    .panel{background:var(--clr-bg);border:0.5px solid var(--clr-border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+    .panel-head{padding:10px 16px;border-bottom:0.5px solid var(--clr-border);display:flex;align-items:center;gap:8px;font-size:13px;font-weight:500;color:var(--clr-text)}
+    .panel-body{padding:12px 16px}
+    textarea{width:100%;min-height:120px;padding:12px;border:0.5px solid var(--clr-border);border-radius:6px;resize:vertical}
+    .btn{display:inline-block;padding:8px 12px;border-radius:6px;border:0;background:var(--clr-blue-bg);color:var(--clr-blue-text);cursor:pointer}
+    .placeholder{color:var(--clr-hint);font-style:italic}
+    .pills{display:flex;flex-wrap:wrap;gap:6px}
+    .pill{padding:6px 8px;border-radius:999px;background:var(--clr-surface);border:0.5px solid var(--clr-border);color:var(--clr-muted)}
+    .pill.coral{background:var(--clr-coral-bg);color:var(--clr-coral-text);border:0.5px solid var(--clr-coral-border)}
+    .panel-grid{display:grid;grid-template-columns:1fr;gap:8px}
+    .stage-badges{font-size:12px;color:var(--clr-muted)}
+    .output{white-space:pre-wrap;padding:12px}
+    .hitl{border:1px dashed var(--clr-coral-border);padding:12px;border-radius:8px;background:#fff7f6}
+    .log{max-height:280px;overflow:auto}
+  </style>
+</head>
+<body>
+  <h2>Pipeline Test UI</h2>
+  <div class="layout">
+    <div class="col-main">
+      <div class="panel">
+        <div class="panel-head">Input transcript</div>
+        <div class="panel-body">
+          <textarea id="transcript">The patient presents with fever and should take dolly prahn twice daily
+alongside salbu tamol for the wheeze. Blood pressure was measured
+using a sfigmomanometre. The attending physician prescribed
+amoxicilin for the secondary infection.</textarea>
+          <div style="margin-top:8px"><button id="run" class="btn">Run pipeline</button></div>
+        </div>
+      </div>
+
+      <div id="stage1" class="panel">
+        <div class="panel-head">Stage 1 — word scores <span style="margin-left:auto" class="stage-badges">0 words scored</span></div>
+        <div class="panel-body"><div class="placeholder">Results will appear here after you run the pipeline.</div></div>
+      </div>
+
+      <div id="stage2" class="panel">
+        <div class="panel-head">Stage 2 — flagged spans <span style="margin-left:auto" class="stage-badges">0 spans</span></div>
+        <div class="panel-body"><div class="placeholder">Results will appear here after you run the pipeline.</div></div>
+      </div>
+
+      <div id="stage3" class="panel">
+        <div class="panel-head">Stage 3 — candidates</div>
+        <div class="panel-body"><div class="placeholder">Results will appear here after you run the pipeline.</div></div>
+      </div>
+
+      <div id="stage4" class="panel">
+        <div class="panel-head">Stage 4 — decisions <span style="margin-left:auto" class="stage-badges">0 auto-fixed · 0 via LLM · 0 escalated</span></div>
+        <div class="panel-body"><div class="placeholder">Results will appear here after you run the pipeline.</div></div>
+      </div>
+
+      <div id="output" class="panel">
+        <div class="panel-head">Output transcript <span style="margin-left:auto" class="stage-badges">0 corrections</span></div>
+        <div class="panel-body"><div class="placeholder output">Results will appear here after you run the pipeline.</div></div>
+      </div>
+
+    </div>
+
+    <div class="col-side">
+      <div class="panel">
+        <div class="panel-head">Needs your input</div>
+        <div class="panel-body hitl"><div class="placeholder">No HITL items. Any escalated spans will appear here.</div></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel-head">Correction log</div>
+        <div class="panel-body log"><div class="placeholder">No actions yet. The correction log will appear here.</div></div>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Interactive UI: colored tokens, candidates, decisions, and teach
+    function scoreClass(score){
+      if(score <= 0.4) return 'score-low';
+      if(score <= 0.7) return 'score-mid';
+      return 'score-high';
+    }
+
+    function escapeHtml(s){ return (s+'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+    async function postTeach(wrongForm, correctTerm, transcript){
+      try{
+        const body = { session_id: '', wrong_form: wrongForm, correct_term: correctTerm, sentence_context: transcript };
+        const r = await fetch('/api/v2/correct/teach', {method:'POST', headers:{'content-type':'application/json'}, body: JSON.stringify(body)});
+        if(!r.ok) { const txt = await r.text(); throw new Error(txt); }
+        return await r.json();
+      }catch(e){ throw e; }
+    }
+
+    function renderScoredWords(report){
+      const words = (report.scored_words||report.scoredWords||[]).slice();
+      // Inline tokens (original order)
+      const inline = document.createElement('div'); inline.style.lineHeight='1.8'; inline.style.marginBottom='10px';
+      words.forEach(w=>{
+        const span = document.createElement('span');
+        span.className = 'word '+scoreClass(w.suspicion||0);
+        span.dataset.index = w.index;
+        span.dataset.start = w.start;
+        span.dataset.end = w.end;
+        span.textContent = w.text + ' ';
+        span.title = `score: ${Number(w.suspicion||0).toFixed(3)}`;
+        inline.appendChild(span);
+      });
+
+      // Sorted list: worst (highest suspicion) first
+      const sorted = words.slice().sort((a,b)=> (b.suspicion||0) - (a.suspicion||0));
+      const sortedContainer = document.createElement('div');
+      sortedContainer.style.marginTop='8px';
+      sortedContainer.innerHTML = '<div style="font-weight:600;margin-bottom:6px">Words — sorted (worst first)</div>';
+      sorted.forEach(w=>{
+        const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='4px 0'; row.style.borderBottom='1px dashed rgba(0,0,0,0.03)';
+        const left = document.createElement('div'); left.innerHTML = `<strong>${escapeHtml(w.text)}</strong> <span style="color:#666;font-size:12px;margin-left:8px">idx ${w.index}</span>`;
+        const right = document.createElement('div'); right.style.display='flex'; right.style.gap='8px';
+        const score = document.createElement('div'); score.textContent = Number(w.suspicion||0).toFixed(3); score.style.width='64px'; score.style.textAlign='right';
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Highlight'; btn.addEventListener('click', ()=>{
+          document.querySelectorAll('#stage1 .word').forEach(x=> x.style.outline='');
+          const target = document.querySelector(`#stage1 .word[data-index=\"${w.index}\"]`);
+          if(target){ target.style.outline='3px solid rgba(153,60,29,0.6)'; target.scrollIntoView({behavior:'smooth', block:'center'}); }
+        });
+        right.appendChild(score); right.appendChild(btn);
+        row.appendChild(left); row.appendChild(right); sortedContainer.appendChild(row);
+      });
+
+      const body = document.querySelector('#stage1 .panel-body'); body.innerHTML=''; body.appendChild(inline); body.appendChild(sortedContainer);
+      document.querySelector('#stage1 .stage-badges').textContent = words.length + ' words scored';
+    }
+
+    function renderFlaggedWords(report){
+      // Flagged words determined by score threshold
+      const words = (report.scored_words||report.scoredWords||[]);
+      const flagged = words.filter(w=> (w.suspicion||0) >= 0.5 ).slice().sort((a,b)=> (b.suspicion||0)-(a.suspicion||0));
+      const el = document.querySelector('#stage2 .panel-body'); el.innerHTML='';
+      if(!flagged.length){ el.textContent='Flagged spans: 0'; document.querySelector('#stage2 .stage-badges').textContent = '0 spans'; return; }
+      flagged.forEach(w=>{
+        const row = document.createElement('div'); row.style.display='flex'; row.style.justifyContent='space-between'; row.style.padding='6px 0';
+        const left = document.createElement('div'); left.innerHTML = `<strong>${escapeHtml(w.text)}</strong> <span style="color:#666;font-size:12px;margin-left:8px">idx ${w.index}</span>`;
+        const right = document.createElement('div'); right.style.display='flex'; right.style.gap='6px';
+        const score = document.createElement('div'); score.textContent = Number(w.suspicion||0).toFixed(3); score.style.width='64px'; score.style.textAlign='right';
+        const show = document.createElement('button'); show.className='btn'; show.textContent='Show candidates';
+        show.addEventListener('click', ()=>{
+          // find candidate group that covers this index
+          const groups = report.candidates||[];
+          let foundIndex = -1;
+          for(let i=0;i<groups.length;i++){
+            const s = groups[i].span || groups[i].span;
+            if(typeof s.start === 'number' && typeof s.end === 'number'){
+              if(w.index >= s.start && w.index <= s.end){ foundIndex = i; break; }
+            }
+          }
+          document.querySelectorAll('#stage3 .candidate-block').forEach(b=>b.style.display='none');
+          if(foundIndex>=0){ const target = document.querySelector(`#candidates-${foundIndex}`); if(target) target.style.display='block'; }
+          // highlight token
+          document.querySelectorAll('#stage1 .word').forEach(x=> x.style.outline='');
+          const targetToken = document.querySelector(`#stage1 .word[data-index=\"${w.index}\"]`);
+          if(targetToken) targetToken.style.outline='3px dashed rgba(153,60,29,0.8)';
+        });
+        right.appendChild(score); right.appendChild(show);
+        row.appendChild(left); row.appendChild(right); el.appendChild(row);
+      });
+      document.querySelector('#stage2 .stage-badges').textContent = flagged.length + ' spans';
+    }
+
+    function renderSpans(report){
+      const el = document.querySelector('#stage2 .panel-body'); el.innerHTML='';
+      (report.spans||[]).forEach((s,i)=>{
+        const row = document.createElement('div'); row.style.marginBottom='8px';
+        const title = document.createElement('div'); title.innerHTML = `<strong>${escapeHtml(s.text)}</strong> <span style="color:#666;font-size:12px;margin-left:8px">score ${Number(s.suspicion||0).toFixed(3)}</span>`;
+        const btn = document.createElement('button'); btn.className='btn'; btn.textContent='Show candidates'; btn.style.marginLeft='8px';
+        btn.addEventListener('click', ()=>{ document.querySelectorAll('#stage3 .candidate-block').forEach(b=>b.style.display='none'); const target = document.querySelector(`#candidates-${i}`); if(target) target.style.display='block';
+          // highlight corresponding words
+          document.querySelectorAll('#stage1 .word').forEach(w=> w.style.outline='');
+          const start = s.start, end = s.end;
+          document.querySelectorAll('#stage1 .word').forEach(w=>{
+            const si = Number(w.dataset.index);
+            if(si>=start && si<=end) w.style.outline='2px dashed rgba(153,60,29,0.6)';
+          });
+        });
+        row.appendChild(title); row.appendChild(btn); el.appendChild(row);
+      });
+      document.querySelector('#stage2 .stage-badges').textContent = (report.spans||[]).length + ' spans';
+    }
+
+    function renderCandidates(report){
+      const el = document.querySelector('#stage3 .panel-body'); el.innerHTML='';
+      (report.candidates||[]).forEach((grp,i)=>{
+        const block = document.createElement('div'); block.className='candidate-block'; block.id = `candidates-${i}`;
+        block.style.display='none'; block.style.marginBottom='12px'; block.style.padding='8px'; block.style.border='1px solid var(--clr-border)'; block.style.borderRadius='6px';
+        const hdr = document.createElement('div'); hdr.innerHTML = `<strong>Span:</strong> ${escapeHtml(grp.span.text)} <span style="color:#666;font-size:12px;margin-left:8px">(${grp.candidates.length} candidates)</span>`;
+        block.appendChild(hdr);
+        const list = document.createElement('div'); list.style.marginTop='8px';
+        grp.candidates.forEach(c=>{
+          const row = document.createElement('div'); row.style.display='flex'; row.style.alignItems='center'; row.style.justifyContent='space-between'; row.style.padding='6px 0';
+          const info = document.createElement('div'); info.innerHTML = `<div style="font-weight:600">${escapeHtml(c.term)}</div><div style="font-size:12px;color:#666">ipa: ${escapeHtml(c.ipa||'')} · score: ${Number(c.phonetic_score||0).toFixed(3)} · ${escapeHtml(c.term_type||'')}</div><div style="font-size:12px;color:#444;margin-top:4px">${escapeHtml(c.description||'No description')}</div>`;
+          const actions = document.createElement('div'); actions.style.display='flex'; actions.style.gap='6px';
+          const choose = document.createElement('button'); choose.className='btn'; choose.textContent='Choose';
+          choose.addEventListener('click', ()=>{
+            // naive replace in output text
+            const outEl = document.querySelector('#output .panel-body');
+            const cur = outEl.textContent || '';
+            const re = new RegExp(grp.span.text.replace(/[.*+?^${}()|[\]\\]/g,'\\$&'), 'i');
+            outEl.textContent = cur.replace(re, c.term);
+            // mark decision as chosen
+            const decEl = document.querySelector('#stage4 .panel-body'); decEl.innerHTML = `<div>Chosen: <strong>${escapeHtml(c.term)}</strong> for <em>${escapeHtml(grp.span.text)}</em></div>`;
+          });
+          const teach = document.createElement('button'); teach.className='btn'; teach.textContent='Teach'; teach.style.background='var(--clr-amber-bg)'; teach.style.color='var(--clr-amber-text)';
+          teach.addEventListener('click', async ()=>{
+            teach.disabled = true; teach.textContent = 'Teaching...';
+            try{
+              await postTeach(grp.span.text, c.term, document.getElementById('transcript').value);
+              teach.textContent = 'Taught'; teach.style.opacity=0.7;
+            }catch(e){ alert('Teach failed: '+e); teach.textContent='Teach'; }
+            teach.disabled = false;
+          });
+          actions.appendChild(choose); actions.appendChild(teach);
+          row.appendChild(info); row.appendChild(actions); list.appendChild(row);
+        });
+        block.appendChild(list); el.appendChild(block);
+      });
+    }
+
+    function renderDecisions(report){
+      const el = document.querySelector('#stage4 .panel-body'); el.innerHTML='';
+      const dec = report.decisions||[];
+      if(!dec.length){ el.textContent = 'No decisions'; return; }
+      dec.forEach(d=>{
+        const row = document.createElement('div'); row.style.marginBottom='8px';
+        row.innerHTML = `<div><strong>${escapeHtml(d.span.text)}</strong> — path: ${escapeHtml(d.path||'')}</div><div style="font-size:13px;color:#444">chosen: ${d.chosen?escapeHtml(d.chosen):'<em>none</em>'} · confidence: ${Number(d.confidence||0).toFixed(2)}</div>`;
+        el.appendChild(row);
+      });
+      document.querySelector('#stage4 .stage-badges').textContent = `${(dec.filter(d=>d.path==='auto').length||0)} auto-fixed · ${(dec.filter(d=>d.path==='llm').length||0)} via LLM · ${(dec.filter(d=>d.path&&d.path.includes('hitl')).length||0)} escalated`;
+    }
+
+    document.getElementById('run').addEventListener('click', async function(){
+      const btn = this; btn.disabled = true; btn.textContent = 'Running...';
+      try{
+        const resp = await fetch('/api/v2/correct', {method:'POST',headers:{'content-type':'application/json'},body:JSON.stringify({transcript:document.getElementById('transcript').value, interactive:false})});
+        if(!resp.ok){ const txt = await resp.text(); alert('Pipeline error: '+txt); return; }
+        const data = await resp.json(); const report = data.report || data;
+        renderScoredWords(report);
+        renderSpans(report);
+        renderFlaggedWords(report);
+        renderCandidates(report);
+        renderDecisions(report);
+        document.querySelector('#output .panel-body').textContent = data.corrected_text || data.raw_text || '';
+        // remove placeholder log
+        document.querySelector('.log .panel-body')?.remove();
+      }catch(e){ alert('Pipeline request failed: '+e); }
+      finally{ btn.disabled=false; btn.textContent='Run pipeline'; }
+    });
+  </script>
+</body>
+</html>
