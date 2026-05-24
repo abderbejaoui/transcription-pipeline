@@ -616,13 +616,11 @@ class QwenGulfLoraBackend(_Qwen3AsrBase):
         )
 
     def prepare(self) -> None:
-        # Load base model + processor via the parent class.
+        # Load base model + processor via the parent class. This populates
+        # either self._model (transformers PreTrainedModel) when
+        # transformers registers qwen3_asr, OR self._model (Qwen3ASRModel
+        # wrapper) when the qwen_asr pip wrapper is used.
         super().prepare()
-        if self._backend != "transformers":
-            raise RuntimeError(
-                "LoRA adapter requires the transformers backend. "
-                "Upgrade transformers so qwen3_asr is registered."
-            )
 
         # Resolve adapter path against the repo root if it's relative.
         adapter_dir = Path(self.adapter_path)
@@ -642,9 +640,29 @@ class QwenGulfLoraBackend(_Qwen3AsrBase):
             ) from exc
 
         print(f"[{self.name}] attaching LoRA adapter: {adapter_dir}")
-        self._model = PeftModel.from_pretrained(
-            self._model, str(adapter_dir),
-        ).to(self._device).eval()
+
+        if self._backend == "transformers":
+            # Direct: wrap the PreTrainedModel.
+            self._model = PeftModel.from_pretrained(
+                self._model, str(adapter_dir),
+            ).to(self._device).eval()
+            return
+
+        # qwen_asr wrapper path: the wrapper holds the actual nn.Module on
+        # `.model`. Replace that attribute with the PEFT-wrapped version so
+        # subsequent wrapper.transcribe() calls route through the LoRA
+        # layers. This matches how finetune_qwen3_lora.py applied PEFT
+        # during training.
+        inner = getattr(self._model, "model", None)
+        if inner is None:
+            raise RuntimeError(
+                f"qwen_asr wrapper has no .model attribute; cannot attach "
+                f"LoRA. Wrapper type: {type(self._model).__name__}"
+            )
+        peft_model = PeftModel.from_pretrained(inner, str(adapter_dir))
+        # Move to the same device the wrapper is on (cuda:0 typically).
+        peft_model = peft_model.to(self._device).eval()
+        self._model.model = peft_model
 
     def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
         # Gulf-tuned model: always force Arabic except for explicit English.
