@@ -1,0 +1,18 @@
+{
+  "id": "sada_058",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 6.915,
+  "ref": "اعرفها بنفسي شايف اقدر اعرفها بنفسي هاهاها",
+  "ref_normalized": "اعرفها بنفسي شايف اقدر اعرفها بنفسي هاهاها",
+  "pred": "أعرفها بنفسي. شيء بقدر أعرفها بنفسي.",
+  "pred_normalized": "اعرفها بنفسي شي بقدر اعرفها بنفسي",
+  "wer": 0.42857142857142855,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5977075099945068,
+  "rtf": 11.569203806831123,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

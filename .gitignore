@@ -24,13 +24,25 @@ env/
 # Each tenant should produce its own.
 data/voice_index.npz
 data/voice_index.jsonl
+data/descriptions.jsonl
 data/sessions/
+data/dataset_samples/
+data/preprocessed_audios/
+data/dgx_full/
 
 # Misc
 *.log
 .coverage
 htmlcov/
 .pytest_cache/
+# Eval audio (~210 MB) and packed prediction archives — too big for git.
+# The audio is reproducible from scripts/build_*_testset.py, and predictions
+# are kept inside their bakeoff/predictions/ directory (committed separately).
+eval/*/audio/
+eval/*/wavs/
+eval/gulf_medical_v1/wavs/
+*.tar.gz
+test_gulf*.wav
 
 .env
 .github/

@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_019",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.5,
+  "ref": "اللي تنس علي ان يجب ان تعرد هزه المراسيم في اول جلسه للمجلس",
+  "ref_normalized": "اللي تنس علي ان يجب ان تعرد هزه المراسيم في اول جلسه للمجلس",
+  "pred": "اللي تنص على إنه يجب أن تعرض هذه المراسيم في أول جلسة للمجلس.",
+  "pred_normalized": "اللي تنص علي انه يجب ان تعرض هذه المراسيم في اول جلسه للمجلس",
+  "wer": 0.3076923076923077,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7082147598266602,
+  "rtf": 7.766005895367329,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

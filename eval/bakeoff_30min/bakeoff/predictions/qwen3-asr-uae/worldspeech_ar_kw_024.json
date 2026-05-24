@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_024",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.52,
+  "ref": "تمني توسلنا نسهه من برنامج عمل الديوان الامي",
+  "ref_normalized": "تمني توسلنا نسهه من برنامج عمل الديوان الامي",
+  "pred": "فأتمني توصل لنا نسخه من برنامج عمل دوام الأميركي",
+  "pred_normalized": "فاتمني توصل لنا نسخه من برنامج عمل دوام الاميركي",
+  "wer": 0.75,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6389076709747314,
+  "rtf": 8.639746008337273,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

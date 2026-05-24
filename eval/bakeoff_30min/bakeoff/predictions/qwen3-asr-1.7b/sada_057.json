@@ -1,0 +1,18 @@
+{
+  "id": "sada_057",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 6.385,
+  "ref": "هاهاها هذه عاد فكر فيها لحالك انت حاول تعرفها بنفسك",
+  "ref_normalized": "هاهاها هذه عاد فكر فيها لحالك انت حاول تعرفها بنفسك",
+  "pred": "هههههههه هذه عاد فكر فيها الحال كند حاول تعرفها بنفسك.",
+  "pred_normalized": "هههههههه هذه عاد فكر فيها الحال كند حاول تعرفها بنفسك",
+  "wer": 0.3,
+  "medical_term_recall": null,
+  "inference_seconds": 0.8570129871368408,
+  "rtf": 7.450295498241377,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

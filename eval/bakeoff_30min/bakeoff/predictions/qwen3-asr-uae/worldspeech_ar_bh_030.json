@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_bh_030",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 5.07,
+  "ref": "اسعار النفط التي تجاوزت ال 40 دولارا فما فوق",
+  "ref_normalized": "اسعار النفط التي تجاوزت ال 40 دولارا فما فوق",
+  "pred": "اسعار النفط التي تزياد واستمر اربع يعني لاربعين دولار فما فوق",
+  "pred_normalized": "اسعار النفط التي تزياد واستمر اربع يعني لاربعين دولار فما فوق",
+  "wer": 0.6666666666666666,
+  "medical_term_recall": null,
+  "inference_seconds": 0.6699988842010498,
+  "rtf": 7.567176781265536,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

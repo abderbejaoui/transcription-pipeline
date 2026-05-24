@@ -1,0 +1,18 @@
+{
+  "id": "english_medical_003",
+  "category": "english_medical",
+  "language": "en",
+  "duration_s": 31.915,
+  "ref": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last eleven months. Should I just try to stay comfortable and endure the horrible sensations when coughing, or should I be seen? I haven’t had asthma attacks in a few years either. Never mind, I was hoping you could help; I didn’t realize there was a fee.",
+  "ref_normalized": "i am having asthma attacks and experiencing pins and needle sensations in my chest arms and hands my family has also been ill with chest congestion and we have all been coughing a lot i have had two heart stents placed in the last eleven months should i just try to stay comfortable and endure the horrible sensations when coughing or should i be seen i haven’t had asthma attacks in a few years either never mind i was hoping you could help i didn’t realize there was a fee",
+  "pred": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last 11 months. Should I just try to stay comfortable and endure the horrible sensations when coughing, or should I be seen? I haven't had asthma attacks in a few years either. Never mind, I was hoping you could help. I didn't realize there was a fee.",
+  "pred_normalized": "i am having asthma attacks and experiencing pins and needle sensations in my chest arms and hands my family has also been ill with chest congestion and we have all been coughing a lot i have had two heart stents placed in the last 11 months should i just try to stay comfortable and endure the horrible sensations when coughing or should i be seen i haven t had asthma attacks in a few years either never mind i was hoping you could help i didn t realize there was a fee",
+  "wer": 0.05555555555555555,
+  "medical_term_recall": null,
+  "inference_seconds": 14.435151100158691,
+  "rtf": 2.2109224751827603,
+  "extra": {
+    "detected_language": "en",
+    "lang_prob": 1
+  }
+}

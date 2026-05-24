@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_018",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 4.44,
+  "ref": "يه اهنا اهلني ي املي انيه االيرادات ال نف يه فكت مليارين",
+  "ref_normalized": "يه اهنا اهلني ي املي انيه االيرادات ال نف يه فكت مليارين",
+  "pred": "أحنا الحين في الميزانية الإيرادات الغير نفطية فقط مليارين.",
+  "pred_normalized": "احنا الحين في الميزانيه الايرادات الغير نفطيه فقط مليارين",
+  "wer": 0.9166666666666666,
+  "medical_term_recall": null,
+  "inference_seconds": 0.7295849323272705,
+  "rtf": 6.085651996453713,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

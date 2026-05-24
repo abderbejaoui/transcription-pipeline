@@ -1,0 +1,18 @@
+{
+  "id": "worldspeech_ar_kw_025",
+  "category": "gulf_acoustic",
+  "language": "ar",
+  "duration_s": 3.58,
+  "ref": "يكل انسان ياتي باي فعل تتفك او هتلف معاه",
+  "ref_normalized": "يكل انسان ياتي باي فعل تتفك او هتلف معاه",
+  "pred": "كل انسان يأتي بأي فعل تتفق او تختلف معاه",
+  "pred_normalized": "كل انسان ياتي باي فعل تتفق او تختلف معاه",
+  "wer": 0.3333333333333333,
+  "medical_term_recall": null,
+  "inference_seconds": 0.5356583595275879,
+  "rtf": 6.683364380156976,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

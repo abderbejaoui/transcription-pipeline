@@ -14,18 +14,81 @@
     </header>
 
     <section class="card">
-      <div class="stack">
-        <div class="row">
-            <input type="file" id="upload-file" accept="audio/*" />
-            <button id="btn-upload" class="primary">Benchmark All Models</button>
-        </div>
-        <span id="benchmark-status" class="muted small"></span>
+      <div class="row">
+        <button id="btn-record" class="primary">🎙️ Record</button>
+        <button id="btn-stop" class="ghost" hidden>■ Stop</button>
+        <span id="record-status" class="muted small"></span>
       </div>
+      <audio id="record-playback" controls hidden></audio>
+
+      <details class="advanced">
+        <summary class="muted small">More input options</summary>
+        <div class="stack">
+          <textarea id="raw-input" rows="3" placeholder="Or paste raw text here..."></textarea>
+          <div class="row">
+            <button id="btn-correct" class="ghost">Correct text</button>
+            <button id="btn-example" class="ghost">Load example</button>
+          </div>
+          <div class="row">
+            <input type="file" id="upload-file" accept="audio/*" />
+            <button id="btn-upload" class="ghost">Transcribe file</button>
+          </div>
+          <div class="row">
+            <label class="muted small">Language
+              <select id="lang">
+                <option value="en" selected>English</option>
+                <option value="ar">Arabic</option>
+                <option value="">auto</option>
+              </select>
+            </label>
+            <label class="muted small">Model
+              <select id="model">
+                <option value="tiny">tiny</option>
+                <option value="base" selected>base</option>
+                <option value="small">small</option>
+                <option value="medium">medium</option>
+              </select>
+            </label>
+          </div>
+        </div>
+      </details>
     </section>
 
-    <section id="results-card" class="card" hidden>
-      <h2>Benchmark Results <span id="audio-duration-display" class="muted small"></span></h2>
-      <div id="results-container" class="stack"></div>
+    <section id="trace-card" class="card" hidden>
+      <h2>Pipeline trace <span id="trace-status" class="muted small"></span></h2>
+      <div id="trace-events" class="trace-events"></div>
+    </section>
+
+    <section id="result" class="card" hidden>
+      <h2>Transcript</h2>
+      <textarea id="corrected-text" rows="5" placeholder="The transcript will appear here. Edit anything wrong, then save."></textarea>
+      <div class="row">
+        <button id="btn-save-edits" class="primary">💾 Save edits</button>
+        <span id="save-status" class="muted small"></span>
+      </div>
+      <details>
+        <summary class="muted small">Show raw Whisper output and flagged spans</summary>
+        <div class="stack">
+          <h3>Raw</h3>
+          <pre id="raw-text"></pre>
+          <h3>Flagged</h3>
+          <table id="spans-table">
+            <thead><tr><th>From</th><th>To</th><th>Conf.</th></tr></thead>
+            <tbody></tbody>
+          </table>
+        </div>
+      </details>
+    </section>
+
+    <section class="card">
+      <details>
+        <summary><strong>Vocabulary</strong> <span id="lexicon-count" class="muted small"></span></summary>
+        <div class="row">
+          <input id="vocab-search" placeholder="Search the vocabulary..." />
+          <button id="btn-refresh-lexicon" class="ghost">Refresh</button>
+        </div>
+        <div id="lexicon-list" class="lexicon-list"></div>
+      </details>
     </section>
 
   </main>

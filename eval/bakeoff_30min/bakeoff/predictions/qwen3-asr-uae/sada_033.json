@@ -1,0 +1,18 @@
+{
+  "id": "sada_033",
+  "category": "saudi_tv",
+  "language": "ar",
+  "duration_s": 4.52,
+  "ref": "انا اقول احنا كلنا غلطنا واكثركم بالغلط انا يا شيخ",
+  "ref_normalized": "انا اقول احنا كلنا غلطنا واكثركم بالغلط انا يا شيخ",
+  "pred": "أنا اقول احنا كلنا غلط واكثركم بالغلط انا ايشي هالوضع",
+  "pred_normalized": "انا اقول احنا كلنا غلط واكثركم بالغلط انا ايشي هالوضع",
+  "wer": 0.3,
+  "medical_term_recall": null,
+  "inference_seconds": 0.8171117305755615,
+  "rtf": 5.531679243934215,
+  "extra": {
+    "lang_hint": "Arabic",
+    "detected_language": "Arabic"
+  }
+}

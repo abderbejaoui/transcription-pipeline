@@ -2,7 +2,7 @@
 
 This document is the **single source of truth** for everything we know
 about freely-available and commercially-available speech data relevant
-to building a Gulf-Arabic medical ASR system, plus the fine-tuning
+to building a Saudi/Emirati medical ASR system, plus the fine-tuning
 approach that uses it.
 
 > Last research pass: November 2026. URLs and exact hour counts may
@@ -20,8 +20,7 @@ Off-the-shelf Whisper has two failure modes on Gulf clinic audio:
    chunking the language identification mid-utterance.
 
 To fix this we need:
-- Acoustic adaptation to **Khaleeji-accented speech** (Saudi, Emirati,
-  Omani, etc.).
+- Acoustic adaptation to **Saudi and Emirati-accented speech**.
 - Vocabulary coverage for **medical terminology** (drug brand names,
   diagnoses, procedures).
 - Multi-language decoder behavior for **AR↔EN code-switching**.
@@ -32,10 +31,11 @@ build it ourselves through pilots and TTS augmentation.
 
 ---
 
-## 2. Free Gulf Arabic speech corpora (verified)
+## 2. Free Saudi and Emirati speech corpora
 
-These are real, downloadable, and free. Hour counts come from the
-papers/dataset cards I read directly.
+This project now keeps only Saudi and Emirati/UAE dialect sources in the
+dataset download workflow. Any source outside those two target dialects is
+excluded unless it can be narrowed to Saudi or Emirati clips.
 
 ### SADA — Saudi Audio Dataset for Arabic ⭐
 - **Hours:** 668
@@ -58,13 +58,39 @@ papers/dataset cards I read directly.
 - **Why it matters:** Code-switching is exactly what Gulf doctors do
   with drug names. Same publisher as SADA (SDAIA).
 
-### OMAN-SPEECH
-- **Hours:** ~40
-- **Dialect:** Omani Arabic across 11 Wilayats (provinces), 32 speakers
-- **License:** Open
-- **Where:** [aclanthology.org/2026.abjadnlp-1.31](https://aclanthology.org/2026.abjadnlp-1.31.pdf)
-- **Why it matters:** Sociolinguistically stratified Omani / Gulf
-  Arabic. Useful for evaluating Gulf accent coverage beyond Saudi.
+### WorldSpeech — Saudi Arabic split
+- **Hours:** ~6.1
+- **Dialect:** Saudi Arabic
+- **License:** CC BY-NC 4.0 / source-specific public-record terms
+- **Where:** HuggingFace [`disco-eth/WorldSpeech`](https://huggingface.co/datasets/disco-eth/WorldSpeech), config `ar_sa`
+- **Why it matters:** Small but directly Saudi, with clean transcripts and
+  useful metadata.
+
+### WorldSpeech — Kuwait and Bahrain Arabic splits
+- **Hours:** Kuwait `ar_kw` ~175.5; Bahrain `ar_bh` ~272.5
+- **Dialect:** Neighbor Gulf Arabic, close to Emirati but not a replacement
+- **License:** CC BY-NC 4.0 / source-specific parliamentary/public-record terms
+- **Where:** HuggingFace [`disco-eth/WorldSpeech`](https://huggingface.co/datasets/disco-eth/WorldSpeech), configs `ar_kw`, `ar_bh`
+- **Why it matters:** Useful optional acoustic augmentation when Emirati data is
+  scarce. Use carefully because the domain is formal/parliamentary speech and
+  the dialect is not UAE.
+
+### Nexdata UAE Arabic Spontaneous Speech sample
+- **Hours:** <1 in the free sample
+- **Dialect:** UAE / Emirati Arabic
+- **License:** Free sample of a commercial dataset
+- **Where:** HuggingFace [`Nexdata/UAE_Arabic_Spontaneous_Speech_Data`](https://huggingface.co/datasets/Nexdata/UAE_Arabic_Spontaneous_Speech_Data)
+- **Why it matters:** Tiny, but authentic spontaneous UAE speech.
+
+### MixAT / PolyWER MixAT-Tri
+- **Hours:** 15
+- **Dialect:** Emirati Arabic ↔ English code-switching
+- **License:** CC BY-NC-SA 4.0
+- **Where:** Original repo [`mbzuai-nlp/mixat`](https://github.com/mbzuai-nlp/mixat), updated HF dataset [`sqrk/mixat-tri`](https://huggingface.co/datasets/sqrk/mixat-tri)
+- **Why it matters:** The strongest currently available Emirati-English
+  code-switch source. Use `transcript` for ASR training. Preserve
+  `transliteration` and `translation` as metadata only; they are useful for
+  PolyWER-style evaluation but conflict with our strict-Latin training target.
 
 ### Ramsa — Emirati Arabic Speech Corpus
 - **Coverage:** Large; 10% subset used as ASR/TTS baseline
@@ -80,147 +106,365 @@ papers/dataset cards I read directly.
 - **Why it matters:** Heritage and literary register; complements
   modern conversational data.
 
-### ZAEBUC-Spoken
-- **Coverage:** Multi-dialect Arabic + English code-switching
-- **Where:** [aclanthology — LREC 2024](https://www.aclanthology.org/2024.lrec-main.1546.pdf)
-- **Why it matters:** Code-switching guidelines + multi-dialect
-  coverage. Cited 11 times.
-
-### ArSyra Gulf Arabic (Khaliji)
-- **Where:** [Kaggle — ArSyra Gulf](https://www.kaggle.com/datasets/aqlomate/arsyra-gulf)
-- **Companion:** [ArSyra Complete Multi-Dialect](https://www.kaggle.com/datasets/aqlomate/arsyra-complete)
-- **Why it matters:** Direct Gulf-labeled dataset.
-
-### ADI-17 Dataset
-- **Coverage:** 17 Arabic dialect classifications
-- **Where:** [Kaggle — ADI-17](https://www.kaggle.com/datasets/basselabdelmonem/adi-17-dataset)
-- **Why it matters:** Useful for dialect ID; not for ASR fine-tune
-  directly but helps preprocess multi-dialect data.
+### Mansour Emirati cartoon transcripts
+- **Hours:** depends on selected episodes
+- **Dialect:** Emirati Arabic
+- **License/rights:** use only with explicit permission for model training
+- **Where:** [Gulf Arabic Resources — Mansour](https://gulfarabicresources.com/mansour/)
+- **Why it matters:** Useful auxiliary Emirati dialect exposure when the goal is
+  dialect adaptation rather than medical vocabulary. It is scripted/cartoon
+  speech, so keep it separate and audit it before assigning a high training
+  weight.
 
 ---
 
-## 3. Pan-Arabic free corpora (broader baseline)
+## 3. Quick 10-sample download scripts
 
-These are not Gulf-specific but provide acoustic priors and broad MSA
-coverage. Useful for pre-training before Gulf-specific fine-tuning.
+### Contributor setup
 
-### MASC (Massive Arabic Speech Corpus)
-- **Hours:** ~1,000
-- **Coverage:** Pan-Arabic (MSA + various dialects)
-- **License:** Free for research
-- **Where:** HuggingFace — search `Sigma-AI/MASC` (gated; need account)
+Install dependencies and make sure `ffmpeg` is available:
 
-### MGB-2 / MGB-3 Aljazeera Arabic
-- **Hours:** ~1,200 (MGB-2 broadcast Arabic)
-- **License:** Free for research from QCRI
-- **Where:** [arabicspeech.org](https://arabicspeech.org/)
-- **Why it matters:** Largest free pan-Arabic broadcast corpus. Mostly
-  MSA but includes some Gulf speakers in interviews.
+```bash
+python3.12 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+ffmpeg -version | head -1
+```
 
-### Mozilla Common Voice — Arabic
-- **Hours:** ~88 (Common Voice 17.0)
-- **Coverage:** Read speech, mostly MSA, multi-speaker
-- **License:** CC-0 (public domain)
-- **Where:** [commonvoice.mozilla.org](https://commonvoice.mozilla.org/) →
-  Datasets → Arabic
-- **HF mirror:** [`fsicoli/common_voice_17_0`](https://huggingface.co/datasets/fsicoli/common_voice_17_0)
+Authenticate with Kaggle before using SADA:
 
-### Google FLEURS — Arabic
-- **Hours:** ~10
-- **Coverage:** MSA read-speech, parallel sentences across 102 languages
-- **License:** CC-BY 4.0
-- **Where:** [`google/fleurs`](https://huggingface.co/datasets/google/fleurs) (config: `ar_eg`)
-- **Why it matters:** Clean held-out test set. Perfect for benchmarking
-  before/after fine-tuning.
+```bash
+.venv/bin/kaggle auth login
+```
 
-### CoVoST-2 EN↔AR
-- **Where:** [`ymoslem/CoVoST2-EN-AR`](https://huggingface.co/datasets/ymoslem/CoVoST2-EN-AR)
-- **Why it matters:** Speech translation pairs for AR↔EN.
+Hugging Face access is optional for the currently working public sources, but
+some mirrors are gated. The new CLI is `hf`; `huggingface-cli` may print a
+deprecation warning:
 
-### MGB-3 Egyptian (HuggingFace)
-- **Hours:** ~16
-- **Where:** [`MightyStudent/Egyptian-ASR-MGB-3`](https://huggingface.co/datasets/MightyStudent/Egyptian-ASR-MGB-3)
-- **Note:** Egyptian, **not Gulf**. Listed only because it's the most
-  popular HF Arabic ASR dataset and gets confused with relevant data.
+```bash
+.venv/bin/hf auth login
+```
 
-### Other smaller Arabic speech sets on HuggingFace
-- [`tunis-ai/arabic_speech_corpus`](https://huggingface.co/datasets/tunis-ai/arabic_speech_corpus)
-- [`RetaSy/quranic_audio_dataset`](https://huggingface.co/datasets/RetaSy/quranic_audio_dataset) — Quranic recitation
-- [`OmarAhmedSobhy/egyption-with-emotion-dataset`](https://huggingface.co/datasets/OmarAhmedSobhy/egyption-with-emotion-dataset)
+Never paste tokens into chat. Enter secrets directly in the terminal.
 
-### TuniSpeech-21h
-- **Hours:** 21
-- **Dialect:** Tunisian (not Gulf, included for completeness)
-- **Where:** [scitepress.org 2026](https://www.scitepress.org/Papers/2026/144577/144577.pdf)
+Use these scripts to inspect the Saudi and Emirati/UAE datasets one by one.
+Each script defaults to **10 samples** and writes into its own folder under
+`data/dataset_samples/<dataset>/`:
+
+```bash
+# Hugging Face sources. Some are gated: run `.venv/bin/hf auth login` and
+# accept the dataset terms on Hugging Face before downloading.
+python scripts/download_worldspeech_saudi_samples.py
+python scripts/download_worldspeech_kuwait_samples.py
+python scripts/download_worldspeech_bahrain_samples.py
+python scripts/download_saudilang_scc_samples.py
+python scripts/download_nexdata_uae_sample.py
+python scripts/download_mixat_emirati_samples.py
+
+# Kaggle sources. Requires `pip install kaggle` and ~/.kaggle/kaggle.json.
+python scripts/download_sada2022_samples.py
+```
+
+Or run all target datasets and produce a combined output:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py --limit 10
+```
+
+Add optional Kuwait/Bahrain neighbor-Gulf previews:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py \
+  --limit 10 \
+  --include-neighbor-gulf
+```
+
+The global runner writes:
+
+- `data/dataset_samples/download_summary.json`
+- `data/dataset_samples/combined_manifest.jsonl`
+
+Safety defaults: the global script will not download full YouTube episode
+audio just to preview 10 samples. SADA is sampled by targeted Kaggle per-file
+downloads from `batch_1`, so it does **not** require downloading the full SADA
+archive for previews. Saudilang SCC defaults to metadata rows only.
+
+Saudilang SCC is different from the other datasets: Hugging Face provides
+CSV segment annotations with YouTube links, not bundled audio files. To cut
+those referenced segments into WAV files, explicitly enable YouTube audio:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py --limit 10 --download-saudilang-audio
+```
+
+To force SADA full-archive mode instead of targeted per-file sampling:
+
+```bash
+.venv/bin/python scripts/download_all_target_samples.py --limit 10 --allow-full-kaggle-archives
+```
+
+All scripts accept the same basic options:
+
+```bash
+python scripts/download_sada2022_samples.py --limit 10
+python scripts/download_worldspeech_saudi_samples.py --limit 50 --out data/my_check/worldspeech_saudi
+python scripts/download_mixat_emirati_samples.py --limit 10 --split train
+```
+
+Each output folder contains:
+
+- `audio/` — sampled audio files
+- `manifest.jsonl` — one row per saved sample, with transcript text when found
+- `README.md` — source and sample summary
+
+Metadata layout after the sample run:
+
+| Dataset | Metadata location |
+|---|---|
+| `sada2022` | `raw/train.csv`, `raw/valid.csv`, `raw/test.csv`, and per-sample `segments/*.segments.jsonl` |
+| `saudilang_scc` | `raw/scc_testset.csv`; manifest rows contain transcript + YouTube segment timestamps |
+| `worldspeech_saudi` | manifest row `metadata` contains source URL, segment times, CER/SNR, and transcripts; raw README copied to `raw/README.md` |
+| `worldspeech_kuwait` / `worldspeech_bahrain` | same schema as `worldspeech_saudi`; optional neighbor-Gulf augmentation |
+| `nexdata_uae_sample` | `metadata/*.txt`, `metadata/*.metadata`, and `segments/*.segments.jsonl` |
+| `mixat_emirati` | manifest row `text` uses HF `transcript`; row `metadata` preserves `transliteration`, `translation`, `language`, and `duration_ms` |
+
+Saudi or Emirati datasets that are listed only as papers or catalogue
+pages, such as Ramsa and Traditional Emirati Arabic, are not scripted here
+because this file does not currently include a direct public machine-download
+URL for them. Add the actual repository URL once verified and a matching
+wrapper can be added.
+
+Mansour is handled separately because it is not a packaged ASR dataset. It has
+PDF transcripts with timestamps and YouTube links. With permission, prepare it
+like this:
+
+```bash
+# Metadata/chunk preview only: parses PDFs and writes timestamped rows.
+.venv/bin/python scripts/prepare_mansour_emirati.py \
+  --limit-episodes 1 \
+  --out data/dataset_samples/mansour_emirati
+
+# With audio cutting from linked YouTube videos.
+.venv/bin/python scripts/prepare_mansour_emirati.py \
+  --limit-episodes 1 \
+  --download-audio \
+  --out data/dataset_samples/mansour_emirati
+```
+
+The script rejects segments outside `1-30s`; long timestamp spans need further
+alignment before they should be used for ASR training.
 
 ---
 
-## 4. OpenSLR Arabic-related entries
+## 4. Preprocessing pipeline
 
-OpenSLR is the canonical mirror for many ASR datasets. Arabic-specific
-slots that exist:
+Run all Saudi base data and the medical layer through the same cleaner so
+the model never sees two transcript formats.
 
-| ID | Name | Notes |
-|---|---|---|
-| SLR46 | Tunisian_MSA | Tunisian Modern Standard Arabic |
-| SLR132 | Mohammed | Quranic Arabic speech-to-text |
+```bash
+.venv/bin/python scripts/preprocess_code_switch_asr.py \
+  --manifest data/dataset_samples/sada2022/manifest.jsonl \
+  --manifest data/dataset_samples/saudilang_scc/manifest.jsonl \
+  --manifest data/dataset_samples/worldspeech_saudi/manifest.jsonl \
+  --manifest data/dataset_samples/nexdata_uae_sample/manifest.jsonl \
+  --manifest data/dataset_samples/mixat_emirati/manifest.jsonl \
+  --out data/preprocessed_audios
+```
 
-There is **no Gulf-specific SLR entry** as of this writing. Browse the
-full catalog at [openslr.org/resources](https://www.openslr.org/resources.php).
+The script writes:
+
+- `audio/` — 16 kHz mono 16-bit PCM WAV files
+- `manifest.jsonl` — clean supervised ASR rows
+- `rejected.jsonl` — dropped rows with reasons
+- `vocab.txt` — unique cleaned word list for artifact/OOV inspection
+- `summary.json` — kept/rejected counts and total hours
+
+The text function is `clean_asr_text(text)` in
+`scripts/preprocess_code_switch_asr.py`. It applies Arabic normalization,
+English lowercasing, Arabic/Latin boundary splitting, digit/unit
+verbalization, punctuation removal, HTML/URL/control cleanup, and final
+duration-to-text filtering. Audio longer than 30 seconds is rejected unless
+you first create aligned chunks; splitting long audio without word alignment
+would corrupt the transcript/audio pair.
+
+For rows with `segments_path`, the preprocessor expands long recordings into
+aligned short clips before applying duration and text filters. This is what
+makes SADA and Nexdata usable: their downloaded WAV files are long recordings,
+but their metadata gives timestamped transcript segments.
+
+Sample-run output as of the latest audit:
+
+```text
+data/preprocessed_audios/
+  audio/                 # 16 kHz mono PCM16 WAV clips
+  manifest.jsonl         # clean ASR training rows
+  rejected.jsonl         # rejected rows/segments with reasons
+  vocab.txt              # final cleaned vocabulary
+  summary.json           # preprocessing summary
+  audit_report.json      # mechanical audit report
+```
+
+Latest sample audit:
+
+```text
+clips: 1154
+hours: 1.4653
+sample_rates: {16000: 1154}
+channels: {1: 1154}
+formats: {'WAV': 1154}
+subtypes: {'PCM_16': 1154}
+duration min/max/mean/p50/p95: 1.0 / 29.32 / 4.571 / 3.625 / 9.53 sec
+audio failures: none
+text failures: none
+```
+
+The audit checks:
+
+- 16 kHz sample rate
+- mono audio
+- WAV / PCM16 format
+- 1 to 30 second duration
+- <=0.5 second edge silence
+- no diacritics, tatweel, punctuation, digits, uppercase English, HTML, emoji,
+  Cyrillic, or Arabic/Latin attached tokens
+- duration-to-text ratio between 1 and 25 characters per second
+
+The only semantic item not fully machine-verifiable is whether Arabic-script
+drug transliterations such as `باراسيتامول` should be converted to Latin
+`paracetamol`. That needs a medical lexicon or manual review layer.
+
+### DGX full-data run
+
+On the DGX Spark / 128 GB VRAM machine, use the full pipeline script. It
+downloads the three currently available audio sources in full:
+
+- `sada2022`
+- `worldspeech_saudi`
+- `nexdata_uae_sample`
+- `mixat_emirati`
+
+Then it preprocesses all aligned clips and writes grouped train/validation/test
+splits. Segments from the same source recording stay in the same split to avoid
+train/eval leakage.
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download
+```
+
+The script refuses to run full downloads without `--confirm-full-download`.
+This is intentional because full SADA is large. It uses targeted per-file
+Kaggle downloads across all SADA batch folders rather than pulling one giant
+archive.
+
+Outputs:
+
+- `data/dgx_full/raw_datasets/<dataset>/`
+- `data/dgx_full/download_hours_summary.json`
+- `data/dgx_full/preprocessed_audios/manifest.jsonl`
+- `data/dgx_full/preprocessed_audios/rejected.jsonl`
+- `data/dgx_full/preprocessed_audios/vocab.txt`
+- `data/dgx_full/preprocessed_audios/splits/train.jsonl`
+- `data/dgx_full/preprocessed_audios/splits/validation.jsonl`
+- `data/dgx_full/preprocessed_audios/splits/test.jsonl`
+- `data/dgx_full/preprocessed_audios/splits/split_summary.json`
+
+Immediately after the download phase, the script prints and writes total rows,
+audio rows, text rows, minutes, and hours for each downloaded dataset. This makes
+it easy to confirm the DGX run pulled the expected amount of audio before the
+preprocessing stage starts.
+
+Default split ratio is `90/5/5`. You can override it:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --train-ratio 0.9 \
+  --validation-ratio 0.05 \
+  --test-ratio 0.05 \
+  --confirm-full-download
+```
+
+Splitting is grouped by source recording: all segments cut from one original
+SADA/Nexdata recording stay in the same train/validation/test split. This
+prevents leakage where near-identical context from the same 10-minute source
+recording appears in both training and evaluation.
+
+MixAT already ships utterance-level clips, so it is not segment-expanded. Its
+official HF splits are `train` and `test`; the DGX script downloads both by
+calling `download_mixat_emirati_samples.py --limit 0 --split all`, then uses
+grouped duration balancing with the rest of the corpus for one unified set of
+manifests.
+
+To include Mansour in the DGX run after confirming permission:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-mansour
+```
+
+Mansour audio is prepared from PDF timestamps and linked YouTube videos, then
+fed into the same preprocessing/audit/split stage as the packaged datasets.
+
+To include Kuwait and Bahrain as optional neighbor-Gulf augmentation:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-neighbor-gulf
+```
+
+Saudilang SCC is **not** downloaded as audio by default in the DGX run because
+the audio is referenced through YouTube links, not bundled in the dataset. To
+include it as audio, explicitly enable cutting the YouTube segments:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-saudilang-audio
+```
+
+You can combine optional flags:
+
+```bash
+.venv/bin/python scripts/prepare_dgx_full_asr_dataset.py \
+  --work-dir data/dgx_full \
+  --confirm-full-download \
+  --include-saudilang-audio \
+  --include-neighbor-gulf \
+  --include-mansour
+```
 
 ---
 
-## 5. LDC (paid) — Gulf and Arabic medical-adjacent
-
-For completeness, the LDC catalog has these (not free, but listed if
-you have university access):
-
-| ID | Name | Hours | Cost |
-|---|---|---:|---|
-| LDC2006S43 | Gulf Arabic Conversational Telephone Speech | ~70 | ~$3-5k member rate |
-| LDC2006T15 | Gulf Arabic CTS Transcripts | matches above | bundled |
-| LDC2006S45 | Iraqi Arabic CTS | ~24 | ~$1.5k |
-| LDC2025L01 | Iraqi Arabic - English Lexical DB | text only | — |
-| LDC2017L01 | Arabic Speech Recognition Pronunciation Dictionary | text only | — |
-| LDC2025S03 | Comprehensive Arabic Phonetic DB | text only | — |
-| LDC2014S02 | King Saud University Arabic Speech DB | small | — |
-| LDC2017S12 | KSUEmotions | small, emotional | — |
-
-**ELRA has zero matches for "Arabic medical"** — confirmed via search at
-[catalog.elra.info](https://catalog.elra.info/en-us/repository/search/?q=Arabic+medical).
-Their Gulf Arabic search returns one €185k commercial-license lexical
-resource — not useful for ASR fine-tuning.
-
----
-
-## 6. Arabic medical speech — what does NOT exist
+## 5. Arabic medical speech — what does NOT exist
 
 I did a thorough Semantic Scholar search ("arabic medical speech
 recognition dataset" — 746 results; "arabic medical conversation
 speech ASR corpus" — 363 results; "clinical arabic speech recognition
 saudi" — 81 results).
 
-**No free Arabic medical conversational speech corpus exists** in any
+**No free Saudi/Emirati Arabic medical conversational speech corpus exists** in any
 catalog: LDC, ELRA, OpenSLR, HuggingFace, Kaggle, or academic papers.
 
-The closest matches I found:
+The closest target-relevant match I found:
 
-- **MSA Speech Disorders Corpus** (Alqudah 2024) — 40 Jordanian speakers
-  with articulation disorders. Public.
-  [International Journal of Speech Technology](https://doi.org/10.1007/s10772-024-10086-9)
 - **Saudi Dialect SER corpus** (Aljuhani 2021) — Saudi emotional
   speech, small. [IEEE Access](https://ieeexplore.ieee.org/ielx7/6287639/6514899/09530700.pdf)
-- **Various Arabic speech disorder corpora** for hearing/speech
-  pathology research — not what we want for ASR.
 
-This data scarcity is **the moat for Gulf medical ASR**. Whoever
-collects ~500+ hours of Gulf clinical conversational speech first will
+This data scarcity is **the moat for Saudi/Emirati medical ASR**. Whoever
+collects ~500+ hours of Saudi/UAE clinical conversational speech first will
 have a defensible position that AWS, Nuance, Google won't quickly
 replicate.
 
 ---
 
-## 7. Building medical vocabulary data ourselves
+## 6. Building medical vocabulary data ourselves
 
 Since no free medical Arabic conversational corpus exists, we generate
 the medical vocabulary coverage in three layers:
@@ -228,12 +472,12 @@ the medical vocabulary coverage in three layers:
 ### Layer A — TTS-augmented medical readings (~$1k, ~50 hrs)
 
 Use Arabic TTS APIs to synthesize prepared sentences containing your
-top medical terms in Gulf dialect:
+top medical terms in Saudi and Emirati dialects:
 
 | Provider | Voices | Cost | Notes |
 |---|---|---|---|
-| **Azure ar-XA** | Hamed, Zariyah, etc. | $16/1M chars | Best quality Gulf voices |
-| **Google Cloud TTS ar-AE** | Wavenet voices | $16/1M chars | Strong Gulf accents |
+| **Azure ar-XA** | Hamed, Zariyah, etc. | $16/1M chars | Gulf-style Arabic voices |
+| **Google Cloud TTS ar-AE** | Wavenet voices | $16/1M chars | UAE Arabic locale |
 | **ElevenLabs Arabic** | Custom-clonable | $99/mo Pro | Best naturalness |
 | **OpenAI TTS** | Limited Arabic | per-token | Mostly MSA |
 
@@ -241,7 +485,7 @@ Recipe:
 1. Take your top ~1,000 medical terms from `data/medical_lexicon.jsonl`.
 2. For each term, generate ~10 carrier sentences using GPT/Claude
    ("اعطي المريض dose من <term>", etc.).
-3. Render each sentence in 5–10 different Gulf-accent voices.
+3. Render each sentence in 5–10 different Saudi/UAE-accent voices.
 4. Mix with real ambient clinic noise (recordings of empty waiting
    rooms, AC hum, dictaphone background) at SNR 15–25 dB.
 5. ~10,000 utterances × ~5 s each = ~14 hours raw, padded to ~50 hrs
@@ -250,21 +494,21 @@ Recipe:
 This gives medical vocabulary coverage that doesn't exist in any
 public corpus.
 
-### Layer B — Hire local Gulf medical professionals to record
+### Layer B — Hire local Saudi/UAE medical professionals to record
 
 Realistic providers:
 
 | Provider | Coverage | Rate |
 |---|---|---|
-| **Anolytics** | Has Gulf Arabic teams | $8–20/hr |
+| **Anolytics** | Has Saudi/UAE Arabic teams | $8–20/hr |
 | **iMerit** | Medical-domain Arabic teams | $10–25/hr |
 | **Alpha-CRC** | Saudi-based | varies |
-| **Defined.ai** | Custom Gulf medical | $25–80/hr |
-| **Appen / Sama** | Scripted Gulf readings | $15–40/hr |
-| **Upwork / Bayt** | Local recruitment in Riyadh / Dubai / Doha | $5–15/hr |
+| **Defined.ai** | Custom Saudi/UAE medical | $25–80/hr |
+| **Appen / Sama** | Scripted Saudi/UAE readings | $15–40/hr |
+| **Upwork / Bayt** | Local recruitment in Riyadh / Dubai / Abu Dhabi | $5–15/hr |
 
-For ~$5k you can get ~80 hours of scripted Gulf medical readings from
-10 medical students/residents. Read-speech only, but vocabulary-rich.
+For ~$5k you can get ~80 hours of scripted Saudi/Emirati medical readings
+from 10 medical students/residents. Read-speech only, but vocabulary-rich.
 
 ### Layer C — Pilot data from real clinics (the long-term moat)
 
@@ -273,32 +517,35 @@ your UI become aligned (audio, text) training pairs at zero data cost.
 
 Realistic yield:
 - 5 clinics × 50 hours/month × 2 months = **500 hours** of real,
-  properly labeled, Gulf medical conversational speech.
+  properly labeled, Saudi/Emirati medical conversational speech.
 
 This is the dataset that makes the company defensible. Track it
 carefully and own its IP.
 
 ---
 
-## 8. Fine-tuning approach
+## 7. Fine-tuning approach
 
 The plan, sequenced:
 
 ### Phase 1 — Bootstrap (Months 1–2, ~$2k total)
 1. Download SADA from Kaggle (668 hrs, free).
-2. Download OMAN-SPEECH + Ramsa + ZAEBUC-Spoken + ArSyra Gulf (free).
-3. Pull MGB-2 Arabic (1,200 hrs, free for research).
-4. Generate Layer A TTS-augmented medical readings (~50 hrs, ~$1k).
-5. **First LoRA fine-tune** of `whisper-large-v3-turbo` on the combined
-   ~2,000 hours.
+2. Download Saudilang SCC from Kaggle (Saudi AR↔EN code-switching, free).
+3. Download WorldSpeech `ar_sa` (Saudi split, free/gated on HuggingFace).
+4. Download MixAT (`sqrk/mixat-tri`) + Nexdata UAE sample (Emirati/UAE).
+5. Add Ramsa or Traditional Emirati Arabic only after a direct machine-download
+  URL is verified.
+6. Generate Layer A TTS-augmented Saudi/Emirati medical readings (~50 hrs).
+7. **First LoRA fine-tune** of `whisper-large-v3-turbo` on the combined
+  Saudi/UAE mix.
 
-Expected gain: **+3–5% absolute WER** on Gulf medical audio versus
+Expected gain: **+3–5% absolute WER** on Saudi/UAE medical audio versus
 vanilla Whisper. Day-1 accuracy moves from ~75% to ~88–92%.
 
 ### Phase 2 — Real clinical data accumulation (Months 3–6)
-1. Run free pilots in 3–5 Gulf clinics.
+1. Run free pilots in 3–5 Saudi/UAE clinics.
 2. Every user correction → aligned audio+text pair stored.
-3. After 3 months: ~150 hours of real Gulf clinical audio.
+3. After 3 months: ~150 hours of real Saudi/UAE clinical audio.
 
 ### Phase 3 — Production fine-tune (Month 7)
 1. Re-fine-tune on Phase 1 data + Phase 2 real clinical audio.
@@ -309,23 +556,22 @@ vanilla Whisper. Day-1 accuracy moves from ~75% to ~88–92%.
 - Saudi MOH **Sehha** digital health initiative — actively partnering
   with AI startups
 - UAE Ministry of Health — has open AI grant programs
-- **Hamad Medical Corporation** (Qatar) — runs research collaborations
 - **King Faisal Specialist Hospital** — has AI research arm
 - **Dubai Health Authority** Open Data
 
-These typically yield 1,000+ hours of clinical Gulf Arabic but take
+These typically yield 1,000+ hours of clinical Saudi/UAE Arabic but take
 6–12 months to land contractually.
 
 ---
 
-## 9. Compute & engineering for the fine-tune
+## 8. Compute & engineering for the fine-tune
 
 ### LoRA fine-tune of Whisper-large-v3-turbo
 - **Model size:** 809M parameters (just the encoder + decoder)
 - **LoRA rank:** 32 (~12M trainable parameters)
 - **Recommended training**: HuggingFace `transformers` + `peft`
 - **GPU:** Single A100 40GB or 2× RTX 4090 24GB
-- **Dataset size at this stage:** ~2,000 hours mixed
+- **Dataset size at this stage:** ~800–1,000 hours mixed Saudi/UAE data
 - **Training time:** ~8–16 hours per epoch, 3 epochs typical
 - **Cost on Lambda Labs / RunPod:** ~$300–800 per fine-tune round
 - **Output:** ~50 MB LoRA adapter file, loadable on any
@@ -339,9 +585,9 @@ These typically yield 1,000+ hours of clinical Gulf Arabic but take
 
 ---
 
-## 10. Evaluation
+## 9. Evaluation
 
-For honest evaluation we need a **held-out Gulf medical test set**
+For honest evaluation we need a **held-out Saudi/UAE medical test set**
 that none of the training data has seen.
 
 ### Recommended evaluation set composition
@@ -362,31 +608,34 @@ that none of the training data has seen.
 - Latency (end-to-end p50/p95)
 
 ### Baseline to beat
-- Whisper-large-v3-turbo (no fine-tune): expect ~45% WER on Gulf
+- Whisper-large-v3-turbo (no fine-tune): expect ~45% WER on Saudi/UAE
   conversational audio per the SADA paper baselines
 - After Phase 1 fine-tune: target ~25% overall WER
 - After Phase 3 fine-tune: target ~12–15% WER on medical-term subset
 
 ---
 
-## 11. Quick links — start here
+## 10. Quick links — start here
 
 1. **[Kaggle SADA](https://www.kaggle.com/datasets/sdaiancai/sada2022)** — start downloading today, 668 hrs Saudi Arabic, free.
 2. **[Kaggle Saudilang Code-Switch](https://www.kaggle.com/datasets/sdaiancai/saudilang-code-switch-corpus-scc)** — same publisher, AR↔EN code-switching.
-3. **[Common Voice ar](https://commonvoice.mozilla.org/)** — 88 hrs, CC-0.
-4. **[FLEURS Arabic](https://huggingface.co/datasets/google/fleurs)** — 10 hrs, eval-quality MSA.
-5. **[OMAN-SPEECH paper](https://aclanthology.org/2026.abjadnlp-1.31.pdf)** — Omani Gulf Arabic.
+3. **[WorldSpeech](https://huggingface.co/datasets/disco-eth/WorldSpeech)** — use config `ar_sa` only.
+4. **[MixAT / PolyWER MixAT-Tri](https://huggingface.co/datasets/sqrk/mixat-tri)** — Emirati-English code-switching, 15 hrs.
+5. **[Nexdata UAE Arabic sample](https://huggingface.co/datasets/Nexdata/UAE_Arabic_Spontaneous_Speech_Data)** — tiny but authentic UAE sample.
 6. **[SADA paper](https://www.semanticscholar.org/paper/SADA%3A-Saudi-Audio-Dataset-for-Arabic-Alharbi-Alowisheq/de2508f2d48ea42653fe11011f24f9f227d38e71)** — read this before fine-tuning.
 7. **[Whisper fine-tune tutorial](https://huggingface.co/blog/fine-tune-whisper)** — official HuggingFace guide.
 8. **[PEFT / LoRA library](https://github.com/huggingface/peft)** — the actual fine-tuning machinery.
 
 ---
 
-## 12. Where this leaves us
+## 11. Where this leaves us
 
-**For Khaleeji acoustic adaptation:** ~700 hrs Gulf-specific + ~3,000
-hrs pan-Arabic free data is more than sufficient. SADA alone fixes
-the core acoustic problem.
+**For Saudi/Emirati acoustic adaptation:** SADA is the Saudi backbone;
+WorldSpeech `ar_sa` and Saudilang add Saudi variety/code-switching;
+MixAT supplies the strongest currently available Emirati-English code-switch
+signal, with Nexdata as a tiny spontaneous UAE sample. WorldSpeech Kuwait and
+Bahrain can be used as neighbor-Gulf augmentation, but should be weighted below
+true UAE/Emirati sources. Non-target Arabic corpora are intentionally excluded.
 
 **For medical vocabulary:** $1–2k of TTS augmentation + pilot data
 collection over 3–6 months bridges the gap.
