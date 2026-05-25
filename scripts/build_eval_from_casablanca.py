@@ -14,6 +14,16 @@ For Gulf evaluation we use the Emirati subset (closest to our target
 domain). UAE/Saudi/Kuwait don't have their own Casablanca subsets — only
 Emirati represents the Gulf cluster.
 
+TEST / VALIDATION POLICY (important):
+  This builder writes data from a SINGLE split (--split, default 'test')
+  into the output directory. Run it twice with two different --split /
+  --out combinations if you want both. Never feed both into the same
+  bake-off — that would mix the held-out test set with the dev set and
+  invalidate the comparison. The DGX policy for this project is:
+    - --split test is the ONLY split used for the published bake-off.
+    - --split validation is only for our own internal regression sanity
+      and is kept in its own --out directory if used at all.
+
 License: CC-BY-NC-ND-4.0 (research use only — fine for evaluation).
 
 Output layout (matches the other build_eval_* scripts):
@@ -23,15 +33,16 @@ Output layout (matches the other build_eval_* scripts):
 
 Usage on DGX:
 
+    # Default: ALL clips from the Emirati TEST split, none from validation
     python scripts/build_eval_from_casablanca.py \\
         --dialect Emirati \\
         --split test \\
-        --out eval/casablanca_emirati_ood \\
-        --n 200
+        --out eval/casablanca_emirati_full
+        # (omit --n to keep the entire split, the new default)
 
     python -m scripts.bakeoff \\
         --models qwen3 qwen3_ksa qwen3_uae qwen3_gulf \\
-        --eval-dir eval/casablanca_emirati_ood
+        --eval-dir eval/casablanca_emirati_full
 """
 from __future__ import annotations
 
@@ -145,7 +156,10 @@ def main() -> int:
         "--split",
         default="test",
         choices=["validation", "test"],
-        help="Casablanca only releases validation + test splits.",
+        help=("Casablanca only releases validation + test splits. Default "
+              "is 'test' — the canonical held-out evaluation split. Use "
+              "'validation' only if you explicitly want to compare against "
+              "the dev set; never use both at once."),
     )
     ap.add_argument(
         "--out",
@@ -156,8 +170,10 @@ def main() -> int:
     ap.add_argument(
         "--n",
         type=int,
-        default=200,
-        help="Number of clips to sample. 0 = use all. Default 200.",
+        default=0,
+        help=("Number of clips to sample. 0 (default) = use ALL clips in "
+              "the chosen split. Pass a positive integer for a random "
+              "subsample (deterministic via --seed)."),
     )
     ap.add_argument(
         "--seed",
@@ -183,12 +199,18 @@ def main() -> int:
 
     ds = _load_casablanca(args.dialect, args.split, hf_token)
 
+    print(f"[casablanca] split={args.split!r} loaded: {len(ds)} total clips "
+          f"(this is the FULL {args.split} split — no other split is touched)")
+
     indices = list(range(len(ds)))
     rng = random.Random(args.seed)
     rng.shuffle(indices)
     if args.n > 0 and args.n < len(indices):
         indices = indices[: args.n]
-    print(f"[casablanca] sampling {len(indices)} clips (seed={args.seed})")
+        print(f"[casablanca] sampling {len(indices)} clips (seed={args.seed})")
+    else:
+        print(f"[casablanca] using ALL {len(indices)} clips from the "
+              f"{args.split} split")
 
     out_dir = args.out.resolve()
     audio_dir = out_dir / "audio"
