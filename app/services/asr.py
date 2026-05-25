@@ -22,13 +22,20 @@ _DEVICE = None
 _DTYPE = None
 
 
+def _qwen3_asr_in_transformers() -> bool:
+    try:
+        from transformers.models.auto.configuration_auto import CONFIG_MAPPING_NAMES
+        return "qwen3_asr" in CONFIG_MAPPING_NAMES
+    except Exception:
+        return False
+
+
 def _load_model():
     global _MODEL, _PROCESSOR, _DEVICE, _DTYPE
     if _MODEL is not None:
         return _MODEL, _PROCESSOR
 
     import torch
-    from transformers import AutoModelForCausalLM, AutoProcessor
     from peft import PeftModel
 
     base_repo = os.environ.get("QWEN3_ASR_BASE", "Qwen/Qwen3-ASR-1.7B")
@@ -47,13 +54,36 @@ def _load_model():
         _DEVICE, _DTYPE = "cpu", torch.float32
 
     print(f"[asr] loading {base_repo} on {_DEVICE} ({_DTYPE})")
-    _PROCESSOR = AutoProcessor.from_pretrained(base_repo, trust_remote_code=True)
-    base = AutoModelForCausalLM.from_pretrained(
-        base_repo,
-        torch_dtype=_DTYPE,
-        trust_remote_code=True,
-        low_cpu_mem_usage=True,
-    ).to(_DEVICE).eval()
+
+    if _qwen3_asr_in_transformers():
+        from transformers import AutoModelForCausalLM, AutoProcessor
+        _PROCESSOR = AutoProcessor.from_pretrained(base_repo, trust_remote_code=True)
+        base = AutoModelForCausalLM.from_pretrained(
+            base_repo, torch_dtype=_DTYPE, trust_remote_code=True, low_cpu_mem_usage=True,
+        ).to(_DEVICE).eval()
+    else:
+        # Fallback: qwen-asr pip wrapper (needed when transformers doesn't register qwen3_asr)
+        try:
+            from qwen_asr import Qwen3ASRModel
+        except ImportError as exc:
+            raise RuntimeError(
+                "qwen3_asr is not registered in transformers and qwen-asr wrapper is not installed. "
+                "Run: pip install qwen-asr"
+            ) from exc
+        print(f"[asr] using qwen-asr wrapper (transformers too old for qwen3_asr)")
+        _MODEL = Qwen3ASRModel.from_pretrained(
+            base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
+        )
+        _PROCESSOR = None  # wrapper handles its own processor
+        if adapter_dir.exists():
+            print(f"[asr] attaching LoRA adapter: {adapter_dir}")
+            inner = getattr(_MODEL, "model", None) or _MODEL
+            peft_model = PeftModel.from_pretrained(inner, str(adapter_dir)).to(_DEVICE).eval()
+            if hasattr(_MODEL, "model"):
+                _MODEL.model = peft_model
+            else:
+                _MODEL = peft_model
+        return _MODEL, _PROCESSOR
 
     if adapter_dir.exists():
         print(f"[asr] attaching LoRA adapter: {adapter_dir}")
@@ -76,36 +106,41 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
     duration = len(audio) / sr if sr > 0 else 0.0
+
+    lang_label = "Arabic" if (language or "ar") in ("ar", "arabic") else None
+
+    # qwen_asr wrapper path (older transformers)
+    if processor is None:
+        t0 = time.time()
+        results = model.transcribe(audio=str(audio_path), language=lang_label)
+        text = getattr(results[0], "text", "").strip() if results else ""
+        return {
+            "text": text,
+            "language": language or "ar",
+            "language_probability": 1.0,
+            "duration": duration,
+            "words": [],
+        }
+
+    # transformers path
     if sr != 16000:
         import librosa
         audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
         sr = 16000
 
-    lang_label = "Arabic" if (language or "ar") in ("ar", "arabic") else None
     user_msg = (
         f"<|audio_1|>Transcribe the audio in {lang_label}."
         if lang_label else
         "<|audio_1|>Transcribe the audio."
     )
-
-    inputs = processor(
-        text=user_msg,
-        audios=[audio],
-        sampling_rate=sr,
-        return_tensors="pt",
-    )
+    inputs = processor(text=user_msg, audios=[audio], sampling_rate=sr, return_tensors="pt")
     inputs = {k: v.to(_DEVICE) for k, v in inputs.items()}
 
-    t0 = time.time()
     with torch.inference_mode():
         out_ids = model.generate(**inputs, max_new_tokens=1024, do_sample=False)
     input_len = inputs["input_ids"].shape[1]
-    text = processor.batch_decode(
-        out_ids[:, input_len:], skip_special_tokens=True
-    )[0].strip()
+    text = processor.batch_decode(out_ids[:, input_len:], skip_special_tokens=True)[0].strip()
 
-    # Return in the same shape the pipeline expects from faster-whisper.
-    # No word-level timestamps (Qwen3-ASR doesn't produce them), so words=[].
     return {
         "text": text,
         "language": language or "ar",
