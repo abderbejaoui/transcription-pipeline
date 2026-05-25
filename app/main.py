@@ -63,7 +63,7 @@ SESSIONS_DIR = PROJECT_ROOT / "data" / "sessions"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
-DEFAULT_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
+DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "ar")
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 
 # Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
