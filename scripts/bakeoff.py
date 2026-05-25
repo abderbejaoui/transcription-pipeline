@@ -815,8 +815,13 @@ class VoxtralBackend(Backend):
         self._dtype = dtype
         print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype})")
         self._processor = AutoProcessor.from_pretrained(self.repo_id)
+        
+        # Use auto device mapping for large models (24B params) to spread across GPU+CPU
+        device_map = "auto" if "24b" in self.repo_id.lower() else self._device
+        print(f"[{self.name}] using device_map={device_map}")
+        
         self._model = VoxtralForConditionalGeneration.from_pretrained(
-            self.repo_id, torch_dtype=dtype, device_map=self._device,
+            self.repo_id, torch_dtype=dtype, device_map=device_map,
         )
 
     def _voxtral_lang(self, language: Optional[str]) -> str:
@@ -1201,9 +1206,9 @@ def main() -> int:
     p.add_argument(
         "--models",
         nargs="+",
-        choices=list(BACKENDS.keys()),
+        choices=list(BACKENDS.keys()) + ["all"],
         default=list(BACKENDS.keys()),
-        help="Which backends to run (default: all)",
+        help="Which backends to run (default: all). Pass 'all' to run every backend.",
     )
     p.add_argument(
         "--max-clips",
@@ -1233,6 +1238,10 @@ def main() -> int:
              "current normalize_text() and write a fresh report.",
     )
     args = p.parse_args()
+
+    # Expand "all" shorthand to every registered backend.
+    if args.models and "all" in args.models:
+        args.models = list(BACKENDS.keys())
 
     if args.eval_dir is not None:
         eval_dir = args.eval_dir
