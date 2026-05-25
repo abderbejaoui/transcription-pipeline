@@ -83,3 +83,55 @@ def prompt_for_human_correction(sentence: str, span_text: str, best_guess: Optio
         print(f"Best guess: {best_guess}")
     response = input("Enter the correct term (or press Enter to leave unchanged): ").strip()
     return response or None
+
+
+def suggestion_to_lexicon(
+    wrong_form: str,
+    correct_term: str,
+    *,
+    term_type: str = "unknown",
+    description: str = "",
+    session_id: Optional[str] = None,
+) -> lexicon.LexiconEntry:
+    """Save a human correction suggestion to the lexicon.
+
+    Adds ``wrong_form`` as an alias for ``correct_term``.
+    This is the lightweight version used by the HITL review UI.
+    """
+    if not correct_term.strip():
+        raise ValueError("correct_term must be non-empty")
+
+    # Check if the correct term already exists
+    existing = lexicon.find_by_alias(correct_term)
+    if existing is not None:
+        # Just add the wrong_form as a new alias
+        lexicon.add_entry(
+            lexicon.LexiconEntry(
+                term=existing.term,
+                canonical_form=existing.canonical_form,
+                term_type=existing.term_type,
+                aliases=tuple(set(list(existing.aliases) + [wrong_form])),
+                ipa=existing.ipa,
+                description=existing.description,
+                source=existing.source,
+                added_at=existing.added_at,
+            )
+        )
+        log_hitl(wrong_form, existing.term, "(HITL review)", session_id=session_id)
+        return existing
+
+    # New term — create it
+    from app.services.phonetics import text_to_ipa
+    entry = lexicon.LexiconEntry(
+        term=correct_term.strip(),
+        canonical_form=correct_term.strip().lower(),
+        term_type=term_type,
+        aliases=(wrong_form,),
+        ipa=text_to_ipa(correct_term),
+        description=description,
+        source="user",
+        added_at=_now_iso(),
+    )
+    saved = lexicon.add_entry(entry)
+    log_hitl(wrong_form, saved.term, "(HITL review)", session_id=session_id)
+    return saved

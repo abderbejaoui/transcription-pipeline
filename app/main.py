@@ -55,6 +55,24 @@ from .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 from .pipeline.runner import run_pipeline
 from .pipeline.hitl import apply_human_correction
+from .pipeline.scorer import qwen_available
+
+
+def _prewarm_qwen() -> None:
+    """Background-load the Qwen model at startup.
+
+    Qwen takes ~25 s to load on this machine (GPU, FP16). By warming it
+    in a background thread during server startup, the first API request
+    will not block on model loading. If loading fails (OOM, missing model,
+    etc.), it falls through silently and the pipeline will fall back to
+    BART + heuristic on the first request.
+    """
+    import app.pipeline.scorer as _scorer
+    try:
+        _scorer._init_qwen_pipeline()
+        print("[startup] Qwen2.5-1.5B-Instruct ready.")
+    except Exception as exc:
+        print(f"[startup] Qwen prewarm failed (will fall back to BART): {exc}")
 
 
 def _build_corrector() -> MedicalCorrector:
@@ -152,6 +170,11 @@ async def _no_cache_static(request, call_next):
 
 @app.on_event("startup")
 def _prewarm() -> None:
+    # Always prewarm Qwen at startup (runs in background thread).
+    # The model takes ~25 s to load; this ensures the first API request
+    # doesn't block on model loading.
+    threading.Thread(target=_prewarm_qwen, daemon=True).start()
+
     def _bg() -> None:
         try:
             asr._load_model(DEFAULT_WHISPER_SIZE)
@@ -173,6 +196,16 @@ def _prewarm() -> None:
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/favicon.ico", include_in_schema=False)
+def favicon() -> FileResponse:
+    return FileResponse(STATIC_DIR / "favicon.ico")
+
+
+@app.get("/static/favicon.ico", include_in_schema=False)
+def static_favicon() -> FileResponse:
+    return FileResponse(STATIC_DIR / "favicon.ico")
 
 
 @app.get("/test", include_in_schema=False)
@@ -275,12 +308,13 @@ def correct_v2(body: CorrectionRequest) -> Dict[str, Any]:
 
 @app.post("/api/v2/correct/teach")
 def correct_teach_v2(body: TeachRequest) -> Dict[str, Any]:
-    apply_human_correction(
-        wrong_form=body.wrong_form,
+    corrected, entry = apply_human_correction(
+        transcript=body.sentence_context,
+        span_text=body.wrong_form,
         correct_term=body.correct_term,
-        sentence_context=body.sentence_context,
+        session_id=body.session_id or None,
     )
-    return {"status": "saved", "term": body.correct_term}
+    return {"status": "saved", "term": body.correct_term, "entry": {"term": entry.term, "type": entry.term_type}}
 
 
 BENCHMARK_PROGRESS: Dict[str, Any] = {}

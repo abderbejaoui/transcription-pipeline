@@ -9,7 +9,7 @@ def test_invalid_llm_response_falls_back_to_top_candidate():
     decision = decide_span("The patient should take dolly prahn.", item, llm=lambda s, p, c: "made up")
     # Invalid LLM response falls back to top candidate (score 0.8 >= 0.60 threshold)
     assert decision.chosen == "Doliprane"
-    assert decision.path == "llm"
+    assert decision.path == "top_fallback"
     assert decision.confidence == 0.8
 
 

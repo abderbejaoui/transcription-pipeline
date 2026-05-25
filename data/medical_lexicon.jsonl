@@ -139,7 +139,6 @@
 {"term": "linagliptin", "canonical_form": "linagliptin", "term_type": "drug", "aliases": ["tradjenta"], "ipa": "linagliptin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "loratadine", "canonical_form": "loratadine", "term_type": "drug", "aliases": ["claritin"], "ipa": "loratadin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "magnesium sulfate", "canonical_form": "magnesium sulfate", "term_type": "drug", "aliases": [], "ipa": "magnesium sulfat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
-{"term": "metformin", "canonical_form": "metformin", "term_type": "drug", "aliases": ["glucophage"], "ipa": "metformin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "methadone", "canonical_form": "methadone", "term_type": "drug", "aliases": ["dolophine"], "ipa": "meθadon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "methotrexate", "canonical_form": "methotrexate", "term_type": "drug", "aliases": [], "ipa": "meθotreksat", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "methylprednisolone", "canonical_form": "methylprednisolone", "term_type": "drug", "aliases": ["solu-medrol", "solumedrol", "medrol"], "ipa": "meθylprednisolon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
@@ -169,7 +168,6 @@
 {"term": "pioglitazone", "canonical_form": "pioglitazone", "term_type": "drug", "aliases": ["actos"], "ipa": "pioglitazon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "posaconazole", "canonical_form": "posaconazole", "term_type": "drug", "aliases": ["noxafil"], "ipa": "posaconazol", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "prednisolone", "canonical_form": "prednisolone", "term_type": "drug", "aliases": [], "ipa": "prednisolon", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
-{"term": "prednisone", "canonical_form": "prednisone", "term_type": "drug", "aliases": ["deltasone"], "ipa": "prednison", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "pregabalin", "canonical_form": "pregabalin", "term_type": "drug", "aliases": ["lyrica"], "ipa": "pregabalin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "propylthiouracil", "canonical_form": "propylthiouracil", "term_type": "drug", "aliases": ["ptu"], "ipa": "propylθiouracil", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
 {"term": "pseudoephedrine", "canonical_form": "pseudoephedrine", "term_type": "drug", "aliases": ["sudafed"], "ipa": "pseudoefedrin", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.064436Z"}
@@ -248,3 +246,7 @@
 {"term": "Salbutamol", "canonical_form": "salbutamol", "term_type": "drug_generic", "aliases": ["salbu tamol", "salbutanol", "salbutamul"], "ipa": "/sælˈbjuːtəmɒl/", "description": "Short-acting bronchodilator used to treat asthma, COPD, and wheezing.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}
 {"term": "sphygmomanometer", "canonical_form": "sphygmomanometer", "term_type": "device", "aliases": ["sfigmomanometre", "sphygmomanometre", "sfigmomanometer"], "ipa": "/ˌsfɪɡmoʊməˈnɒmɪtər/", "description": "Medical instrument used to measure arterial blood pressure.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}
 {"term": "amoxicillin", "canonical_form": "amoxicillin", "term_type": "drug_generic", "aliases": ["amoxicilin", "amoxycillin", "amoxicillin"], "ipa": "/əˌmɒksɪˈsɪlɪn/", "description": "Broad-spectrum penicillin antibiotic used to treat bacterial infections.", "source": "seed", "added_at": "2026-05-24T00:00:00Z"}
+{"term": "diarrhea", "canonical_form": "diarrhea", "term_type": "unknown", "aliases": ["diarhea"], "ipa": "diarrhea", "description": "", "source": "user", "added_at": "2026-05-25T19:24:04.620266Z"}
+{"term": "tachycardia", "canonical_form": "tachycardia", "term_type": "unknown", "aliases": ["tahycardia"], "ipa": "tatʃycardia", "description": "", "source": "user", "added_at": "2026-05-25T19:26:13.285575Z"}
+{"term": "paracetamol", "canonical_form": "paracetamol", "term_type": "unknown", "aliases": ["paracetemol"], "ipa": "paracetamol", "description": "", "source": "user", "added_at": "2026-05-25T19:46:56.810479Z"}
+{"term": "glucometer", "canonical_form": "glucometer", "term_type": "unknown", "aliases": ["glucometre"], "ipa": "glucometer", "description": "", "source": "user", "added_at": "2026-05-25T19:48:26.202139Z"}

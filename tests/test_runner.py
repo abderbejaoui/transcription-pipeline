@@ -12,17 +12,17 @@ def test_full_pipeline_corrects_two_spans(tmp_path, monkeypatch):
 
     transcript = "The patient should take dolly prahn twice daily alongside salbu tamol."
     scored = [
-        ScoredWord(0, "The", 0.0, True, 0, 3),
-        ScoredWord(1, "patient", 0.0, True, 4, 11),
-        ScoredWord(2, "should", 0.0, True, 12, 18),
-        ScoredWord(3, "take", 0.0, True, 19, 23),
-        ScoredWord(4, "dolly", 0.9, False, 24, 29),
-        ScoredWord(5, "prahn", 0.92, False, 30, 35),
-        ScoredWord(6, "twice", 0.0, True, 36, 41),
-        ScoredWord(7, "daily", 0.0, True, 42, 47),
-        ScoredWord(8, "alongside", 0.0, True, 48, 57),
-        ScoredWord(9, "salbu", 0.88, False, 58, 63),
-        ScoredWord(10, "tamol", 0.9, False, 64, 69),
+        ScoredWord(index=0, text="The", suspicion=0.0, in_lexicon=True, start=0, end=3),
+        ScoredWord(index=1, text="patient", suspicion=0.0, in_lexicon=True, start=4, end=11),
+        ScoredWord(index=2, text="should", suspicion=0.0, in_lexicon=True, start=12, end=18),
+        ScoredWord(index=3, text="take", suspicion=0.0, in_lexicon=True, start=19, end=23),
+        ScoredWord(index=4, text="dolly", suspicion=0.9, in_lexicon=False, start=24, end=29),
+        ScoredWord(index=5, text="prahn", suspicion=0.92, in_lexicon=False, start=30, end=35),
+        ScoredWord(index=6, text="twice", suspicion=0.0, in_lexicon=True, start=36, end=41),
+        ScoredWord(index=7, text="daily", suspicion=0.0, in_lexicon=True, start=42, end=47),
+        ScoredWord(index=8, text="alongside", suspicion=0.0, in_lexicon=True, start=48, end=57),
+        ScoredWord(index=9, text="salbu", suspicion=0.88, in_lexicon=False, start=58, end=63),
+        ScoredWord(index=10, text="tamol", suspicion=0.9, in_lexicon=False, start=64, end=69),
     ]
     monkeypatch.setattr(runner, "score_transcript", lambda text: scored)
     monkeypatch.setattr(runner, "decide_spans", lambda sentence, items: [

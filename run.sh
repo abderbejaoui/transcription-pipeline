@@ -1,11 +1,15 @@
 #!/usr/bin/env bash
 # Run the medical transcription pipeline locally.
 #
-# Usage:
+# Usage (Linux / macOS / WSL):
 #   ./run.sh                          # default: large-v3-turbo, English, port 8000
 #   PORT=9000 ./run.sh                # custom port
 #   USE_LLM=0 ./run.sh                # disable LLM (when Ollama is unreachable)
 #   WHISPER_MODEL_SIZE=base ./run.sh  # use a smaller/faster Whisper model
+#
+# Usage (Windows cmd):
+#   run_server.bat                    # same defaults
+#   run.bat --transcript "..."        # CLI mode (GPU-enabled)
 
 set -e
 

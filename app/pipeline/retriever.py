@@ -11,7 +11,7 @@ from .config import TOP_K
 from .models import Candidate, SpanWithCandidates, SuspiciousSpan
 
 
-def _candidate_from_entry(entry: lexicon.LexiconEntry, score: float) -> Candidate:
+def _candidate_from_entry(entry: lexicon.LexiconEntry, score: float, match_type: str = "phonetic") -> Candidate:
     return Candidate(
         term=entry.term,
         ipa=entry.ipa,
@@ -19,6 +19,7 @@ def _candidate_from_entry(entry: lexicon.LexiconEntry, score: float) -> Candidat
         description=entry.description,
         phonetic_score=round(max(0.0, min(1.0, score)), 6),
         source=entry.source,
+        match_type=match_type,
     )
 
 
@@ -27,14 +28,16 @@ def retrieve_candidates(span: SuspiciousSpan, top_k: int = TOP_K) -> SpanWithCan
     if alias_hit is not None:
         return SpanWithCandidates(
             span=span,
-            candidates=[_candidate_from_entry(alias_hit, 1.0)],
+            candidates=[_candidate_from_entry(alias_hit, 1.0, match_type="alias")],
         )
 
-    # Use a safe fallback-only IPA conversion for the suspicious span to
-    # avoid invoking the system phonemizer (espeak-ng) at runtime which can
-    # block on some environments. Lexicon entries' stored IPA are preferred
-    # for matching.
-    span_ipa = fallback_text_to_ipa(span.text)
+    # Try real espeak-ng IPA via phonemizer; fall back to heuristic IPA.
+    try:
+        span_ipa = text_to_ipa(span.text)
+        if not span_ipa:
+            span_ipa = fallback_text_to_ipa(span.text)
+    except Exception:
+        span_ipa = fallback_text_to_ipa(span.text)
     ranked: List[Candidate] = []
     for entry in lexicon.load_lexicon():
         best = 0.0

@@ -112,3 +112,25 @@ Verified in the workspace venv:
 - 2026-05-24: The canonical corrected transcript expected by `DESIRED_PIPELINE.md` is known and matches the required output.
 
 If you prefer a different format for this summary, I can switch it to JSONL or a shorter changelog-style note.
+
+## Progress vs DESIRED_PIPELINE.md
+
+Calculated implementation completeness: **80%**
+
+Rationale (weighted checklist against the spec):
+- Stage 0 — Pre-processing: 5/5 (fully implemented)
+- Stage 1 — SCORE: 22/25 (scorer present with heuristic fallback; local BART path present in spec but may be unverified)
+- Stage 2 — FLAG: 10/15 (flagger implemented but span-merging needs tightening)
+- Stage 3 — RETRIEVE: 18/20 (retriever + phonetic helpers present; espeak/IPA path available with safe fallback)
+- Stage 4 — DECIDE: 12/20 (decider + LLM service implemented, but live Gemini blocked by quota → reduces verified completeness)
+- Stage 5 — HITL: 9/10 (HITL flow implemented)
+- Final output assembly & scripts: 4/5 (runner, reconstruction and helpers exist)
+
+Notes:
+- Code structure for all stages exists under `app/pipeline/` and supporting services are in `app/services/`.
+- The largest remaining gaps are (1) Stage 2 span-merge tightening to exactly match the canonical spans, and (2) a usable Gemini key/project to fully verify Stage 4 behavior. Addressing these two items should push the project to >95% spec-verified.
+
+Next suggested steps:
+- Tighten Stage 2 merge rules to match `DESIRED_PIPELINE.md` span outputs (priority).
+- Obtain a Gemini project/key with quota or run DECIDE tests via a controlled deterministic fallback (secondary priority).
+

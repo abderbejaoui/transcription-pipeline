@@ -37,7 +37,9 @@ def _ensure_espeak_on_path() -> str | None:
 
     Returns the path to the executable if found, otherwise None.
     On Windows the function probes common install locations and prepends
-    the executable directory to PATH when found.
+    the executable directory to PATH when found. It also calls
+    ``EspeakWrapper.set_library`` so that ``phonemizer`` can locate
+    ``libespeak-ng.dll`` on Windows.
     """
     # Check PATH first
     for exe in ("espeak-ng", "espeak"):
@@ -54,11 +56,20 @@ def _ensure_espeak_on_path() -> str | None:
             r"C:\Program Files\espeak-ng\espeak-ng.exe",
             r"C:\Program Files\espeak\espeak.exe",
         ]
-        for path in candidates:
-            if os.path.exists(path):
-                dirpath = os.path.dirname(path)
+        for exe_path in candidates:
+            if os.path.exists(exe_path):
+                dirpath = os.path.dirname(exe_path)
                 os.environ["PATH"] = dirpath + os.pathsep + os.environ.get("PATH", "")
-                return path
+                # Tell phonemizer where the espeak-ng DLL lives (Windows)
+                dll_path = os.path.join(dirpath, "libespeak-ng.dll")
+                if os.path.exists(dll_path):
+                    try:
+                        from phonemizer.backend.espeak.wrapper import EspeakWrapper
+
+                        EspeakWrapper.set_library(dll_path)
+                    except Exception:
+                        pass
+                return exe_path
     return None
 
 

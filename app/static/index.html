@@ -3,96 +3,152 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>ASR Benchmark</title>
-  <link rel="stylesheet" href="/static/styles.css?v=5" />
+  <title>Medical Transcription Pipeline</title>
+  <link rel="stylesheet" href="/static/styles.css?v=7" />
 </head>
 <body>
-  <main>
-    <header>
-      <h1>ASR Benchmark</h1>
-      <p class="muted">Upload an audio file to view local CPU inference results across 8 different ASR models.</p>
+  <div class="app" id="app">
+    <!-- Header -->
+    <header class="app-header">
+      <div>
+        <h1>
+          Transcription Pipeline
+          <span class="pipeline-badge">v2</span>
+        </h1>
+        <p class="subtitle">Medical term correction pipeline — heuristic scoring → flagging → retrieval → LLM decide → correction</p>
+      </div>
+      <div class="flex-row gap-sm" id="header-actions">
+        <button class="btn btn-sm btn-blue" id="btn-example" title="Load the canonical test example">Load example</button>
+      </div>
     </header>
 
-    <section class="card">
-      <div class="row">
-        <button id="btn-record" class="primary">🎙️ Record</button>
-        <button id="btn-stop" class="ghost" hidden>■ Stop</button>
-        <span id="record-status" class="muted small"></span>
+    <!-- Running indicator -->
+    <div class="running-overlay" id="running-overlay">
+      <span class="spinner"></span>
+      <span id="running-text">Running pipeline stages...</span>
+    </div>
+
+    <!-- Input card -->
+    <div class="card input-card" id="input-card">
+      <div class="card-header">
+        <span class="card-title">Input transcript</span>
+        <span class="card-badge" id="word-count"></span>
       </div>
-      <audio id="record-playback" controls hidden></audio>
-
-      <details class="advanced">
-        <summary class="muted small">More input options</summary>
-        <div class="stack">
-          <textarea id="raw-input" rows="3" placeholder="Or paste raw text here..."></textarea>
-          <div class="row">
-            <button id="btn-correct" class="ghost">Correct text</button>
-            <button id="btn-example" class="ghost">Load example</button>
-          </div>
-          <div class="row">
-            <input type="file" id="upload-file" accept="audio/*" />
-            <button id="btn-upload" class="ghost">Transcribe file</button>
-          </div>
-          <div class="row">
-            <label class="muted small">Language
-              <select id="lang">
-                <option value="en" selected>English</option>
-                <option value="ar">Arabic</option>
-                <option value="">auto</option>
-              </select>
-            </label>
-            <label class="muted small">Model
-              <select id="model">
-                <option value="tiny">tiny</option>
-                <option value="base" selected>base</option>
-                <option value="small">small</option>
-                <option value="medium">medium</option>
-              </select>
-            </label>
-          </div>
+      <div class="card-body" style="padding:0">
+        <textarea id="transcript-input" placeholder="Paste a medical transcript here, then click Run Pipeline...">The patient presents with fever and should take dolly prahn twice daily alongside salbu tamol for the wheeze. Blood pressure was measured using a sfigmomanometre. The attending physician prescribed amoxicilin for the secondary infection.</textarea>
+        <div class="input-actions">
+          <button class="btn btn-primary" id="btn-run">
+            <svg width="14" height="14" viewBox="0 0 16 16" fill="currentColor"><path d="M4 2.5v11l10-5.5L4 2.5z"/></svg>
+            Run Pipeline
+          </button>
+          <span class="text-xs text-dim" id="run-timing"></span>
         </div>
-      </details>
-    </section>
-
-    <section id="trace-card" class="card" hidden>
-      <h2>Pipeline trace <span id="trace-status" class="muted small"></span></h2>
-      <div id="trace-events" class="trace-events"></div>
-    </section>
-
-    <section id="result" class="card" hidden>
-      <h2>Transcript</h2>
-      <textarea id="corrected-text" rows="5" placeholder="The transcript will appear here. Edit anything wrong, then save."></textarea>
-      <div class="row">
-        <button id="btn-save-edits" class="primary">💾 Save edits</button>
-        <span id="save-status" class="muted small"></span>
       </div>
-      <details>
-        <summary class="muted small">Show raw Whisper output and flagged spans</summary>
-        <div class="stack">
-          <h3>Raw</h3>
-          <pre id="raw-text"></pre>
-          <h3>Flagged</h3>
-          <table id="spans-table">
-            <thead><tr><th>From</th><th>To</th><th>Conf.</th></tr></thead>
-            <tbody></tbody>
-          </table>
-        </div>
-      </details>
-    </section>
+    </div>
 
-    <section class="card">
-      <details>
-        <summary><strong>Vocabulary</strong> <span id="lexicon-count" class="muted small"></span></summary>
-        <div class="row">
-          <input id="vocab-search" placeholder="Search the vocabulary..." />
-          <button id="btn-refresh-lexicon" class="ghost">Refresh</button>
-        </div>
-        <div id="lexicon-list" class="lexicon-list"></div>
-      </details>
-    </section>
+    <!-- Stage 1: Word Scoring -->
+    <div class="stage-connector" id="conn-1">
+      <div class="line" data-conn="1"></div>
+    </div>
+    <div class="card stage-card" id="stage-1">
+      <div class="card-header">
+        <span class="step-number" id="step-1">1</span>
+        <span class="status-dot pending" id="dot-1"></span>
+        <span class="card-title">Word Scoring</span>
+        <span class="approach-tag" id="approach-1"></span>
+        <span class="card-badge" id="badge-1" data-default="0 words scored">0 words scored</span>
+      </div>
+      <div class="card-body" id="body-1">
+        <div class="empty-state">Results will appear here after running the pipeline.</div>
+      </div>
+    </div>
 
-  </main>
+    <!-- Stage 2: Flagging -->
+    <div class="stage-connector" id="conn-2">
+      <div class="line" data-conn="2"></div>
+    </div>
+    <div class="card stage-card" id="stage-2">
+      <div class="card-header">
+        <span class="step-number" id="step-2">2</span>
+        <span class="status-dot pending" id="dot-2"></span>
+        <span class="card-title">Span Flagging</span>
+        <span class="approach-tag" id="approach-2"></span>
+        <span class="card-badge" id="badge-2" data-default="0 spans">0 spans</span>
+      </div>
+      <div class="card-body" id="body-2">
+        <div class="empty-state">Results will appear here after running the pipeline.</div>
+      </div>
+    </div>
 
-  <script src="/static/app.js?v=5"></script>
+    <!-- Stage 3: Retrieval -->
+    <div class="stage-connector" id="conn-3">
+      <div class="line" data-conn="3"></div>
+    </div>
+    <div class="card stage-card" id="stage-3">
+      <div class="card-header">
+        <span class="step-number" id="step-3">3</span>
+        <span class="status-dot pending" id="dot-3"></span>
+        <span class="card-title">Candidate Retrieval</span>
+        <span class="approach-tag" id="approach-3"></span>
+        <span class="card-badge" id="badge-3" data-default="0 candidates">0 candidates</span>
+      </div>
+      <div class="card-body" id="body-3">
+        <div class="empty-state">Results will appear here after running the pipeline.</div>
+      </div>
+    </div>
+
+    <!-- Stage 4: Deciding -->
+    <div class="stage-connector" id="conn-4">
+      <div class="line" data-conn="4"></div>
+    </div>
+    <div class="card stage-card" id="stage-4">
+      <div class="card-header">
+        <span class="step-number" id="step-4">4</span>
+        <span class="status-dot pending" id="dot-4"></span>
+        <span class="card-title">Decision</span>
+        <span class="approach-tag" id="approach-4"></span>
+        <span class="card-badge" id="badge-4" data-default="0 decisions">0 decisions</span>
+      </div>
+      <div class="card-body" id="body-4">
+        <div class="empty-state">Results will appear here after running the pipeline.</div>
+      </div>
+    </div>
+
+    <!-- Stage 5: Correction / Output -->
+    <div class="stage-connector" id="conn-5">
+      <div class="line" data-conn="5"></div>
+    </div>
+    <div class="card stage-card" id="stage-5">
+      <div class="card-header">
+        <span class="step-number" id="step-5">5</span>
+        <span class="status-dot pending" id="dot-5"></span>
+        <span class="card-title">Correction</span>
+        <span class="approach-tag" id="approach-5"></span>
+        <span class="card-badge" id="badge-5" data-default="0 corrections">0 corrections</span>
+      </div>
+      <div class="card-body" id="body-5">
+        <div class="empty-state">Results will appear here after running the pipeline.</div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Lexicon panel (hidden by default) -->
+  <div class="card lexicon-panel" id="lexicon-panel">
+    <div class="card-header">
+      <span class="card-title">Vocabulary</span>
+      <span class="card-badge" id="lexicon-count">—</span>
+      <button class="btn btn-sm" id="btn-close-lexicon" style="margin-left:auto;padding:2px 8px">✕</button>
+    </div>
+    <div class="lexicon-search-wrap">
+      <input class="lexicon-search" id="lexicon-search" placeholder="Search the vocabulary..." />
+    </div>
+    <div class="card-body" id="lexicon-list"></div>
+  </div>
+
+  <!-- Lexicon toggle button -->
+  <button class="btn btn-sm" id="btn-toggle-lexicon">📖 Lexicon</button>
+
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

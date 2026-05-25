@@ -38,8 +38,10 @@ def decide_span(sentence: str, item: SpanWithCandidates, llm: Callable[[str, str
     # it determined NO_CHANGE). Fall back to the top-ranked candidate when
     # its phonetic_score is acceptable. This ensures offline / degraded runs
     # still produce corrections and match the canonical test output.
+    # NOTE: path="top_fallback" distinguishes this from actual LLM decisions
+    # so the UI can transparently report the decision method.
     if top.phonetic_score >= LLM_MIN_CONFIDENCE:
-        return Decision(span=item.span, chosen=top.term, confidence=top.phonetic_score, path="llm")
+        return Decision(span=item.span, chosen=top.term, confidence=top.phonetic_score, path="top_fallback")
     return Decision(span=item.span, chosen=None, confidence=0.0, path="hitl_escalate")
 
 

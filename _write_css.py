@@ -1,4 +1,7 @@
-/* Pipeline UI Dark theme */
+"""Write the pipeline UI CSS to app/static/styles.css."""
+import pathlib
+
+content = r"""/* Pipeline UI Dark theme */
 
 :root {
   --bg: #0b0d12;
@@ -114,37 +117,6 @@ html, body {
   font-size: 13px;
   font-weight: 600;
   color: var(--text);
-}
-
-.approach-tag {
-  display: inline-block;
-  font-size: 10px;
-  font-weight: 600;
-  letter-spacing: 0.03em;
-  padding: 1px 7px;
-  border-radius: 10px;
-  line-height: 1.5;
-  margin-left: 4px;
-  cursor: help;
-  transition: all 0.15s;
-}
-
-.approach-tag.tag-primary {
-  background: var(--green-bg);
-  color: var(--green);
-  border: 1px solid var(--green-border);
-}
-
-.approach-tag.tag-fallback {
-  background: var(--amber-bg);
-  color: var(--amber);
-  border: 1px solid var(--amber-border);
-}
-
-.approach-tag.tag-unknown {
-  background: rgba(255,255,255,0.03);
-  color: var(--text-dim);
-  border: 1px solid var(--border);
 }
 
 .card-badge {
@@ -729,72 +701,6 @@ html, body {
   padding: 0 1px;
 }
 
-/* ─── HITL Review ─────────────────────────── */
-
-.hitl-header {
-  display: flex;
-  align-items: center;
-  gap: 10px;
-  padding: 8px 12px;
-  background: rgba(251, 191, 36, 0.06);
-  border: 1px solid var(--amber-border);
-  border-radius: var(--radius-sm);
-  margin-bottom: 8px;
-}
-
-.hitl-list {
-  display: flex;
-  flex-direction: column;
-  gap: 6px;
-}
-
-.hitl-row {
-  display: flex;
-  align-items: center;
-  gap: 8px;
-  padding: 6px 10px;
-  background: rgba(255,255,255,0.02);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-sm);
-  transition: all 0.15s;
-}
-
-.hitl-row:hover {
-  border-color: var(--border-light);
-  background: var(--surface-hover);
-}
-
-.hitl-word {
-  font-weight: 700;
-  font-size: 14px;
-  color: var(--red);
-  min-width: 90px;
-  text-decoration: underline wavy var(--red);
-  text-underline-offset: 2px;
-}
-
-.hitl-input {
-  flex: 1;
-  max-width: 280px;
-  background: rgba(0,0,0,0.3);
-  border: 1px solid var(--border);
-  border-radius: var(--radius-xs);
-  padding: 5px 8px;
-  color: var(--text);
-  font-size: 13px;
-  outline: none;
-  transition: border-color 0.15s;
-}
-
-.hitl-input:focus {
-  border-color: var(--accent);
-}
-
-.hitl-input::placeholder {
-  color: var(--text-dim);
-  font-style: italic;
-}
-
 .lexicon-panel {
   display: none;
   flex-direction: column;
@@ -825,15 +731,6 @@ html, body {
 
 .lexicon-search:focus {
   border-color: var(--accent);
-}
-
-#btn-toggle-lexicon {
-  position: fixed;
-  bottom: 20px;
-  right: 20px;
-  z-index: 99;
-  background: var(--surface);
-  border-color: var(--border-light);
 }
 
 #lexicon-list {
@@ -882,3 +779,8 @@ html, body {
   .score-bar-wrap { max-width: none; }
   .lexicon-panel { width: calc(100vw - 40px); right: 10px; }
 }
+"""
+
+p = pathlib.Path("app/static/styles.css")
+p.write_text(content, encoding="utf-8")
+print(f"Written {len(content)} chars to {p}")

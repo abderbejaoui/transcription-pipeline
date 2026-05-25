@@ -7,11 +7,28 @@ from typing import Any, Dict, List, Optional
 
 
 @dataclass(frozen=True)
+class Token:
+    """Stage 0 token: a single word split from the input transcript.
+
+    TODO: integrate this into the pipeline as a pre-processing step
+    (stage 0) so the scorer can use structured Token objects instead
+    of raw string parsing.
+    """
+    index: int
+    text: str          # lowercased, no punctuation
+    original: str      # exactly as it appeared in the input
+    punct: str         # any trailing punctuation (". , ? !" etc.) or ""
+
+
+@dataclass(frozen=True)
 class ScoredWord:
     index: int
     text: str
-    suspicion: float
-    in_lexicon: bool
+    original: str = ""
+    punct: str = ""
+    suspicion: float = 0.0
+    in_lexicon: bool = False
+    # Legacy fields (kept for backward compat with existing tests)
     start: int = 0
     end: int = 0
 
@@ -33,6 +50,7 @@ class Candidate:
     description: str
     phonetic_score: float
     source: str
+    match_type: str = "phonetic"  # "alias" | "phonetic"
 
 
 @dataclass(frozen=True)
@@ -51,9 +69,20 @@ class Decision:
 
 @dataclass(frozen=True)
 class PipelineResult:
+    original: str
     corrected_text: str
     report: Dict[str, Any]
     scored_words: List[ScoredWord]
     spans: List[SuspiciousSpan]
     candidates: List[SpanWithCandidates]
     decisions: List[Decision]
+    hitl_required: List[Decision] = field(default_factory=list)
+    session_id: str = ""
+
+    @property
+    def corrected(self) -> str:
+        return self.corrected_text
+
+    @property
+    def corrections(self) -> List[Decision]:
+        return [d for d in self.decisions if d.chosen is not None]
