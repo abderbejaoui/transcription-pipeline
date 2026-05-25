@@ -533,34 +533,103 @@ class OmniAsrBackend(Backend):
 
 
 class WhisperGulfBackend(Backend):
+    """Whisper-small fine-tuned on MASC Gulf Arabic.
+
+    Originally this backend used faster-whisper (CTranslate2), but the
+    DGX Spark builds of CTranslate2 ship without CUDA support on ARM64,
+    so model load raised:
+        ValueError("This CTranslate2 package was not compiled with CUDA support")
+    We instead use plain HF transformers (WhisperForConditionalGeneration +
+    AutoProcessor), which works on any CUDA-capable GPU.
+    """
+
     name = "whisper-small-gulf"
 
     def __init__(self, repo_id: str = "otozz/whisper-small-dialect_gulf"):
         self.repo_id = repo_id
         self._model = None
+        self._processor = None
+        self._device = None
+        self._dtype = None
 
     def prepare(self) -> None:
-        from faster_whisper import WhisperModel
-        device = "cuda" if __import__("torch").cuda.is_available() else "cpu"
-        compute_type = "float16" if device == "cuda" else "int8"
-        print(f"[whisper-gulf] loading {self.repo_id} on {device}")
-        self._model = WhisperModel(self.repo_id, device=device, compute_type=compute_type)
+        import torch
+        from transformers import (
+            AutoProcessor,
+            WhisperForConditionalGeneration,
+        )
+
+        if torch.cuda.is_available():
+            self._device, dtype = "cuda:0", torch.float16
+        elif torch.backends.mps.is_available():
+            self._device, dtype = "mps", torch.float16
+        else:
+            self._device, dtype = "cpu", torch.float32
+        self._dtype = dtype
+
+        print(f"[whisper-gulf] loading {self.repo_id} on {self._device} ({dtype}) via transformers")
+        self._processor = AutoProcessor.from_pretrained(self.repo_id)
+        self._model = WhisperForConditionalGeneration.from_pretrained(
+            self.repo_id,
+            torch_dtype=dtype,
+            low_cpu_mem_usage=True,
+        ).to(self._device).eval()
 
     def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
-        assert self._model is not None
+        assert self._model is not None and self._processor is not None
+        import torch
+        import soundfile as sf
+
         t0 = time.time()
-        # Force Arabic for Arabic/mixed clips; English for English
-        lang = "ar" if (language or "en") in ("ar", "mixed") else "en"
-        segs, info = self._model.transcribe(
-            str(wav_path),
-            language=lang,
-            beam_size=5,
-            vad_filter=False,
-            without_timestamps=True,
-        )
-        text = "".join(s.text for s in segs).strip()
-        return Prediction(text=text, inference_seconds=time.time() - t0,
-                          extra={"detected_language": info.language})
+        try:
+            audio, sr = sf.read(str(wav_path), dtype="float32")
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            if sr != 16000:
+                try:
+                    import librosa
+                    audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+                    sr = 16000
+                except Exception as exc:
+                    return Prediction(
+                        text="", inference_seconds=time.time() - t0,
+                        extra={"error": f"resample failed: {exc!r}"},
+                    )
+
+            inputs = self._processor(
+                audio, sampling_rate=sr, return_tensors="pt",
+            )
+            input_features = inputs.input_features.to(self._device, dtype=self._dtype)
+
+            # Force Arabic for Arabic/mixed clips; English for English.
+            lang = "ar" if (language or "en") in ("ar", "mixed") else "en"
+            try:
+                forced_ids = self._processor.get_decoder_prompt_ids(
+                    language=lang, task="transcribe",
+                )
+            except Exception:
+                forced_ids = None
+
+            with torch.inference_mode():
+                gen = self._model.generate(
+                    input_features,
+                    forced_decoder_ids=forced_ids,
+                    max_new_tokens=440,
+                    num_beams=1,
+                    do_sample=False,
+                )
+            text = self._processor.batch_decode(
+                gen, skip_special_tokens=True,
+            )[0].strip()
+            return Prediction(
+                text=text, inference_seconds=time.time() - t0,
+                extra={"lang_hint": lang},
+            )
+        except Exception as exc:
+            return Prediction(
+                text="", inference_seconds=time.time() - t0,
+                extra={"error": repr(exc)},
+            )
 
 
 # ---------------------------------------------------------------------------
