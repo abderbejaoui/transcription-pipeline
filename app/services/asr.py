@@ -135,7 +135,18 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
         audio = audio.mean(axis=1)
     duration = len(audio) / sr if sr > 0 else 0.0
 
-    lang_label = "Arabic" if (language or "ar") in ("ar", "arabic") else None
+    # Map UI language codes to Qwen3-ASR language labels.
+    # "" / None / "auto" -> None (model auto-detects, handles code-switching)
+    # "ar" / "arabic"   -> "Arabic"  (forces Arabic decoding)
+    # "en" / "english"  -> "English" (forces English decoding)
+    if language is None or language == "" or language == "auto":
+        lang_label = None
+    elif language.lower() in ("ar", "arabic"):
+        lang_label = "Arabic"
+    elif language.lower() in ("en", "english"):
+        lang_label = "English"
+    else:
+        lang_label = None
 
     # qwen_asr wrapper path (older transformers)
     if processor is None:
