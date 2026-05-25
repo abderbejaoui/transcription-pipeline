@@ -95,6 +95,21 @@ def _load_model():
     return _MODEL, _PROCESSOR
 
 
+def _to_wav(audio_path: Path) -> Path:
+    """Convert any audio format to a 16kHz mono WAV using ffmpeg.
+    Returns a temp WAV path (caller must delete it). If already WAV, returns as-is."""
+    suffix = audio_path.suffix.lower()
+    if suffix in (".wav",):
+        return audio_path
+    import subprocess, tempfile
+    tmp = Path(tempfile.mktemp(suffix=".wav"))
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(audio_path), "-ar", "16000", "-ac", "1", "-f", "wav", str(tmp)],
+        check=True, capture_output=True,
+    )
+    return tmp
+
+
 def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: Optional[str] = None) -> Dict[str, Any]:
     """Transcribe a wav/webm/mp3 file using the Gulf Arabic LoRA model."""
     import torch
@@ -102,7 +117,20 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
 
     model, processor = _load_model()
 
-    audio, sr = sf.read(str(audio_path), dtype="float32")
+    audio_path = Path(audio_path)
+    tmp_wav = None
+    try:
+        wav_path = _to_wav(audio_path)
+        if wav_path != audio_path:
+            tmp_wav = wav_path
+        audio, sr = sf.read(str(wav_path), dtype="float32")
+    except Exception as exc:
+        if tmp_wav and tmp_wav.exists():
+            tmp_wav.unlink(missing_ok=True)
+        return {"text": "", "language": language or "ar", "language_probability": 0.0, "duration": 0.0, "words": [], "error": str(exc)}
+    if tmp_wav and tmp_wav.exists():
+        tmp_wav.unlink(missing_ok=True)
+
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
     duration = len(audio) / sr if sr > 0 else 0.0
