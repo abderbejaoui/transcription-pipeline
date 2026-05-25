@@ -52,30 +52,42 @@ from typing import Optional
 def _load_fleurs(config: str, split: str, hf_token: Optional[str]):
     """Load the FLEURS dataset from Hugging Face Hub.
 
-    Tries the canonical `google/fleurs` repo first; falls back to mirrors
-    if the canonical one is unavailable.
+    We cast the `audio` column from the Audio feature back to plain
+    bytes, which lets us load FLEURS without requiring `torchcodec`
+    (the new mandatory audio backend in `datasets>=4.x`). Each row's
+    audio field becomes a dict with the raw file bytes; we decode it
+    ourselves with `soundfile` later.
     """
-    from datasets import load_dataset
+    from datasets import load_dataset, Value
 
-    candidates = ["google/fleurs"]
-    last_exc = None
-    for repo_id in candidates:
-        try:
-            print(f"[fleurs] loading {repo_id} (config={config}, split={split})")
-            ds = load_dataset(
-                repo_id,
-                config,
-                split=split,
-                token=hf_token,
-                trust_remote_code=True,
-            )
-            return ds
-        except Exception as exc:
-            print(f"[fleurs] {repo_id} failed: {exc!r}")
-            last_exc = exc
-    raise RuntimeError(
-        f"Could not load FLEURS {config}/{split} from any source: {last_exc!r}"
+    print(f"[fleurs] loading google/fleurs (config={config}, split={split})")
+    ds = load_dataset(
+        "google/fleurs",
+        config,
+        split=split,
+        token=hf_token,
     )
+    # Replace the Audio feature with a struct that returns raw bytes.
+    # This sidesteps the torchcodec-dependent decode path.
+    try:
+        from datasets import Features, Sequence
+        feats = ds.features.copy()
+        if "audio" in feats:
+            # Audio feature exposes {"bytes": bytes, "path": str}; we want
+            # both fields as plain types so __getitem__ never invokes the
+            # decoder.
+            feats["audio"] = {"bytes": Value("binary"), "path": Value("string")}
+            ds = ds.cast(feats)
+    except Exception as exc:
+        # Some datasets versions don't allow cast on Audio columns.
+        # Fall back to disabling the decoder entirely.
+        print(f"[fleurs] cast failed ({exc!r}); trying decode-off path")
+        try:
+            ds = ds.cast_column("audio", ds.features["audio"].__class__(decode=False))
+        except Exception as exc2:
+            print(f"[fleurs] decode-off failed too: {exc2!r}")
+            raise
+    return ds
 
 
 def main() -> int:
@@ -146,15 +158,27 @@ def main() -> int:
     manifest_path = out_dir / "manifest.jsonl"
     written = 0
     skipped = 0
+    import io
     with manifest_path.open("w", encoding="utf-8") as out_f:
         for i, idx in enumerate(indices):
             rec = ds[idx]
-            # FLEURS schema: id (int), audio (dict with array+sampling_rate+path),
-            # raw_transcription (str), transcription (str), num_samples (int),
-            # gender (int), lang_id (int), language (str), lang_group_id (int).
+            # FLEURS schema after our cast: id (int), audio = {"bytes":
+            # bytes, "path": str}, raw_transcription (str), transcription
+            # (str), num_samples (int), gender (int), language (str), ...
             audio_info = rec.get("audio") or {}
-            arr = audio_info.get("array")
-            sr = audio_info.get("sampling_rate")
+            arr = None
+            sr = None
+            raw_bytes = audio_info.get("bytes") if isinstance(audio_info, dict) else None
+            if raw_bytes:
+                try:
+                    arr, sr = sf.read(io.BytesIO(raw_bytes), dtype="float32",
+                                      always_2d=False)
+                except Exception as exc:
+                    print(f"  [{i+1}/{len(indices)}] decode failed: {exc!r}")
+            elif isinstance(audio_info, dict) and audio_info.get("array") is not None:
+                # Older datasets versions still expose decoded array.
+                arr = audio_info["array"]
+                sr = audio_info.get("sampling_rate")
             if arr is None or sr is None:
                 skipped += 1
                 continue
@@ -173,7 +197,13 @@ def main() -> int:
                 or rec.get("raw_transcription")
                 or ""
             )
-            duration = (rec.get("num_samples") or 0) / sr if sr else 0.0
+            # Prefer the actual decoded sample count, fall back to the
+            # FLEURS-provided num_samples if available.
+            try:
+                n_samples = int(len(arr))
+            except TypeError:
+                n_samples = int(rec.get("num_samples") or 0)
+            duration = n_samples / sr if sr else 0.0
             record = {
                 "id": clip_id,
                 "category": f"fleurs_{args.config}",
