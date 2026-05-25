@@ -895,13 +895,15 @@ def run_backend(
     pred_dir = PREDICTIONS_DIR / backend.name
     pred_dir.mkdir(parents=True, exist_ok=True)
 
-    # If skip_existing, load already-computed rows without preparing the model.
+    # If skip_existing, load already-computed rows without preparing the model
+    # — but only when ALL manifest clips are already covered.
     if skip_existing:
-        existing = list(pred_dir.glob("*.json"))
-        if len(existing) > 0:
-            print(f"  → found {len(existing)} existing predictions, loading without re-running")
+        existing = {p.stem for p in pred_dir.glob("*.json")}
+        manifest_ids = {clip["id"] for clip in manifest}
+        if existing >= manifest_ids:
+            print(f"  → found {len(existing)} existing predictions (all clips covered), skipping")
             rows = []
-            for p in existing:
+            for p in pred_dir.glob("*.json"):
                 try:
                     d = json.loads(p.read_text(encoding="utf-8"))
                     rows.append({
@@ -918,6 +920,8 @@ def run_backend(
                 except Exception:
                     pass
             return rows
+        elif existing:
+            print(f"  → found {len(existing)}/{len(manifest_ids)} existing predictions, resuming from where we left off")
 
     try:
         backend.prepare()
