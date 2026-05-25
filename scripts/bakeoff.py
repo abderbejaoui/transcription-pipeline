@@ -603,6 +603,10 @@ class QwenGulfLoraBackend(_Qwen3AsrBase):
     (default: runs/qwen3_lora_r6/final_adapter). It must contain a PEFT
     `adapter_config.json` and `adapter_model.safetensors` saved via
     model.save_pretrained(...).
+
+    Subclasses can override `name` and `DEFAULT_ADAPTER` to evaluate
+    specific training checkpoints alongside the final adapter (so each
+    checkpoint gets its own predictions/<name>/ cache directory).
     """
 
     name = "qwen3-asr-gulf-lora"
@@ -611,9 +615,18 @@ class QwenGulfLoraBackend(_Qwen3AsrBase):
 
     def __init__(self, adapter_path: Optional[str] = None):
         super().__init__()
-        self.adapter_path = adapter_path or os.environ.get(
-            "QWEN3_GULF_ADAPTER", self.DEFAULT_ADAPTER
-        )
+        # Precedence: explicit ctor arg > env var > class default.
+        # Only the *base* gulf-lora backend honors the env var; per-checkpoint
+        # subclasses set their own DEFAULT_ADAPTER and ignore the env so a
+        # single bakeoff invocation can evaluate multiple checkpoints.
+        if adapter_path is not None:
+            self.adapter_path = adapter_path
+        elif type(self).DEFAULT_ADAPTER == QwenGulfLoraBackend.DEFAULT_ADAPTER:
+            self.adapter_path = os.environ.get(
+                "QWEN3_GULF_ADAPTER", self.DEFAULT_ADAPTER
+            )
+        else:
+            self.adapter_path = type(self).DEFAULT_ADAPTER
 
     def prepare(self) -> None:
         # Load base model + processor via the parent class. This populates
@@ -667,6 +680,34 @@ class QwenGulfLoraBackend(_Qwen3AsrBase):
     def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
         # Gulf-tuned model: always force Arabic except for explicit English.
         return "English" if (language or "") == "en" else "Arabic"
+
+
+# Per-checkpoint variants — each writes to its own predictions/<name>/ dir
+# so a single bakeoff run can compare multiple checkpoints side-by-side.
+
+class QwenGulfLoraCkpt12000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt12000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-12000"
+
+
+class QwenGulfLoraCkpt14000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt14000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-14000"
+
+
+class QwenGulfLoraCkpt16000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt16000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-16000"
+
+
+class QwenGulfLoraCkpt18000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt18000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-18000"
+
+
+class QwenGulfLoraCkpt19636Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt19636"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-19636"
 
 
 # ---------------------------------------------------------------------------
@@ -990,31 +1031,41 @@ def write_report(summary: Dict[str, Any]) -> Path:
 
 
 BACKENDS: Dict[str, Callable[[], Backend]] = {
-    "whisper":        WhisperBackend,
-    "qwen3":          QwenAsrBackend,
-    "vibevoice":      VibeVoiceBackend,
-    "omniASR":        OmniAsrBackend,
-    "whisper_gulf":   WhisperGulfBackend,
-    "qwen3_ksa":      QwenKsaBackend,
-    "qwen3_uae":      QwenUaeBackend,
-    "qwen3_gulf":     QwenGulfLoraBackend,
-    "voxtral_mini":   VoxtralMiniBackend,
-    "voxtral_small":  VoxtralSmallBackend,
+    "whisper":             WhisperBackend,
+    "qwen3":               QwenAsrBackend,
+    "vibevoice":           VibeVoiceBackend,
+    "omniASR":             OmniAsrBackend,
+    "whisper_gulf":        WhisperGulfBackend,
+    "qwen3_ksa":           QwenKsaBackend,
+    "qwen3_uae":           QwenUaeBackend,
+    "qwen3_gulf":          QwenGulfLoraBackend,
+    "qwen3_gulf_ckpt12k":  QwenGulfLoraCkpt12000Backend,
+    "qwen3_gulf_ckpt14k":  QwenGulfLoraCkpt14000Backend,
+    "qwen3_gulf_ckpt16k":  QwenGulfLoraCkpt16000Backend,
+    "qwen3_gulf_ckpt18k":  QwenGulfLoraCkpt18000Backend,
+    "qwen3_gulf_ckpt19k":  QwenGulfLoraCkpt19636Backend,
+    "voxtral_mini":        VoxtralMiniBackend,
+    "voxtral_small":       VoxtralSmallBackend,
 }
 
 # Map CLI model key -> backend class.name (the directory name used to cache
 # predictions). Used by --rescore-only to find the cached predictions.
 _MODEL_KEY_TO_DIR: Dict[str, str] = {
-    "whisper":        WhisperBackend.name,
-    "qwen3":          QwenAsrBackend.name,
-    "vibevoice":      VibeVoiceBackend.name,
-    "omniASR":        OmniAsrBackend.name,
-    "whisper_gulf":   WhisperGulfBackend.name,
-    "qwen3_ksa":      QwenKsaBackend.name,
-    "qwen3_uae":      QwenUaeBackend.name,
-    "qwen3_gulf":     QwenGulfLoraBackend.name,
-    "voxtral_mini":   VoxtralMiniBackend.name,
-    "voxtral_small":  VoxtralSmallBackend.name,
+    "whisper":             WhisperBackend.name,
+    "qwen3":               QwenAsrBackend.name,
+    "vibevoice":           VibeVoiceBackend.name,
+    "omniASR":             OmniAsrBackend.name,
+    "whisper_gulf":        WhisperGulfBackend.name,
+    "qwen3_ksa":           QwenKsaBackend.name,
+    "qwen3_uae":           QwenUaeBackend.name,
+    "qwen3_gulf":          QwenGulfLoraBackend.name,
+    "qwen3_gulf_ckpt12k":  QwenGulfLoraCkpt12000Backend.name,
+    "qwen3_gulf_ckpt14k":  QwenGulfLoraCkpt14000Backend.name,
+    "qwen3_gulf_ckpt16k":  QwenGulfLoraCkpt16000Backend.name,
+    "qwen3_gulf_ckpt18k":  QwenGulfLoraCkpt18000Backend.name,
+    "qwen3_gulf_ckpt19k":  QwenGulfLoraCkpt19636Backend.name,
+    "voxtral_mini":        VoxtralMiniBackend.name,
+    "voxtral_small":       VoxtralSmallBackend.name,
 }
 
 
