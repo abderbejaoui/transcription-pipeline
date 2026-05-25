@@ -119,10 +119,10 @@ async def _no_cache_static(request, call_next):
 def _prewarm() -> None:
     def _bg() -> None:
         try:
-            asr._load_model(DEFAULT_WHISPER_SIZE)
-            print(f"[startup] faster-whisper '{DEFAULT_WHISPER_SIZE}' ready.")
+            asr._load_model()
+            print("[startup] Gulf Arabic ASR model ready.")
         except Exception as exc:
-            print(f"[startup] Whisper warmup failed: {exc}")
+            print(f"[startup] ASR warmup failed: {exc}")
 
     threading.Thread(target=_bg, daemon=True).start()
     voice_match.warm_up()
