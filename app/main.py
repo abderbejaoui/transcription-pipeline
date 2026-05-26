@@ -50,7 +50,7 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_dual, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
 
 
 # ---------------------------------------------------------------------------
@@ -65,6 +65,9 @@ SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "")  # "" = auto-detect (Arabic+English)
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
+# When 1, transcription runs the dual-ASR (Gulf LoRA + base Qwen3) with an
+# LLM judge merging the two outputs. Costs 2x GPU memory + one extra LLM call.
+USE_DUAL_ASR = os.environ.get("USE_DUAL_ASR", "0") == "1"
 
 # Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
 # scale (normalized Levenshtein over greedy wav2vec2-base-960h transcripts).
@@ -209,15 +212,19 @@ def _run_transcribe_pipeline(
     """The full pipeline. Calls into services that emit trace events via
     `app.services.tracing`, so this function can be run with or without an
     active Tracer."""
-    # 1) Whisper.
+    # 1) ASR. If USE_DUAL_ASR=1, run both Gulf LoRA + base Qwen3 in parallel
+    # and merge their outputs with an LLM judge. Otherwise just the LoRA.
     tracing.emit("asr.start", {
         "session_id": session_id,
         "audio_path": str(session_path),
-        "model": model_size,
+        "model": "dual_asr" if USE_DUAL_ASR else model_size,
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
     })
-    asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
+    if USE_DUAL_ASR:
+        asr_result = asr_dual.transcribe_and_merge(session_path, language=language)
+    else:
+        asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
     raw_text = asr_result["text"]
     words = list(asr_result["words"])
     tracing.emit("asr.done", {
@@ -225,6 +232,7 @@ def _run_transcribe_pipeline(
         "language": asr_result["language"],
         "duration_s": asr_result["duration"],
         "words": words,
+        "extra": asr_result.get("extra", {}),
     })
     print(f"[transcribe] raw text: {raw_text!r}  ({len(words)} tokens)")
 
