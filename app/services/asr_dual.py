@@ -157,7 +157,7 @@ def _judge_model() -> str:
     return get_llm_model(get_llm_provider())
 
 
-def _llm_judge(transcript_a: str, transcript_b: str, timeout: float = 30.0) -> Dict[str, str]:
+def _llm_judge(transcript_a: str, transcript_b: str, timeout: float = 120.0) -> Dict[str, str]:
     """Ask the LLM to merge transcripts A and B. Returns {merged, reason}."""
     user_msg = json.dumps(
         {"transcript_A_gulf_lora": transcript_a, "transcript_B_base": transcript_b},
@@ -223,10 +223,15 @@ def transcribe_and_merge(
 
     # Run both ASRs in parallel. They share the same GPU but it's fine —
     # the LoRA and base are roughly the same size and inference is short.
+    #
+    # Base model: force "Arabic" so the audio gets routed to the Arabic
+    # decoder (otherwise Qwen3 sometimes mis-detects Gulf Arabic as Spanish
+    # or Persian and outputs gibberish). Qwen3 still preserves English
+    # tokens in Latin script when language=Arabic, which is exactly what
+    # we want from transcript B for code-switching content.
     with ThreadPoolExecutor(max_workers=2) as pool:
         fut_a = pool.submit(asr_module.transcribe, audio_path, language=language)
-        # Base model: leave language as auto (None) for best code-switching.
-        fut_b = pool.submit(_transcribe_base, audio_path, lang_label=None)
+        fut_b = pool.submit(_transcribe_base, audio_path, lang_label="Arabic")
         result_a = fut_a.result()
         text_b = fut_b.result()
 
