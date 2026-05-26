@@ -8,10 +8,11 @@ from app.services import lexicon
 
 
 def _force_heuristic_fallback(monkeypatch):
-    """Force ``score_transcript`` to skip BART and use the heuristic
+    """Force ``score_transcript`` to skip ModernBERT and use the heuristic
     fallback. Unit tests in this module were written against heuristic-specific
     suspicion thresholds and are not dependent on any ML model."""
-    monkeypatch.setattr(scorer, "_try_bart_scorer", Mock(return_value=None))
+    monkeypatch.setattr(scorer, "_try_modernbert_scorer", Mock(return_value=None))
+    monkeypatch.setattr(scorer, "_init_mlm_pipeline", Mock())
 
 
 def test_scorer_skips_stop_words_and_ranks_unknown_words_higher(tmp_path, monkeypatch):

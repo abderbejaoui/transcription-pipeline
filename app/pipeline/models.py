@@ -28,6 +28,17 @@ class ScoredWord:
     punct: str = ""
     suspicion: float = 0.0
     in_lexicon: bool = False
+    score_source: str = ""
+    """How the suspicion score was derived.
+
+    - ``"zero"`` — function word / stop word, always 0.0.
+    - ``"heuristic"`` — scored by dictionary/lexicon/enchant heuristic.
+    - ``"modernbert"`` — refined by ModernBERT fill-mask.
+    """
+    has_close_dictionary_match: bool = False
+    """True if suspicion > 0.50 AND the word is within Levenshtein distance 1-3
+    of a known medical term (lexicon + medical_terms.txt).
+    """
     # Legacy fields (kept for backward compat with existing tests)
     start: int = 0
     end: int = 0
@@ -40,6 +51,11 @@ class SuspiciousSpan:
     text: str
     suspicion: float
     reason: str
+    has_close_dictionary_match: bool = False
+    """True if ANY scored word in this span has has_close_dictionary_match=True."""
+    score_source: str = ""
+    """Most authoritative score_source among words in this span.
+    Precedence: modernbert > heuristic > zero."""
 
 
 @dataclass(frozen=True)

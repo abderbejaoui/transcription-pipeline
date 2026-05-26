@@ -8,20 +8,17 @@ PHONETIC_FLAG_THRESHOLD = 0.55  # phonetic similarity (0-1) to lexicon to trigge
 
 # -- Scorer model selection ---------------------------------------------
 
-SCORER_MODEL = "qwen"
+SCORER_MODEL = "modernbert"
 """Which contextual language model to use for Stage 1 scoring.
 
-- ``"qwen"`` (default, recommended): Qwen2.5-1.5B-Instruct — causal LM
-  log-probability scoring with a medical-reviewer system prompt prefix.
-  Single forward pass, ~1.5B params on GPU.
-- ``"bart"``: facebook/bart-large — fill-mask MLM, 406M params, one
-  forward pass per flagged word.
+- ``"modernbert"`` (default, recommended): answerdotai/ModernBERT-large —
+  bidirectional encoder fill-mask MLM, 395M params, ~1.5 GB VRAM.
+  One forward pass per flagged word.
 
-Fallback chain: Qwen → BART → heuristic. Setting this to ``"qwen"``
-will try Qwen first and fall back to BART if Qwen is unavailable.
+Fallback chain: ModernBERT → heuristic.
 
 To switch::
 
     import app.pipeline.config as cfg
-    cfg.SCORER_MODEL = "bart"  # or "qwen" (default)
+    cfg.SCORER_MODEL = "modernbert"  # default
 """

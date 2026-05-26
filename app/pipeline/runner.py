@@ -16,8 +16,7 @@ from .hitl import apply_human_correction, prompt_for_human_correction
 from .models import Decision, PipelineResult, ScoredWord, SpanWithCandidates, SuspiciousSpan
 from .retriever import retrieve_candidates
 from .scorer import (
-    last_scoring_used_bart as _scoring_used_bart,
-    last_scoring_used_qwen as _scoring_used_qwen,
+    last_scoring_used_modernbert as _scoring_used_modernbert,
     score_transcript,
     tokenize_transcript,
 )
@@ -56,10 +55,8 @@ def run_pipeline(transcript: str, interactive: bool = True) -> PipelineResult:
     corrected_text = _apply_replacements(transcript, scored_words, decisions)
 
     # ── Provider log (user-visible) ────────────────────────────────────
-    if _scoring_used_qwen():
-        print("[Stage 1] provider: Qwen2.5-1.5B-Instruct (system-prompt-conditioned log-prob)")
-    elif _scoring_used_bart():
-        print("[Stage 1] provider: BART (fill-mask fallback)")
+    if _scoring_used_modernbert():
+        print("[Stage 1] provider: ModernBERT-large (fill-mask)")
     else:
         print("[Stage 1] provider: heuristic fallback")
 
@@ -67,27 +64,19 @@ def run_pipeline(transcript: str, interactive: bool = True) -> PipelineResult:
     approaches: Dict[str, Dict[str, str]] = {}
 
     # Stage 1: Scoring — check which model was used
-    if _scoring_used_qwen():
+    if _scoring_used_modernbert():
         approaches["scoring"] = {
-            "mode": "qwen_system_prompt_logprob",
-            "label": "Qwen (Qwen2.5-1.5B-Instruct)",
-            "description": "Qwen2.5-1.5B-Instruct causal LM with medical-reviewer system prompt prefix — single forward pass, per-word log-probability scoring",
-            "model": "Qwen/Qwen2.5-1.5B-Instruct",
+            "mode": "modernbert_masked_lm",
+            "label": "ModernBERT (answerdotai/ModernBERT-large)",
+            "description": "ModernBERT-large bidirectional encoder — fill-mask scoring per flagged word (superior bidirectional context for misspelling detection)",
+            "model": "answerdotai/ModernBERT-large",
             "status": "primary",
-        }
-    elif _scoring_used_bart():
-        approaches["scoring"] = {
-            "mode": "bart_masked_lm",
-            "label": "BART (facebook/bart-large)",
-            "description": "BART masked-language model — fill-mask scoring (fallback when Qwen unavailable)",
-            "model": "facebook/bart-large",
-            "status": "fallback",
         }
     else:
         approaches["scoring"] = {
             "mode": "heuristic",
             "label": "Heuristic",
-            "description": "Character-level edit distance vs medical lexicon (both LM scorers unavailable)",
+            "description": "Character-level edit distance vs medical lexicon (ModernBERT unavailable)",
             "model": "none",
             "status": "fallback",
         }

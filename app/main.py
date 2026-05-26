@@ -55,24 +55,6 @@ from .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 from .pipeline.runner import run_pipeline
 from .pipeline.hitl import apply_human_correction
-from .pipeline.scorer import qwen_available
-
-
-def _prewarm_qwen() -> None:
-    """Background-load the Qwen model at startup.
-
-    Qwen takes ~25 s to load on this machine (GPU, FP16). By warming it
-    in a background thread during server startup, the first API request
-    will not block on model loading. If loading fails (OOM, missing model,
-    etc.), it falls through silently and the pipeline will fall back to
-    BART + heuristic on the first request.
-    """
-    import app.pipeline.scorer as _scorer
-    try:
-        _scorer._init_qwen_pipeline()
-        print("[startup] Qwen2.5-1.5B-Instruct ready.")
-    except Exception as exc:
-        print(f"[startup] Qwen prewarm failed (will fall back to BART): {exc}")
 
 
 def _build_corrector() -> MedicalCorrector:
@@ -170,10 +152,13 @@ async def _no_cache_static(request, call_next):
 
 @app.on_event("startup")
 def _prewarm() -> None:
-    # Always prewarm Qwen at startup (runs in background thread).
-    # The model takes ~25 s to load; this ensures the first API request
-    # doesn't block on model loading.
-    threading.Thread(target=_prewarm_qwen, daemon=True).start()
+    # ModernBERT-large is loaded lazily on first use (module-level singleton).
+    # For a warm-up on startup, uncomment the lines below.
+    # import app.pipeline.scorer as _scorer
+    # try:
+    #     _scorer._init_mlm_pipeline()
+    # except Exception as exc:
+    #     print(f"[startup] ModernBERT prewarm failed: {exc}")
 
     def _bg() -> None:
         try:

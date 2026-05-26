@@ -6,7 +6,6 @@
 {"term": "anemia", "canonical_form": "anemia", "term_type": "diagnosis", "aliases": [], "ipa": "anemia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
 {"term": "aortic dissection", "canonical_form": "aortic dissection", "term_type": "diagnosis", "aliases": [], "ipa": "aortic dissection", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
 {"term": "appendicitis", "canonical_form": "appendicitis", "term_type": "diagnosis", "aliases": ["acute appendicitis"], "ipa": "appendicitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
-{"term": "aspiration pneumonia", "canonical_form": "aspiration pneumonia", "term_type": "diagnosis", "aliases": [], "ipa": "aspiration pneumonia", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
 {"term": "asthma", "canonical_form": "asthma", "term_type": "diagnosis", "aliases": [], "ipa": "asθma", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
 {"term": "atrial fibrillation", "canonical_form": "atrial fibrillation", "term_type": "diagnosis", "aliases": ["afib", "a fib", "af"], "ipa": "atrial fibrillation", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}
 {"term": "bacterial meningitis", "canonical_form": "bacterial meningitis", "term_type": "diagnosis", "aliases": [], "ipa": "bacterial meniŋitis", "description": "", "source": "seed", "added_at": "2026-05-24T13:22:35.036678Z"}

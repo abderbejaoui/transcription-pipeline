@@ -6,7 +6,7 @@ from typing import List, Sequence
 
 from .config import SUSPICION_THRESHOLD
 from .models import ScoredWord, SuspiciousSpan
-from .scorer import STOP_WORDS
+from .scorer import is_function_word
 
 
 def flag_suspicious_spans(scored_words: Sequence[ScoredWord]) -> List[SuspiciousSpan]:
@@ -35,6 +35,22 @@ def flag_suspicious_spans(scored_words: Sequence[ScoredWord]) -> List[Suspicious
     def flush(start_index: int, end_index: int) -> None:
         text = " ".join(word.text for word in scored_words[start_index : end_index + 1])
         suspicion = max(word.suspicion for word in scored_words[start_index : end_index + 1])
+        # Propagate has_close_dictionary_match: True if ANY word in the span has it True.
+        hcd = any(
+            getattr(word, "has_close_dictionary_match", False)
+            for word in scored_words[start_index : end_index + 1]
+        )
+        # Propagate score_source: most authoritative source among span words.
+        # Precedence: modernbert > heuristic > zero > ""
+        source_priority = {"modernbert": 3, "heuristic": 2, "zero": 1}
+        best_source = ""
+        best_priority = 0
+        for word in scored_words[start_index : end_index + 1]:
+            src = getattr(word, "score_source", "") or ""
+            prio = source_priority.get(src, 0)
+            if prio > best_priority:
+                best_priority = prio
+                best_source = src
         spans.append(
             SuspiciousSpan(
                 start=start_index,
@@ -42,6 +58,8 @@ def flag_suspicious_spans(scored_words: Sequence[ScoredWord]) -> List[Suspicious
                 text=text,
                 suspicion=suspicion,
                 reason="both",
+                has_close_dictionary_match=hcd,
+                score_source=best_source,
             )
         )
 
@@ -54,8 +72,8 @@ def flag_suspicious_spans(scored_words: Sequence[ScoredWord]) -> List[Suspicious
 
         if gap == 1:
             middle_word = scored_words[current_end + 1]
-            if middle_word.text.lower() in STOP_WORDS:
-                # Separated by a single stop word — merge into the current span.
+            if is_function_word(middle_word.text):
+                # Separated by a single function word — merge into the current span.
                 current_end = index
                 continue
 

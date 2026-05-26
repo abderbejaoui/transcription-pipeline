@@ -7,6 +7,8 @@ pydantic>=2.6
 # Correction pipeline
 rapidfuzz>=3.0
 jellyfish>=1.0
+pyenchant>=3.3
+python-Levenshtein>=0.27
 
 # Speech-to-text (optional but installed by default for the demo)
 torch>=2.2
