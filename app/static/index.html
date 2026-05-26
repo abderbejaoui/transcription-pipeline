@@ -24,7 +24,7 @@
       <details class="advanced">
         <summary class="muted small">More input options</summary>
         <div class="stack">
-          <textarea id="raw-input" rows="3" placeholder="Or paste raw text here..."></textarea>
+          <textarea id="raw-input" rows="3" dir="auto" placeholder="Or paste raw text here..."></textarea>
           <div class="row">
             <button id="btn-correct" class="ghost">Correct text</button>
             <button id="btn-example" class="ghost">Load example</button>
@@ -61,7 +61,7 @@
 
     <section id="result" class="card" hidden>
       <h2>Transcript</h2>
-      <textarea id="corrected-text" rows="5" placeholder="The transcript will appear here. Edit anything wrong, then save."></textarea>
+      <textarea id="corrected-text" rows="5" dir="auto" placeholder="The transcript will appear here. Edit anything wrong, then save."></textarea>
       <div class="row">
         <button id="btn-save-edits" class="primary">💾 Save edits</button>
         <span id="save-status" class="muted small"></span>
@@ -70,7 +70,7 @@
         <summary class="muted small">Show raw Whisper output and flagged spans</summary>
         <div class="stack">
           <h3>Raw</h3>
-          <pre id="raw-text"></pre>
+          <pre id="raw-text" dir="auto"></pre>
           <h3>Flagged</h3>
           <table id="spans-table">
             <thead><tr><th>From</th><th>To</th><th>Conf.</th></tr></thead>
