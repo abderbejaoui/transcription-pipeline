@@ -33,11 +33,16 @@ def _span_char_offsets(transcript: str, scored_words: List[ScoredWord], span: Su
     return start, end
 
 
-def _apply_replacements(transcript: str, scored_words: List[ScoredWord], decisions: List[Decision]) -> str:
+def _apply_replacements(transcript: str, scored_words: List[ScoredWord], decisions: List[Decision], *, interactive: bool = True) -> str:
     pieces = transcript
     offsets: List[tuple[int, int, str]] = []
     for decision in decisions:
         if not decision.chosen:
+            continue
+        if decision.path == "top_fallback" and interactive:
+            # In interactive mode, top_fallback is handled by the HITL
+            # review loop so the user can accept/override the correction.
+            # In non-interactive mode, apply it automatically.
             continue
         start, end = _span_char_offsets(transcript, scored_words, decision.span)
         offsets.append((start, end, decision.chosen))
@@ -52,7 +57,7 @@ def run_pipeline(transcript: str, interactive: bool = True) -> PipelineResult:
     span_candidates = [retrieve_candidates(span) for span in spans]
     decisions = decide_spans(transcript, span_candidates)
 
-    corrected_text = _apply_replacements(transcript, scored_words, decisions)
+    corrected_text = _apply_replacements(transcript, scored_words, decisions, interactive=interactive)
 
     # ── Provider log (user-visible) ────────────────────────────────────
     if _scoring_used_modernbert():
@@ -211,11 +216,29 @@ def run_pipeline(transcript: str, interactive: bool = True) -> PipelineResult:
 
     if interactive:
         for item, decision in zip(span_candidates, decisions):
-            if decision.path != "hitl_escalate":
+            if decision.path not in ("hitl_escalate", "top_fallback"):
                 continue
-            correction = prompt_for_human_correction(transcript, item.span.text, best_guess=item.candidates[0].term if item.candidates else None)
-            if not correction:
-                continue
+
+            best_guess = decision.chosen or (
+                item.candidates[0].term if item.candidates else None
+            )
+
+            if decision.path == "top_fallback":
+                # Best guess was applied by the auto-corrector — user can
+                # accept (Enter) or override with a different term.
+                correction = prompt_for_human_correction(
+                    transcript, item.span.text, best_guess=best_guess
+                )
+                if not correction:
+                    correction = best_guess  # Pressing Enter accepts the guess
+            else:
+                # hitl_escalate — user must supply a correction or skip.
+                correction = prompt_for_human_correction(
+                    transcript, item.span.text, best_guess=best_guess
+                )
+                if not correction:
+                    continue  # Leave unchanged
+
             corrected_text, _ = apply_human_correction(corrected_text, item.span.text, correction)
 
     return PipelineResult(

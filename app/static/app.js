@@ -429,22 +429,21 @@ function buildDiffHtml(origWords, corrWords) {
 // ─── HITL Review ─────────────────────────────
 
 function getUnresolvedSpans(spans, decisions) {
-  // Find spans whose decision has no chosen value = flagged but not corrected
+  // Return ALL spans for HITL review — every decision is reviewable.
+  // Pre-fill the input with the auto-chosen term so the human can accept or override.
   if (!spans || !decisions) return [];
   const unresolved = [];
   for (let i = 0; i < spans.length && i < decisions.length; i++) {
     const span = spans[i];
     const decision = decisions[i];
-    // If decision chose nothing (NO_CHANGE or escalated), the span is unresolved
-    if (!decision.chosen) {
-      unresolved.push({
-        text: span.text,
-        start: span.start,
-        end: span.end,
-        suspicion: span.suspicion,
-        decisionPath: decision.path || "unchanged",
-      });
-    }
+    unresolved.push({
+      text: span.text,
+      start: span.start,
+      end: span.end,
+      suspicion: span.suspicion,
+      chosen: decision.chosen || null,
+      decisionPath: decision.path || "unchanged",
+    });
   }
   return unresolved;
 }
@@ -453,8 +452,8 @@ function renderHitlReview(container, unresolved) {
   const header = document.createElement("div");
   header.className = "hitl-header";
   header.innerHTML = `
-    <strong>🔍 Review Needed</strong>
-    <span class="text-xs text-muted">${unresolved.length} word${unresolved.length !== 1 ? "s" : ""} flagged but not corrected — type the correct form and save to lexicon</span>
+    <strong>🔍 Review All Corrections</strong>
+    <span class="text-xs text-muted">${unresolved.length} span${unresolved.length !== 1 ? "s" : ""} — review each correction below and save to the lexicon. Press Save to accept the auto-chosen term, or type a different one.</span>
   `;
   container.appendChild(header);
 
@@ -478,6 +477,13 @@ function renderHitlReview(container, unresolved) {
     input.type = "text";
     input.placeholder = `Correct form of "${item.text}"...`;
     input.dataset.wrong = item.text;
+    if (item.chosen) {
+      input.value = item.chosen;
+    }
+
+    const pathTag = document.createElement("span");
+    pathTag.className = "dec-path-tag";
+    pathTag.textContent = (item.decisionPath || "unchanged").replace(/_/g, " ");
 
     const saveBtn = document.createElement("button");
     saveBtn.className = "btn btn-sm btn-green";
@@ -524,6 +530,7 @@ function renderHitlReview(container, unresolved) {
     row.appendChild(wordLabel);
     row.appendChild(arrow);
     row.appendChild(input);
+    row.appendChild(pathTag);
     row.appendChild(saveBtn);
     list.appendChild(row);
   });

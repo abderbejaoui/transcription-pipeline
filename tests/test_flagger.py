@@ -18,7 +18,9 @@ def test_flagger_merges_adjacent_suspicious_words():
     assert spans[0].suspicion == 0.92
 
 
-def test_flagger_merges_across_one_stop_word():
+def test_flagger_does_not_merge_across_function_word():
+    """Function words ("and", "with", "of", etc.) are span boundaries.
+    Two suspicious words separated by a function word become separate spans."""
     scored = [
         ScoredWord(index=0, text="dolly", suspicion=0.90, in_lexicon=False, start=0, end=5),
         ScoredWord(index=1, text="and", suspicion=0.0, in_lexicon=True, start=6, end=9),
@@ -27,9 +29,15 @@ def test_flagger_merges_across_one_stop_word():
 
     spans = flag_suspicious_spans(scored)
 
-    assert len(spans) == 1
-    assert spans[0].text == "dolly and prahn"
-    assert spans[0].suspicion == 0.93
+    assert len(spans) == 2
+    assert spans[0].text == "dolly"
+    assert spans[0].start == 0
+    assert spans[0].end == 0
+    assert spans[0].suspicion == 0.90
+    assert spans[1].text == "prahn"
+    assert spans[1].start == 2
+    assert spans[1].end == 2
+    assert spans[1].suspicion == 0.93
 
 
 def test_flagger_canonical_transcript_spans_are_exact():

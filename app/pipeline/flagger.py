@@ -6,19 +6,19 @@ from typing import List, Sequence
 
 from .config import SUSPICION_THRESHOLD
 from .models import ScoredWord, SuspiciousSpan
-from .scorer import is_function_word
 
 
 def flag_suspicious_spans(scored_words: Sequence[ScoredWord]) -> List[SuspiciousSpan]:
-    """Merge suspicious words into contiguous spans.
+    """Merge adjacent suspicious words into contiguous spans.
 
-    Two suspicious words are considered part of the same span when they are
-    either:
-      - adjacent (gap == 0), or
-      - separated by exactly one stop word (gap == 1 and middle is a stop word).
+    Two suspicious words are considered part of the same span only when they
+    are directly adjacent (gap == 0).  Function words ("with", "and", "of",
+    "the", etc.) act as span boundaries, keeping each misspelled word
+    isolated for independent correction — especially important for the HITL
+    review step where the user should correct each word separately.
 
-    There is no limit on the number of words that can make up a span — all
-    adjacent / stop-gapped suspicious words merge into one.
+    There is no limit on the number of adjacent suspicious words that can
+    make up a span — e.g. "dolly prahn" merges into one span.
     """
     spans: List[SuspiciousSpan] = []
 
@@ -70,14 +70,10 @@ def flag_suspicious_spans(scored_words: Sequence[ScoredWord]) -> List[Suspicious
             current_end = index
             continue
 
-        if gap == 1:
-            middle_word = scored_words[current_end + 1]
-            if is_function_word(middle_word.text):
-                # Separated by a single function word — merge into the current span.
-                current_end = index
-                continue
-
-        # Gap is too large (>= 2 content words between) — flush and start a new span.
+        # Any gap (>= 1) between suspicious words creates a new span.
+        # Function words like "with", "and", "of" act as boundaries,
+        # not bridges — each misspelled word gets its own span for
+        # independent HITL correction.
         flush(current_start, current_end)
         current_start = index
         current_end = index
