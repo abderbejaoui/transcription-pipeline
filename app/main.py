@@ -483,8 +483,11 @@ def _run_transcribe_pipeline(
             "language": asr_result["language"],
             "language_probability": asr_result["language_probability"],
             "duration": asr_result["duration"],
-            "model_size": model_size,
+            "model_size": "dual_asr" if USE_DUAL_ASR else model_size,
             "words": words,
+            # When USE_DUAL_ASR=1 this exposes both raw ASR outputs and the
+            # LLM merge reason so the UI can show them side-by-side.
+            "dual": asr_result.get("extra"),
         },
     }
 
