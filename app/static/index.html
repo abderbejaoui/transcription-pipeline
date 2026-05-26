@@ -14,6 +14,16 @@
     </header>
 
     <section class="card">
+      <h2>Text-only correction</h2>
+      <textarea id="raw-input" rows="4" placeholder="Paste a transcription here without audio, then run the pipeline."></textarea>
+      <div class="row">
+        <button id="btn-correct" class="primary">Run pipeline</button>
+        <button id="btn-example" class="ghost">Load example</button>
+      </div>
+      <p class="muted small">Use this to test the correction pipeline directly on pasted text.</p>
+    </section>
+
+    <section class="card">
       <div class="row">
         <button id="btn-record" class="primary">🎙️ Record</button>
         <button id="btn-stop" class="ghost" hidden>■ Stop</button>
@@ -24,11 +34,6 @@
       <details class="advanced">
         <summary class="muted small">More input options</summary>
         <div class="stack">
-          <textarea id="raw-input" rows="3" placeholder="Or paste raw text here..."></textarea>
-          <div class="row">
-            <button id="btn-correct" class="ghost">Correct text</button>
-            <button id="btn-example" class="ghost">Load example</button>
-          </div>
           <div class="row">
             <input type="file" id="upload-file" accept="audio/*" />
             <button id="btn-upload" class="ghost">Transcribe file</button>
@@ -66,6 +71,10 @@
         <button id="btn-save-edits" class="primary">💾 Save edits</button>
         <span id="save-status" class="muted small"></span>
       </div>
+      <details>
+        <summary class="muted small">Show correction steps</summary>
+        <ol id="correction-steps" class="stack"></ol>
+      </details>
       <details>
         <summary class="muted small">Show raw Whisper output and flagged spans</summary>
         <div class="stack">

@@ -35,6 +35,7 @@ class LexiconMatch:
     match_type: str
     similarity: float
     entry_id: str
+    source: str
 
 
 @dataclass(frozen=True)
@@ -206,6 +207,7 @@ def lookup(
             match_type="exact",
             similarity=100.0,
             entry_id=target_norm,
+            source=str(row.get("source") or "doctor"),
         )
 
     entries = list(_iter_entries(data))
@@ -231,6 +233,7 @@ def lookup(
                     match_type="phonetic",
                     similarity=score,
                     entry_id=best_entry.wrong_norm,
+                    source=best_entry.source,
                 )
 
     best = _best_fuzzy_match(entries, target_norm)
@@ -249,4 +252,5 @@ def lookup(
         match_type="fuzzy",
         similarity=score,
         entry_id=best_entry.wrong_norm,
+        source=best_entry.source,
     )

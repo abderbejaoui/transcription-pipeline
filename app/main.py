@@ -56,6 +56,7 @@ from fastapi.responses import StreamingResponse
 
 from .services import (
     asr,
+    correction,
     descriptions,
     error_lexicon,
     kg_lookup,
@@ -89,10 +90,12 @@ LLM_CONFIDENCE_THRESHOLD = float(os.environ.get("LLM_CONFIDENCE_THRESHOLD", "0.7
 COHERENCE_THRESHOLD = float(os.environ.get("COHERENCE_THRESHOLD", "0.60"))
 KG_AUTOFIX_THRESHOLD = float(os.environ.get("KG_AUTOFIX_THRESHOLD", "90"))
 KG_SUSPECT_THRESHOLD = float(os.environ.get("KG_SUSPECT_THRESHOLD", "80"))
-MEDSPEAK_AUTO_THRESHOLD = float(os.environ.get("MEDSPEAK_AUTO_THRESHOLD", "0.90"))
+MEDSPEAK_AUTO_THRESHOLD = float(os.environ.get("MEDSPEAK_AUTO_THRESHOLD", "0.60"))
 MEDSPEAK_MIN_SCORE = float(os.environ.get("MEDSPEAK_MIN_SCORE", "0.60"))
 FLAG_MERGE_GAP_S = float(os.environ.get("FLAG_MERGE_GAP_S", "0.10"))
 MIN_AMBIGUOUS_CHARS = int(os.environ.get("MIN_AMBIGUOUS_CHARS", "3"))
+
+TEXT_CORRECTOR = correction.MedicalCorrector()
 
 AMBIGUOUS_WORDS = {
     "uh",
@@ -204,20 +207,53 @@ class CorrectRequest(BaseModel):
 
 @app.post("/api/correct")
 def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
-    """Text-only quick path. No audio means no voice retrieval; the LLM
-    stages are skipped because we have no word-level confidences. This
-    endpoint is mostly for UI smoke tests."""
+    """Text-only correction path for pasted transcription.
+
+    This uses the same vocabulary-driven correction engine as the medical
+    pipeline, but skips audio-only steps because no word confidences exist.
+    """
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text must not be empty")
-    fake_words = []
-    for tok in req.text.split():
-        fake_words.append({"word": " " + tok, "start": 0.0, "end": 0.0, "probability": 1.0})
-    spans: List[Dict[str, Any]] = []
+    result = TEXT_CORRECTOR.correct_transcript(req.text)
+    steps: List[Dict[str, Any]] = [
+        {
+            "step": "input",
+            "message": "Received pasted text without audio.",
+            "text": req.text,
+        },
+        {
+            "step": "analysis",
+            "message": "Generated candidate correction spans using the medical lexicon.",
+            "count": len(result.get("suspicious_spans") or []),
+        },
+    ]
+    for span in result.get("suspicious_spans") or []:
+        steps.append(
+            {
+                "step": "match",
+                "message": f"Matched {span.get('original_text')!r} -> {span.get('possible_correction')!r}.",
+                "original_text": span.get("original_text"),
+                "possible_correction": span.get("possible_correction"),
+                "issue_type": span.get("issue_type"),
+                "confidence": span.get("confidence"),
+                "score": span.get("score"),
+                "reason_short": span.get("reason_short"),
+                "features": span.get("features"),
+            }
+        )
+    steps.append(
+        {
+            "step": "apply",
+            "message": "Applied the selected replacements to produce the corrected text.",
+            "changed": result["corrected_text"] != req.text,
+        }
+    )
     return {
         "raw_text": req.text,
-        "corrected_text": req.text,
-        "suspicious": spans,
-        "note": "text-only mode: no word confidence without audio",
+        "corrected_text": result["corrected_text"],
+        "suspicious_spans": result["suspicious_spans"],
+        "correction_steps": steps,
+        "note": "text-only correction mode: no audio signals available",
     }
 
 
@@ -282,6 +318,10 @@ def _is_ambiguous(span_text: str) -> bool:
     if alpha.lower() in AMBIGUOUS_WORDS:
         return True
     return False
+
+
+def _norm_simple(text: str) -> str:
+    return " ".join(text.lower().strip().split())
 
 
 # ---------------------------------------------------------------------------
@@ -372,7 +412,7 @@ def _run_transcribe_pipeline(
             confidence = lex_match.similarity / 100.0
             queued = None
             applied = False
-            if kg_lookup.is_drug(correction):
+            if kg_lookup.is_drug(correction) and lex_match.source != "doctor":
                 queued = _queue(
                     span_text=span_text,
                     correction=correction,
@@ -398,6 +438,7 @@ def _run_transcribe_pipeline(
                 "queued": queued is not None,
                 "queue_id": queued.get("id") if queued else None,
                 "reason": f"lexicon_{lex_match.match_type}",
+                "source": lex_match.source,
             })
             tracing.emit("lexicon.match", {
                 "span": span_text,
@@ -461,35 +502,61 @@ def _run_transcribe_pipeline(
         if kg_match and kg_match["score"] >= KG_SUSPECT_THRESHOLD:
             correction = str(kg_match["term"])
             confidence = float(kg_match["score"]) / 100.0
-            queued = _queue(
-                span_text=span_text,
-                correction=correction,
-                confidence=confidence,
-                stage="local_kg",
-                reason="local_kg_low_confidence",
-                route="medical",
-                sentence=sentence,
-                entity_type=str(kg_match.get("type") or "term"),
-            )
-            suspicious_out.append({
-                "span": span_text,
-                "start_s": start_s,
-                "end_s": end_s,
-                "stage": "local_kg",
-                "chosen": correction,
-                "confidence": round(confidence, 4),
-                "kg_score": round(float(kg_match["score"]), 2),
-                "applied": False,
-                "queued": True,
-                "queue_id": queued.get("id"),
-                "reason": "local_kg_low_confidence",
-                "entity_type": str(kg_match.get("type") or "term"),
-            })
-            tracing.emit("kg.match", {
-                "span": span_text,
-                "correction": correction,
-                "score": kg_match["score"],
-            })
+            variant = str(kg_match.get("variant") or "")
+            exact_alias = _norm_simple(variant) == _norm_simple(span_text)
+            if exact_alias:
+                _apply(i0, i1, correction)
+                suspicious_out.append({
+                    "span": span_text,
+                    "start_s": start_s,
+                    "end_s": end_s,
+                    "stage": "local_kg",
+                    "chosen": correction,
+                    "confidence": round(confidence, 4),
+                    "kg_score": round(float(kg_match["score"]), 2),
+                    "applied": True,
+                    "queued": False,
+                    "queue_id": None,
+                    "reason": "local_kg_alias",
+                    "entity_type": str(kg_match.get("type") or "term"),
+                })
+                tracing.emit("kg.match", {
+                    "span": span_text,
+                    "correction": correction,
+                    "score": kg_match["score"],
+                    "alias_match": True,
+                })
+            else:
+                queued = _queue(
+                    span_text=span_text,
+                    correction=correction,
+                    confidence=confidence,
+                    stage="local_kg",
+                    reason="local_kg_low_confidence",
+                    route="medical",
+                    sentence=sentence,
+                    entity_type=str(kg_match.get("type") or "term"),
+                )
+                suspicious_out.append({
+                    "span": span_text,
+                    "start_s": start_s,
+                    "end_s": end_s,
+                    "stage": "local_kg",
+                    "chosen": correction,
+                    "confidence": round(confidence, 4),
+                    "kg_score": round(float(kg_match["score"]), 2),
+                    "applied": False,
+                    "queued": True,
+                    "queue_id": queued.get("id"),
+                    "reason": "local_kg_low_confidence",
+                    "entity_type": str(kg_match.get("type") or "term"),
+                })
+                tracing.emit("kg.match", {
+                    "span": span_text,
+                    "correction": correction,
+                    "score": kg_match["score"],
+                    "alias_match": False,
+                })
             continue
 
         medspeak_match: Optional[Dict[str, Any]] = None

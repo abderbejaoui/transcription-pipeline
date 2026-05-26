@@ -9,6 +9,7 @@ import urllib.request
 from typing import Optional
 
 from .llm_config import (
+    build_chat_payload,
     get_llm_headers,
     get_llm_provider,
     get_llm_url,
@@ -33,20 +34,18 @@ def warm_up(*, timeout: float = 30.0) -> None:
     if os.environ.get("LLM_WARMUP", "1") != "1":
         return
     model_id = get_model_id("general")
-    payload = {
-        "model": model_id,
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        model_id,
+        [
             {
                 "role": "system",
                 "content": "Return strict JSON: {\"ok\": true}.",
             },
             {"role": "user", "content": "warmup"},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     try:
         req = urllib.request.Request(
             get_llm_url(get_llm_provider()),

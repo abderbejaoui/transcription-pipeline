@@ -20,6 +20,7 @@ from pathlib import Path
 from typing import Dict, List, Optional
 
 from .llm_config import (
+    build_chat_payload,
     get_llm_headers,
     get_llm_model,
     get_llm_provider,
@@ -155,13 +156,9 @@ def _generate(term: str, *, type_hint: Optional[str] = None, timeout: float = 12
         },
         ensure_ascii=False,
     )
-    payload = {
-        "model": _ollama_model(),
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        _ollama_model(),
+        [
             {
                 "role": "system",
                 "content": (
@@ -172,7 +169,9 @@ def _generate(term: str, *, type_hint: Optional[str] = None, timeout: float = 12
             },
             {"role": "user", "content": user},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     content = _post_with_retry(payload, timeout=timeout, label=f"descriptions[{term!r}]")
     if not content:
         return None

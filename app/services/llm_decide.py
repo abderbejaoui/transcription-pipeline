@@ -29,6 +29,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Sequence
 
 from .llm_config import (
+    build_chat_payload,
     get_llm_headers,
     get_llm_model,
     get_llm_provider,
@@ -65,7 +66,8 @@ _SYSTEM = (
     "2. Default to \"NO_CHANGE\" when uncertain. "
     "3. Prefer candidates whose description matches the patient's apparent "
     "diagnosis or symptoms (e.g. metformin for diabetes, ceftriaxone for "
-    "pneumonia). "
+    "pneumonia). In most cases the ambiguous span is the name of a drug, "
+    "symptom, or disease, so use that as the default medical bias. "
     "4. Sound similarity matters but is NOT decisive — meaning matters "
     "more. A high-similarity candidate that does not fit medically should "
     "still be \"NO_CHANGE\". "
@@ -117,17 +119,15 @@ def _build_user(transcript: str, items: Sequence[Dict[str, Any]]) -> str:
 
 
 def _post(content: str, timeout: float) -> str:
-    payload = {
-        "model": _llm_model(),
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        _llm_model(),
+        [
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": content},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     last_exc: Optional[BaseException] = None
     for attempt in range(4):
         try:

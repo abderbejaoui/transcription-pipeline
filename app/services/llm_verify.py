@@ -10,6 +10,8 @@ import urllib.request
 from typing import Any, Dict, Optional
 
 from .llm_config import (
+    build_chat_payload,
+    describe_http_error,
     get_llm_headers,
     get_llm_model,
     get_llm_provider,
@@ -63,17 +65,15 @@ def _build_user(raw_text: str, corrected_text: str) -> str:
 
 
 def _post(user: str, timeout: float) -> str:
-    payload = {
-        "model": _llm_model(),
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        _llm_model(),
+        [
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": user},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     last_exc: Optional[BaseException] = None
     for attempt in range(4):
         try:
@@ -88,7 +88,8 @@ def _post(user: str, timeout: float) -> str:
         except Exception as exc:
             last_exc = exc
             wait = 1.0 * (2 ** attempt)
-            print(f"[llm_verify] LLM call failed (attempt {attempt+1}/4): {exc!r}; retrying in {wait:.1f}s")
+            detail = describe_http_error(exc)
+            print(f"[llm_verify] LLM call failed (attempt {attempt+1}/4): {detail}; retrying in {wait:.1f}s")
             time.sleep(wait)
     raise RuntimeError(f"llm_verify: all retries failed: {last_exc!r}")
 

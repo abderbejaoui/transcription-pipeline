@@ -23,6 +23,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Sequence
 
 from .llm_config import (
+    build_chat_payload,
     get_llm_headers,
     get_llm_model,
     get_llm_provider,
@@ -99,17 +100,15 @@ def _build_user(words: Sequence[Dict[str, Any]]) -> str:
 
 
 def _post(content: str, timeout: float) -> Dict[str, Any]:
-    payload = {
-        "model": _llm_model(),
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        _llm_model(),
+        [
             {"role": "system", "content": _SYSTEM},
             {"role": "user", "content": content},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     last_exc: Optional[BaseException] = None
     for attempt in range(4):
         try:

@@ -1,5 +1,21 @@
 {
-  "drugs": [],
   "diagnoses": [],
+  "drugs": [
+    {
+      "aliases": [
+        "to do the pran",
+        "Doddy brand",
+        "the Dori brand"
+      ],
+      "canonical": "doliprane"
+    },
+    {
+      "aliases": [
+        "EP Profen",
+        "you be profined"
+      ],
+      "canonical": "ibuprofen"
+    }
+  ],
   "procedures": []
 }

@@ -10,6 +10,8 @@ import urllib.request
 from typing import Any, Dict, Optional
 
 from .llm_config import (
+    build_chat_payload,
+    describe_http_error,
     get_llm_headers,
     get_llm_model,
     get_llm_provider,
@@ -45,7 +47,9 @@ _GENERAL_SYSTEM = (
 _MEDICAL_SYSTEM = (
     "You are a medical transcript correction assistant. "
     "You receive a sentence and a low-confidence word or phrase from ASR. "
-    "Only propose a correction if it is clearly a medical entity (drug, diagnosis, procedure). "
+    "Treat the span as a phonetic ASR misrecognition first: prefer the closest-sounding correction that fits the sentence. "
+    "Only propose a correction if it is clearly a medical entity (drug, symptom, diagnosis, procedure, or disease). "
+    "In most cases the ambiguous span will be the name of a drug, symptom, or disease. "
     "If you are not confident, return an empty replacement and confidence 0. "
     "Output strict JSON only."
 )
@@ -71,17 +75,15 @@ def _build_user(span: str, sentence: str) -> str:
 
 
 def _post(system: str, user: str, model: str, timeout: float) -> str:
-    payload = {
-        "model": model,
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        model,
+        [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     last_exc: Optional[BaseException] = None
     for attempt in range(4):
         try:
@@ -96,7 +98,8 @@ def _post(system: str, user: str, model: str, timeout: float) -> str:
         except Exception as exc:
             last_exc = exc
             wait = 1.0 * (2 ** attempt)
-            print(f"[llm_correct] LLM call failed (attempt {attempt+1}/4): {exc!r}; retrying in {wait:.1f}s")
+            detail = describe_http_error(exc)
+            print(f"[llm_correct] LLM call failed (attempt {attempt+1}/4): {detail}; retrying in {wait:.1f}s")
             time.sleep(wait)
     raise RuntimeError(f"llm_correct: all retries failed: {last_exc!r}")
 

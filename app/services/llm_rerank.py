@@ -13,6 +13,7 @@ import urllib.request
 from typing import Any, Dict, List, Optional, Sequence
 
 from .llm_config import (
+    build_chat_payload,
     get_llm_headers,
     get_llm_model,
     get_llm_provider,
@@ -93,17 +94,15 @@ def _build_user_payload(transcript: str, items: Sequence[Dict[str, Any]]) -> str
 
 
 def _post_chat(url: str, model: str, system: str, user: str, timeout: float) -> str:
-    payload = {
-        "model": model,
-        "stream": False,
-        "format": "json",
-        "think": False,
-        "options": {"temperature": 0.0},
-        "messages": [
+    payload = build_chat_payload(
+        model,
+        [
             {"role": "system", "content": system},
             {"role": "user", "content": user},
         ],
-    }
+        json_mode=True,
+        temperature=0.0,
+    )
     req = urllib.request.Request(
         url,
         data=json.dumps(payload).encode("utf-8"),

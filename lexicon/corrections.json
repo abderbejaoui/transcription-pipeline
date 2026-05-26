@@ -1,1 +1,62 @@
-{}
+{
+  "doddy brand": {
+    "correct_norm": "doliprane",
+    "correct_text": "doliprane",
+    "created_at": 1779812767.092242,
+    "dm_primary": "TTBRNT",
+    "dm_secondary": "",
+    "hit_count": 0,
+    "source": "doctor",
+    "updated_at": 1779812767.092242,
+    "wrong_norm": "doddy brand",
+    "wrong_text": "Doddy brand"
+  },
+  "ep profen": {
+    "correct_norm": "ibuprofen",
+    "correct_text": "ibuprofen",
+    "created_at": 1779812767.098273,
+    "dm_primary": "EPRFN",
+    "dm_secondary": "",
+    "hit_count": 0,
+    "source": "doctor",
+    "updated_at": 1779812767.098273,
+    "wrong_norm": "ep profen",
+    "wrong_text": "EP Profen"
+  },
+  "the dori brand": {
+    "correct_norm": "doliprane",
+    "correct_text": "doliprane",
+    "created_at": 1779812831.189156,
+    "dm_primary": "0TRBRNT",
+    "dm_secondary": "",
+    "hit_count": 0,
+    "source": "doctor",
+    "updated_at": 1779812831.189156,
+    "wrong_norm": "the dori brand",
+    "wrong_text": "the Dori brand"
+  },
+  "to do the pran": {
+    "correct_norm": "doliprane",
+    "correct_text": "doliprane",
+    "created_at": 1779729847.222584,
+    "dm_primary": "TT0PRN",
+    "dm_secondary": "",
+    "hit_count": 0,
+    "source": "doctor",
+    "updated_at": 1779729847.222584,
+    "wrong_norm": "to do the pran",
+    "wrong_text": "to do the pran"
+  },
+  "you be profined": {
+    "correct_norm": "ibuprofen",
+    "correct_text": "ibuprofen",
+    "created_at": 1779812831.195304,
+    "dm_primary": "YBPRFNT",
+    "dm_secondary": "",
+    "hit_count": 0,
+    "source": "doctor",
+    "updated_at": 1779812831.195304,
+    "wrong_norm": "you be profined",
+    "wrong_text": "you be profined"
+  }
+}

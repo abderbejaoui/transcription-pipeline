@@ -48,6 +48,22 @@ function showResult(payload) {
   $("raw-text").textContent = lastRawText;
   $("corrected-text").value = payload.corrected_text || "";
   $("save-status").textContent = "";
+  const steps = payload.correction_steps || [];
+  const stepsList = $("correction-steps");
+  if (stepsList) {
+    stepsList.innerHTML = "";
+    steps.forEach((step) => {
+      const li = document.createElement("li");
+      const details = [];
+      if (step.original_text) details.push(`from ${step.original_text}`);
+      if (step.possible_correction) details.push(`to ${step.possible_correction}`);
+      if (step.issue_type) details.push(step.issue_type);
+      if (step.confidence != null) details.push(`conf ${step.confidence}`);
+      if (step.score != null) details.push(`score ${step.score}`);
+      li.innerHTML = `<strong>${escapeHtml(step.step || "step")}</strong>: ${escapeHtml(step.message || "")}${details.length ? ` <span class="muted small">(${escapeHtml(details.join(" • "))})</span>` : ""}`;
+      stepsList.appendChild(li);
+    });
+  }
   const tbody = $("spans-table").querySelector("tbody");
   tbody.innerHTML = "";
   // /api/transcribe returns `suspicious[]`; /api/correct returns `suspicious_spans[]`.

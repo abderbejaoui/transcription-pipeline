@@ -3,7 +3,8 @@
 from __future__ import annotations
 
 import os
-from typing import Dict
+import urllib.error
+from typing import Dict, List
 
 DEFAULT_OLLAMA_URL = "http://100.68.87.28:11434/api/chat"
 DEFAULT_OLLAMA_MODEL = "MaziyarPanahi/Calme-7B-Instruct-v0.2"
@@ -51,6 +52,51 @@ def get_llm_headers(provider: str | None = None) -> Dict[str, str]:
         if title:
             headers["X-Title"] = title
     return headers
+
+
+def build_chat_payload(
+    model: str,
+    messages: List[Dict[str, str]],
+    *,
+    json_mode: bool = False,
+    temperature: float = 0.0,
+) -> Dict[str, object]:
+    provider = get_llm_provider()
+    max_tokens_env = os.environ.get("LLM_MAX_TOKENS", "").strip()
+    max_tokens = int(max_tokens_env) if max_tokens_env.isdigit() else None
+    payload: Dict[str, object] = {
+        "model": model,
+        "stream": False,
+        "messages": messages,
+    }
+    if provider == "openrouter":
+        payload["temperature"] = temperature
+        if max_tokens is not None:
+            payload["max_tokens"] = max_tokens
+        if json_mode:
+            payload["response_format"] = {"type": "json_object"}
+    else:
+        if json_mode:
+            payload["format"] = "json"
+        payload["think"] = False
+        options: Dict[str, object] = {"temperature": temperature}
+        if max_tokens is not None:
+            options["num_predict"] = max_tokens
+        payload["options"] = options
+    return payload
+
+
+def describe_http_error(exc: BaseException, *, max_chars: int = 800) -> str:
+    if isinstance(exc, urllib.error.HTTPError):
+        body = ""
+        try:
+            body = exc.read().decode("utf-8", "ignore")
+        except Exception:
+            body = ""
+        if body:
+            return f"{exc} body={body[:max_chars]}"
+        return str(exc)
+    return repr(exc)
 
 
 def parse_chat_content(data: Dict[str, object], provider: str | None = None) -> str:
