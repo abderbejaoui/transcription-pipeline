@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Voice Platform — Demo</title>
-  <link rel="stylesheet" href="/static/styles.css?v=4" />
+  <link rel="stylesheet" href="/static/styles.css?v=5" />
 </head>
 <body>
   <main>
@@ -66,8 +66,20 @@
         <button id="btn-save-edits" class="primary">💾 Save edits</button>
         <span id="save-status" class="muted small"></span>
       </div>
+      <details id="dual-asr-section" hidden>
+        <summary class="muted small">Show dual-ASR breakdown (Gulf LoRA · Base · LLM merge)</summary>
+        <div class="stack">
+          <h3>A — Gulf-Arabic LoRA</h3>
+          <pre id="dual-text-a" dir="auto"></pre>
+          <h3>B — Base Qwen3-ASR</h3>
+          <pre id="dual-text-b" dir="auto"></pre>
+          <h3>Calme-3.2 merge reason</h3>
+          <pre id="dual-reason" dir="auto" class="muted"></pre>
+        </div>
+      </details>
+
       <details>
-        <summary class="muted small">Show raw Whisper output and flagged spans</summary>
+        <summary class="muted small">Show raw ASR output and flagged spans</summary>
         <div class="stack">
           <h3>Raw</h3>
           <pre id="raw-text" dir="auto"></pre>
@@ -92,6 +104,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=4"></script>
+  <script src="/static/app.js?v=5"></script>
 </body>
 </html>

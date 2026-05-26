@@ -48,6 +48,21 @@ function showResult(payload) {
   $("raw-text").textContent = lastRawText;
   $("corrected-text").value = payload.corrected_text || "";
   $("save-status").textContent = "";
+
+  // Dual-ASR breakdown: shown only when the backend ran USE_DUAL_ASR=1
+  // and returned both raw transcripts plus the Calme merge reason.
+  const dual = payload.asr && payload.asr.dual;
+  const dualSection = $("dual-asr-section");
+  if (dual && (dual.transcript_a_gulf_lora || dual.transcript_b_base)) {
+    dualSection.hidden = false;
+    $("dual-text-a").textContent = dual.transcript_a_gulf_lora || "";
+    $("dual-text-b").textContent = dual.transcript_b_base || "";
+    $("dual-reason").textContent = dual.merge_reason || "";
+    dualSection.open = true;  // expand by default so the user can see it
+  } else {
+    dualSection.hidden = true;
+  }
+
   const tbody = $("spans-table").querySelector("tbody");
   tbody.innerHTML = "";
   // /api/transcribe returns `suspicious[]`; /api/correct returns `suspicious_spans[]`.
