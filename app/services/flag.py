@@ -54,10 +54,30 @@ _AR2LAT = {
 _TASHKEEL_RE = re.compile(r"[\u064b-\u0652\u0670\u0640]")
 
 
+def _strip_arabic_clitics(word: str) -> str:
+    """Drop common attached morphemes before phonetic matching.
+
+    Arabic glues 'al-' (the), 'wa-' (and), 'bi-' (with), 'li-' (to) and
+    'fa-' (so) onto the next word. Without stripping these, words like
+    'البرسيتامول' (= 'the paracetamol') score badly against
+    'paracetamol' because of the extra 'al' prefix.
+
+    We're conservative: we only strip when the remainder is at least
+    4 characters, so we don't decapitate short words.
+    """
+    PREFIXES = ("ال", "وال", "بال", "كال", "فال", "لل",
+                "و", "ف", "ب", "ل", "ك", "س")
+    for pre in PREFIXES:
+        if word.startswith(pre) and len(word) - len(pre) >= 4:
+            return word[len(pre):]
+    return word
+
+
 def _translit(word: str) -> str:
     import unicodedata
     s = unicodedata.normalize("NFKC", word)
     s = _TASHKEEL_RE.sub("", s)
+    s = _strip_arabic_clitics(s)
     out: List[str] = []
     for ch in s:
         if ch in _AR2LAT:
@@ -114,8 +134,16 @@ def _lev_sim(a: str, b: str) -> float:
 
 
 def _phonetic_candidates(
-    word: str, lexicon: List[str], k: int = 3
+    word: str, lexicon: List[str], k: int = 3,
+    *, threshold: float = 0.45,
 ) -> List[Dict[str, Any]]:
+    """Find up to `k` lexicon entries whose Latin form is phonetically
+    similar to `word` (after Arabic translit + clitic stripping).
+
+    Threshold 0.45 is intentionally loose: Arabic translit drops vowels
+    ('paracetamol' -> 'brsytamwl', similarity ~0.50), and we'd rather
+    have an over-flag the LLM can dismiss than miss a real drug.
+    """
     needle = _translit(word)
     if len(needle) < 2:
         return []
@@ -125,7 +153,7 @@ def _phonetic_candidates(
         if not term_lat:
             continue
         sim = _lev_sim(needle, term_lat)
-        if sim >= 0.55:
+        if sim >= threshold:
             scored.append({"term": term, "phonetic_similarity": round(sim, 3)})
     scored.sort(key=lambda d: -d["phonetic_similarity"])
     return scored[:k]

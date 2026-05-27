@@ -1,0 +1,150 @@
+pneumonia
+bronchitis
+asthma
+tuberculosis
+emphysema
+pneumothorax
+pleurisy
+pulmonary embolism
+sarcoidosis
+cystic fibrosis
+diabetes
+hyperthyroidism
+hypothyroidism
+hypertension
+hypotension
+atherosclerosis
+arrhythmia
+myocardial infarction
+tachycardia
+bradycardia
+angina pectoris
+pericarditis
+endocarditis
+aneurysm
+thrombosis
+hemorrhage
+anemia
+leukemia
+lymphoma
+hemophilia
+thrombocytopenia
+sickle cell anemia
+gastritis
+gastroenteritis
+appendicitis
+diverticulitis
+cholecystitis
+pancreatitis
+hepatitis
+cirrhosis
+peritonitis
+esophagitis
+irritable bowel syndrome
+crohn disease
+ulcerative colitis
+nephritis
+pyelonephritis
+glomerulonephritis
+nephrolithiasis
+cystitis
+urethritis
+prostatitis
+meningitis
+encephalitis
+migraine
+epilepsy
+parkinson disease
+alzheimer disease
+multiple sclerosis
+amyotrophic lateral sclerosis
+neuropathy
+sciatica
+osteoarthritis
+rheumatoid arthritis
+osteoporosis
+fibromyalgia
+scoliosis
+kyphosis
+lordosis
+spondylitis
+bursitis
+tendinitis
+dermatitis
+psoriasis
+eczema
+melanoma
+carcinoma
+lymphadenopathy
+otitis media
+conjunctivitis
+glaucoma
+cataract
+strabismus
+laryngitis
+pharyngitis
+tonsillitis
+sinusitis
+rhinitis
+influenza
+mononucleosis
+gonorrhea
+chlamydia
+syphilis
+herpes zoster
+varicella
+rubella
+poliomyelitis
+tetanus
+malaria
+dengue
+schistosomiasis
+toxoplasmosis
+
+# --- Drugs and brand names (added for Gulf-Arabic ASR pipeline) ---
+paracetamol
+acetaminophen
+ibuprofen
+aspirin
+amoxicillin
+azithromycin
+ciprofloxacin
+metronidazole
+augmentin
+clavulanate
+ceftriaxone
+metformin
+insulin
+omeprazole
+pantoprazole
+ranitidine
+simvastatin
+atorvastatin
+losartan
+amlodipine
+salbutamol
+ventolin
+montelukast
+prednisolone
+dexamethasone
+hydrocortisone
+loratadine
+cetirizine
+codeine
+tramadol
+morphine
+diazepam
+lorazepam
+fluoxetine
+sertraline
+warfarin
+heparin
+clopidogrel
+levothyroxine
+doliprane
+efferalgan
+voltaren
+flagyl
+zithromax
+augmentin
+panadol
