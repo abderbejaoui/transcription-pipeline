@@ -195,6 +195,27 @@ details[open] > summary::before { transform: rotate(90deg); }
 
 .advanced { margin-top: 12px; }
 
+.flag-row {
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  padding: 10px 12px;
+  margin-bottom: 8px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+#debug-audio {
+  margin-top: 12px;
+  width: 100%;
+}
+
+#debug-transcript {
+  background: rgba(255,255,255,0.04);
+  padding: 8px 10px;
+  border-radius: 6px;
+}
+
 .trace-events {
   display: flex;
   flex-direction: column;
