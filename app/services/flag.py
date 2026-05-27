@@ -24,7 +24,6 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-from . import alignment  # uses the same translit table
 from .llm_config import (
     get_llm_headers,
     get_llm_model,
@@ -36,6 +35,36 @@ from .llm_config import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MEDICAL_TERMS_PATH = PROJECT_ROOT / "medical_terms.txt"
+
+
+# ---------------------------------------------------------------------------
+# Cheap Arabic -> Latin transliteration (for phonetic comparison only).
+# ---------------------------------------------------------------------------
+
+_AR2LAT = {
+    "ا": "a", "أ": "a", "إ": "a", "آ": "a", "ٱ": "a",
+    "ب": "b", "ت": "t", "ث": "th", "ج": "j", "ح": "h",
+    "خ": "kh", "د": "d", "ذ": "dh", "ر": "r", "ز": "z",
+    "س": "s", "ش": "sh", "ص": "s", "ض": "d", "ط": "t",
+    "ظ": "z", "ع": "a", "غ": "gh", "ف": "f", "ق": "q",
+    "ك": "k", "ل": "l", "م": "m", "ن": "n", "ه": "h",
+    "و": "w", "ي": "y", "ى": "a", "ة": "h", "ء": "",
+    "ؤ": "w", "ئ": "y",
+}
+_TASHKEEL_RE = re.compile(r"[\u064b-\u0652\u0670\u0640]")
+
+
+def _translit(word: str) -> str:
+    import unicodedata
+    s = unicodedata.normalize("NFKC", word)
+    s = _TASHKEEL_RE.sub("", s)
+    out: List[str] = []
+    for ch in s:
+        if ch in _AR2LAT:
+            out.append(_AR2LAT[ch])
+        elif ch.isascii() and ch.isalnum():
+            out.append(ch.lower())
+    return "".join(out)
 
 
 # ---------------------------------------------------------------------------
@@ -87,7 +116,7 @@ def _lev_sim(a: str, b: str) -> float:
 def _phonetic_candidates(
     word: str, lexicon: List[str], k: int = 3
 ) -> List[Dict[str, Any]]:
-    needle = alignment._translit(word)
+    needle = _translit(word)
     if len(needle) < 2:
         return []
     scored = []
@@ -144,11 +173,17 @@ _LLM_SYSTEM = (
     "2. Word indices are zero-based, computed by splitting the transcript "
     "on whitespace.\n"
     "3. Each flag entry: {\"index\": <int>, \"word\": <str>, "
-    "\"reason\": <short string>, \"likely_term\": <best guess at the "
-    "intended medical term, or empty string>}.\n"
+    "\"reason\": <short string>, "
+    "\"likely_term\": <best guess at the intended medical term, "
+    "in correct Latin spelling for drug names / English for procedures / "
+    "or empty string if you cannot identify>, "
+    "\"confidence\": <0.0 to 1.0 — how certain you are about likely_term>}.\n"
     "4. Schema: {\"flags\": [<flag entry>, ...]}.\n"
     "5. Do NOT flag plain Arabic words that aren't medical (e.g. 'لمدة', "
-    "'كل', 'اليوم'), normal English filler ('okay'), or numbers."
+    "'كل', 'اليوم'), normal English filler ('okay'), or numbers.\n"
+    "6. Use confidence >= 0.90 ONLY when the audio context (drug + dose + "
+    "frequency / indication) makes the term unambiguous. Use 0.5-0.85 for "
+    "plausible guesses. Use 0.0 when unsure."
 )
 
 
@@ -207,11 +242,14 @@ def flag_suspicious(
                 idx = int(entry.get("index"))
             except (TypeError, ValueError):
                 continue
+            llm_conf = float(entry.get("confidence", 0.0) or 0.0)
+            likely = entry.get("likely_term") or ""
             existing = phon_by_idx.get(idx)
             if existing:
                 existing["llm_reason"] = entry.get("reason") or existing["reason"]
-                if entry.get("likely_term"):
-                    existing["llm_likely_term"] = entry["likely_term"]
+                if likely:
+                    existing["llm_likely_term"] = likely
+                existing["llm_confidence"] = llm_conf
             else:
                 word = entry.get("word") or ""
                 phon_by_idx[idx] = {
@@ -220,6 +258,55 @@ def flag_suspicious(
                     "reason": entry.get("reason") or "llm_flag",
                     "candidates": _phonetic_candidates(word, load_medical_lexicon()),
                     "llm_reason": entry.get("reason"),
-                    "llm_likely_term": entry.get("likely_term") or "",
+                    "llm_likely_term": likely,
+                    "llm_confidence": llm_conf,
                 }
     return sorted(phon_by_idx.values(), key=lambda f: f["index"])
+
+
+# ---------------------------------------------------------------------------
+# Auto-correction: build a corrected transcript using HIGH-CONFIDENCE LLM
+# suggestions only. The dashboard surfaces this as a separate string so the
+# user can compare it to the raw transcript without losing the original.
+# ---------------------------------------------------------------------------
+
+def apply_high_confidence_corrections(
+    transcript: str,
+    flags: List[Dict[str, Any]],
+    *,
+    confidence_threshold: float = 0.90,
+) -> Dict[str, Any]:
+    """Rewrite the transcript using only LLM suggestions where
+    `llm_confidence >= confidence_threshold` AND `llm_likely_term` is set.
+    """
+    tokens = re.split(r"(\s+)", transcript)  # keep whitespace tokens
+    # Build a mapping word-index -> token-index in the split (only non-space
+    # tokens count as words).
+    word_to_tok: List[int] = []
+    for ti, t in enumerate(tokens):
+        if t.strip():
+            word_to_tok.append(ti)
+
+    applied: List[Dict[str, Any]] = []
+    for f in flags:
+        idx = f.get("index")
+        if not isinstance(idx, int) or idx < 0 or idx >= len(word_to_tok):
+            continue
+        conf = float(f.get("llm_confidence", 0.0) or 0.0)
+        likely = f.get("llm_likely_term") or ""
+        if conf < confidence_threshold or not likely:
+            continue
+        ti = word_to_tok[idx]
+        original = tokens[ti]
+        tokens[ti] = likely
+        applied.append({
+            "index": idx,
+            "original": original,
+            "corrected": likely,
+            "confidence": conf,
+        })
+    return {
+        "corrected_transcript": "".join(tokens),
+        "applied": applied,
+        "threshold": confidence_threshold,
+    }
