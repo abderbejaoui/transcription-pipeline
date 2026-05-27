@@ -141,6 +141,165 @@ CASES: List[HardCase] = [
     HardCase("no_drug_no_flag",
              "عندي صداع و دوخه و تعب",
              "", ""),  # expected: zero flags
+
+    # =========================================================================
+    # EXTENDED HARD CASES — 30 more (21-50) covering real ASR failure modes
+    # =========================================================================
+
+    # 21. Consonant deletion: 'aspirin' -> 'سبرين' (no a-).
+    HardCase("aspirin_deleted_alef",
+             "خذ سبرين حبه واحده",
+             "aspirin", "سبرين"),
+
+    # 22. Letter substitution: 'ث' written for 't' in 'metformin'.
+    HardCase("metformin_th_substitution",
+             "ميث فورمين للسكر",
+             "metformin", "ميث فورمين",
+             must_be_top1=False),
+
+    # 23. Doubled letters in audio: 'augmentin' -> 'اوقمنتين'.
+    HardCase("augmentin_doubled",
+             "اوقمنتين شراب للالتهاب",
+             "augmentin", "اوقمنتين"),
+
+    # 24. Long compound drug name: 'azithromycin' mangled.
+    HardCase("azithromycin",
+             "ازيثرومايسين خمس مية ملليجرام",
+             "azithromycin", "ازيثرومايسين"),
+
+    # 25. Doxycycline.
+    HardCase("doxycycline",
+             "خذ دوكسي سيكلين كل ١٢ ساعه",
+             "doxycycline", "دوكسي سيكلين"),
+
+    # 26. Antifungal: 'fluconazole'.
+    HardCase("fluconazole",
+             "اعطاها الدكتور فلوكونازول جرعه واحده",
+             "fluconazole", "فلوكونازول"),
+
+    # 27. Anticoagulant: 'warfarin' mangled.
+    HardCase("warfarin",
+             "وارفارين ٥ ملليجرام مساء",
+             "warfarin", "وارفارين"),
+
+    # 28. Heparin (injection).
+    HardCase("heparin",
+             "هيبارين تحت الجلد",
+             "heparin", "هيبارين"),
+
+    # 29. Clopidogrel — long heavily-mangled drug.
+    HardCase("clopidogrel",
+             "كلوبيدوقريل بعد العمليه",
+             "clopidogrel", "كلوبيدوقريل"),
+
+    # 30. Levothyroxine — long, with hyperphonetic Arabic.
+    HardCase("levothyroxine",
+             "ليفوثيروكسين قبل الفطور",
+             "levothyroxine", "ليفوثيروكسين"),
+
+    # 31. Pregabalin / Lyrica.
+    HardCase("pregabalin",
+             "بريقابالين للالم العصبي",
+             "pregabalin", "بريقابالين"),
+
+    # 32. Gabapentin.
+    HardCase("gabapentin",
+             "قابابنتين كبسوله ثلاث مرات",
+             "gabapentin", "قابابنتين"),
+
+    # 33. Ondansetron — for nausea.
+    HardCase("ondansetron",
+             "اوندان سترون للقي",
+             "ondansetron", "اوندان سترون"),
+
+    # 34. Metoclopramide / Primperan.
+    HardCase("metoclopramide",
+             "ميتو كلو براميد مع الاكل",
+             "metoclopramide", "ميتو كلو براميد",
+             must_be_top1=False),
+
+    # 35. Risperidone — antipsychotic.
+    HardCase("risperidone",
+             "ريسبيريدون اول ما يصحى",
+             "risperidone", "ريسبيريدون"),
+
+    # 36. Quetiapine.
+    HardCase("quetiapine",
+             "كويتيابين قبل النوم",
+             "quetiapine", "كويتيابين"),
+
+    # 37. Acyclovir — antiviral.
+    HardCase("acyclovir",
+             "اسيكلوفير للهيربس",
+             "acyclovir", "اسيكلوفير"),
+
+    # 38. Tamiflu / Oseltamivir — flu antiviral.
+    HardCase("tamiflu",
+             "تاميفلو كبسوله مرتين",
+             "tamiflu", "تاميفلو"),
+
+    # 39. Ozempic — diabetes injection (modern brand).
+    HardCase("ozempic",
+             "اوزمبيك ابره اسبوعيه",
+             "ozempic", "اوزمبيك"),
+
+    # 40. Code-switched: drug already in Latin. Should NOT flag — it's
+    # already spelled correctly. Test that there are no spurious flags.
+    HardCase("code_switched_latin_paracetamol",
+             "خذ paracetamol خمس مية ملليجرام مع الاكل",
+             "", ""),
+
+    # 41. Latin drug with Arabic dose: shouldn't flag anything spurious.
+    HardCase("latin_drug_no_double_flag",
+             "ventolin ٢ بخه كل ٤ ساعات",
+             "", ""),
+
+    # 42. Filler-word bridge: drug across 'في' (in).
+    HardCase("drug_across_filler",
+             "ميتو في رمين قبل العشاء",
+             "metformin", "ميتو في رمين",
+             must_be_top1=False),  # in-top-3 OK
+
+    # 43. Double dosage word — must NOT flag the number.
+    HardCase("dose_word_no_flag",
+             "خمسماية ملليجرام مرتين في اليوم",
+             "", ""),  # no drug, no flag
+
+    # 44. Vital-signs-only — anatomy/physiology, no drugs.
+    HardCase("vitals_no_flag",
+             "الضغط مية وعشرين على ثمانين النبض ثمانين",
+             "", ""),
+
+    # 45. Body parts only — no drugs.
+    HardCase("anatomy_no_flag",
+             "وجع في الظهر و الكتف و الرقبه",
+             "", ""),
+
+    # 46. Lab-test names mentioned — shouldn't be flagged as drugs.
+    HardCase("lab_test_no_drug",
+             "الفحص يطلب تحليل دم و اشعه",
+             "", ""),
+
+    # 47. Real disease in transcript: should NOT be flagged (no drug).
+    HardCase("disease_only_no_flag",
+             "المريض عنده ضغط و سكر و التهاب مفاصل",
+             "", ""),
+
+    # 48. Multiple drugs with conjunctions — at least one must flag correctly.
+    HardCase("multi_drug_with_conjunctions",
+             "بانادول و فولتارين و فنتولين كل وحده مرتين",
+             "panadol", "بانادول"),
+
+    # 49. Two compound drugs in one sentence.
+    HardCase("two_compound_drugs",
+             "اعطاني اموكسي سيلين و اوغ من تين شراب",
+             "amoxicillin", "اموكسي سيلين"),
+
+    # 50. Drug name surrounded by similar-sounding noise.
+    HardCase("drug_in_noisy_context",
+             "الصيدلي قال نياكسيوم قبل الاكل ينفع",
+             "nexium", "نياكسيوم",
+             must_be_top1=False),
 ]
 
 
