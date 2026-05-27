@@ -14,8 +14,15 @@ faster-whisper>=1.0
 soundfile>=0.12
 numpy>=1.24
 
-# ASR fine-tuning (scripts/finetune_*)
-transformers>=4.44
+# Forced alignment (Whisper word-timestamps drive our debug pipeline)
+# Use openai-whisper (no CTranslate2 needed) so it works on the DGX ARM build.
+openai-whisper>=20231117
+
+# ASR fine-tuning (scripts/finetune_*).
+# Pin transformers to the version that matches our qwen-asr wrapper.
+# transformers 5.x removes AutoModel and breaks Wav2Vec2ForCTC imports.
+transformers==4.57.6
+huggingface-hub==0.36.2
 datasets>=2.19
 accelerate>=0.33
 peft>=0.12

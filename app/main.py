@@ -648,10 +648,21 @@ async def transcribe_debug(
                 f["end_s"] = None
                 f["alignment_confidence"] = 0.0
 
+        # 5) Auto-apply HIGH-confidence LLM corrections (conf >= 0.90).
+        # Surfaced as a separate string so the user can compare to raw.
+        try:
+            corrected = _flag.apply_high_confidence_corrections(transcript, flags)
+        except Exception as exc:
+            print(f"[transcribe_debug] auto-correct failed: {exc!r}")
+            corrected = {"corrected_transcript": transcript, "applied": [], "threshold": 0.90}
+
         return {
             "session_id": session_id,
             "audio_url": f"/api/session_audio/{session_id}",
             "transcript": transcript,
+            "corrected_transcript": corrected["corrected_transcript"],
+            "auto_corrections": corrected["applied"],
+            "correction_threshold": corrected["threshold"],
             "duration_s": duration_s,
             "words": words_aligned,
             "flags": flags,
