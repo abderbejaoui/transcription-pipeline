@@ -15,14 +15,18 @@ soundfile>=0.12
 numpy>=1.24
 
 # Forced alignment
-# - ctc-forced-aligner: MMS character-level Viterbi alignment, accuracy ~30 ms
-#   on Arabic. This is the primary aligner for the /api/transcribe_debug
-#    'play this exact word' UI.
+# - ctc-forced-aligner (MahmoudAshraf97 fork): MMS character-level Viterbi
+#   alignment, accuracy ~30 ms on Arabic. This is the primary aligner for
+#   the /api/transcribe_debug 'play this exact word' UI.
+#   IMPORTANT: install from GitHub, NOT PyPI. The PyPI package with the
+#   same name is a different project (Deskpai), English-only, and exposes
+#   a totally different API.
+#     pip install git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git
 # - openai-whisper: fallback for when MMS isn't installed yet. Approximate
 #   word timestamps (~200 ms error on Arabic) but no model download needed
 #   beyond what whisper already pulls.
-ctc-forced-aligner>=0.2.0
 openai-whisper>=20231117
+# ctc-forced-aligner @ git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git
 
 # ASR fine-tuning (scripts/finetune_*).
 # Pin transformers to the version that matches our qwen-asr wrapper.
