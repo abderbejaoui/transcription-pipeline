@@ -777,13 +777,27 @@ def apply_high_confidence_corrections(
     flags: List[Dict[str, Any]],
     *,
     confidence_threshold: float = 0.90,
+    phonetic_strong_threshold: float = 0.85,
 ) -> Dict[str, Any]:
-    """Rewrite the transcript using only LLM suggestions where
-    `llm_confidence >= confidence_threshold` AND `llm_likely_term` is set.
+    """Rewrite the transcript with high-confidence corrections.
+
+    Two sources of corrections, in priority order:
+
+    1. PHONETIC TOP-1 (preferred when strong): if the top phonetic
+       candidate scored >= `phonetic_strong_threshold` (default 0.85),
+       trust it directly. Phonetic match is deterministic and grounded
+       in the actual ASR output — when it scores very high it is
+       essentially certainly the right drug.
+
+    2. LLM `likely_term` (only as fallback): used ONLY when phonetic
+       is weak AND the LLM confidence is high (>= `confidence_threshold`)
+       AND the LLM's proposed term EXISTS IN OUR LEXICON. This guards
+       against LLM hallucinations like 'Foltranis' or 'Paracetamol'
+       when the audio clearly said 'voltaren' / 'panadol'.
     """
+    lexicon_lower = {t.lower() for t in load_medical_lexicon()}
     tokens = re.split(r"(\s+)", transcript)  # keep whitespace tokens
-    # Build a mapping word-index -> token-index in the split (only non-space
-    # tokens count as words).
+    # word-index -> token-index in the split (only non-space tokens count)
     word_to_tok: List[int] = []
     for ti, t in enumerate(tokens):
         if t.strip():
@@ -794,21 +808,66 @@ def apply_high_confidence_corrections(
         idx = f.get("index")
         if not isinstance(idx, int) or idx < 0 or idx >= len(word_to_tok):
             continue
-        conf = float(f.get("llm_confidence", 0.0) or 0.0)
-        likely = f.get("llm_likely_term") or ""
-        if conf < confidence_threshold or not likely:
+        cands = f.get("candidates") or []
+        top = cands[0] if cands else None
+        top_sim = float(top["phonetic_similarity"]) if top else 0.0
+        llm_conf = float(f.get("llm_confidence", 0.0) or 0.0)
+        llm_term = (f.get("llm_likely_term") or "").strip()
+
+        # --- 1. Strong phonetic match → trust it.
+        chosen = None
+        source = None
+        chosen_conf = 0.0
+        if top and top_sim >= phonetic_strong_threshold:
+            chosen = top["term"]
+            chosen_conf = top_sim
+            source = "phonetic"
+
+        # --- 2. Fallback to LLM IF and ONLY IF:
+        #     - phonetic was weak (didn't trigger above)
+        #     - LLM is confident
+        #     - LLM term is in our lexicon (so it's not a hallucination)
+        if chosen is None and llm_conf >= confidence_threshold and llm_term:
+            if llm_term.lower() in lexicon_lower:
+                chosen = llm_term
+                chosen_conf = llm_conf
+                source = "llm"
+
+        if not chosen:
             continue
-        ti = word_to_tok[idx]
-        original = tokens[ti]
-        tokens[ti] = likely
+
+        # span_indices is set for bigram/trigram flags. Replace the FIRST
+        # word and clear the rest so 'وفولتران مسا' → 'voltaren'.
+        spans = f.get("span_indices") or [idx]
+        first = spans[0]
+        original_parts = []
+        for off in spans:
+            if 0 <= off < len(word_to_tok):
+                original_parts.append(tokens[word_to_tok[off]])
+        ti_first = word_to_tok[first]
+        tokens[ti_first] = chosen
+        # Clear later words AND their leading whitespace so we don't leave
+        # 'voltaren مسا' as the output of a 2-gram replacement.
+        for off in spans[1:]:
+            if 0 <= off < len(word_to_tok):
+                tw_idx = word_to_tok[off]
+                tokens[tw_idx] = ""
+                # Also blank the whitespace token just before this word.
+                if tw_idx - 1 >= 0:
+                    tokens[tw_idx - 1] = ""
         applied.append({
             "index": idx,
-            "original": original,
-            "corrected": likely,
-            "confidence": conf,
+            "span_indices": spans,
+            "original": " ".join(original_parts),
+            "corrected": chosen,
+            "confidence": chosen_conf,
+            "source": source,
         })
+    # Collapse runs of empty tokens.
+    out = "".join(tokens)
+    out = re.sub(r"\s+", " ", out).strip()
     return {
-        "corrected_transcript": "".join(tokens),
+        "corrected_transcript": out,
         "applied": applied,
         "threshold": confidence_threshold,
     }

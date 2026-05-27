@@ -3,41 +3,49 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Voice Platform — Demo</title>
-  <link rel="stylesheet" href="/static/styles.css?v=7" />
+  <title>Medical Voice — Gulf Arabic</title>
+  <link rel="stylesheet" href="/static/styles.css?v=8" />
 </head>
 <body>
   <main>
     <header>
-      <h1>Voice Platform</h1>
-      <p class="muted">Speak, paste, or upload. Edit anything wrong, save — the system learns it.</p>
+      <h1>Medical Voice <span class="muted small">· Gulf Arabic</span></h1>
+      <p class="muted small">Record a consultation. The pipeline transcribes, finds suspicious drug names, aligns each word to the audio, and proposes a corrected transcript.</p>
     </header>
 
-    <section class="card">
-      <div class="row">
-        <button id="btn-record" class="primary">🎙️ Record</button>
-        <button id="btn-stop" class="ghost" hidden>■ Stop</button>
-        <button id="btn-record-debug" class="ghost" title="Record + show transcript, flags and per-flag audio slices">🔬 Record (debug)</button>
-        <span id="record-status" class="muted small"></span>
+    <!-- Recording panel ------------------------------------------------- -->
+    <section class="card record-card">
+      <div class="record-row">
+        <button id="btn-record" class="primary big">
+          <span class="dot"></span>
+          <span class="label">Record</span>
+        </button>
+        <button id="btn-stop" class="ghost big" hidden>
+          <span class="square"></span>
+          <span class="label">Stop</span>
+        </button>
+        <div class="record-meta">
+          <span id="record-status" class="muted small"></span>
+        </div>
       </div>
       <audio id="record-playback" controls hidden></audio>
 
       <details class="advanced">
-        <summary class="muted small">More input options</summary>
+        <summary class="muted small">More options</summary>
         <div class="stack">
-          <textarea id="raw-input" rows="3" dir="auto" placeholder="Or paste raw text here..."></textarea>
+          <div class="row">
+            <input type="file" id="upload-file" accept="audio/*" />
+            <button id="btn-upload" class="ghost">Transcribe file</button>
+          </div>
+          <textarea id="raw-input" rows="2" dir="auto" placeholder="Or paste raw text..."></textarea>
           <div class="row">
             <button id="btn-correct" class="ghost">Correct text</button>
             <button id="btn-example" class="ghost">Load example</button>
           </div>
           <div class="row">
-            <input type="file" id="upload-file" accept="audio/*" />
-            <button id="btn-upload" class="ghost">Transcribe file</button>
-          </div>
-          <div class="row">
             <label class="muted small">Language
               <select id="lang">
-                <option value="" selected>Auto (Arabic + English)</option>
+                <option value="" selected>Auto (AR + EN)</option>
                 <option value="ar">Arabic only</option>
                 <option value="en">English only</option>
               </select>
@@ -55,74 +63,60 @@
       </details>
     </section>
 
-    <section id="trace-card" class="card" hidden>
-      <h2>Pipeline trace <span id="trace-status" class="muted small"></span></h2>
-      <div id="trace-events" class="trace-events"></div>
-    </section>
-
-    <section id="result" class="card" hidden>
-      <h2>Transcript</h2>
-      <textarea id="corrected-text" rows="5" dir="auto" placeholder="The transcript will appear here. Edit anything wrong, then save."></textarea>
-      <div class="row">
-        <button id="btn-save-edits" class="primary">💾 Save edits</button>
-        <span id="save-status" class="muted small"></span>
+    <!-- Result panel ---------------------------------------------------- -->
+    <section id="result-card" class="card" hidden>
+      <div class="result-tabs">
+        <button class="tab active" data-tab="corrected">Corrected</button>
+        <button class="tab" data-tab="raw">Raw</button>
+        <button class="tab" data-tab="flags">Flags <span id="flag-badge" class="badge" hidden></span></button>
+        <button class="tab" data-tab="trace">Pipeline</button>
       </div>
-      <details id="dual-asr-section" hidden>
-        <summary class="muted small">Show dual-ASR breakdown (Gulf LoRA · Base · LLM merge)</summary>
-        <div class="stack">
-          <h3>A — Gulf-Arabic LoRA</h3>
-          <pre id="dual-text-a" dir="auto"></pre>
-          <h3>B — Base Qwen3-ASR</h3>
-          <pre id="dual-text-b" dir="auto"></pre>
-          <h3>Calme-3.2 merge reason</h3>
-          <pre id="dual-reason" dir="auto" class="muted"></pre>
-        </div>
-      </details>
 
-      <details>
-        <summary class="muted small">Show raw ASR output and flagged spans</summary>
-        <div class="stack">
-          <h3>Raw</h3>
-          <pre id="raw-text" dir="auto"></pre>
-          <h3>Flagged</h3>
-          <table id="spans-table">
-            <thead><tr><th>From</th><th>To</th><th>Conf.</th></tr></thead>
+      <!-- Corrected tab (default view) -->
+      <div class="tab-panel active" id="tab-corrected">
+        <p class="muted small" id="correction-meta">…</p>
+        <textarea id="corrected-text" rows="4" dir="auto" placeholder="The corrected transcript will appear here. Edit anything wrong, then save."></textarea>
+        <div class="row">
+          <button id="btn-save-edits" class="primary">💾 Save edits</button>
+          <span id="save-status" class="muted small"></span>
+        </div>
+      </div>
+
+      <!-- Raw tab -->
+      <div class="tab-panel" id="tab-raw">
+        <h3>Raw ASR output</h3>
+        <pre id="raw-text" dir="auto"></pre>
+        <h3>Audio (for replay)</h3>
+        <audio id="debug-audio" controls></audio>
+      </div>
+
+      <!-- Flags tab — the main attraction -->
+      <div class="tab-panel" id="tab-flags">
+        <p class="muted small" id="flag-summary"></p>
+        <div id="flags-list" class="stack"></div>
+
+        <details>
+          <summary class="muted small">Per-word alignment (debug)</summary>
+          <table id="words-table">
+            <thead><tr><th>#</th><th>Word</th><th>Start</th><th>End</th><th>Conf.</th></tr></thead>
             <tbody></tbody>
           </table>
-        </div>
-      </details>
+        </details>
+      </div>
+
+      <!-- Pipeline tab -->
+      <div class="tab-panel" id="tab-trace">
+        <p class="muted small" id="trace-status"></p>
+        <div id="trace-events" class="trace-events"></div>
+      </div>
     </section>
 
-    <section id="debug-card" class="card" hidden>
-      <h2>🔬 Debug — transcript · flags · audio slices</h2>
-      <p class="muted small" id="debug-status"></p>
-
-      <h3>1) Full transcript (raw ASR)</h3>
-      <pre id="debug-transcript" dir="auto"></pre>
-
-      <h3>2) Auto-corrected transcript <span class="muted small" id="debug-correction-meta"></span></h3>
-      <pre id="debug-corrected" dir="auto"></pre>
-
-      <h3>3) Flagged words</h3>
-      <p class="muted small" id="debug-flag-count"></p>
-      <div id="debug-flags-list" class="stack"></div>
-
-      <details>
-        <summary class="muted small">Show per-word alignment table</summary>
-        <table id="debug-words-table">
-          <thead><tr><th>#</th><th>Word</th><th>Start</th><th>End</th><th>Conf.</th></tr></thead>
-          <tbody></tbody>
-        </table>
-      </details>
-
-      <audio id="debug-audio" controls></audio>
-    </section>
-
+    <!-- Vocabulary card ------------------------------------------------- -->
     <section class="card">
       <details>
         <summary><strong>Vocabulary</strong> <span id="lexicon-count" class="muted small"></span></summary>
         <div class="row">
-          <input id="vocab-search" placeholder="Search the vocabulary..." />
+          <input id="vocab-search" placeholder="Search the vocabulary…" />
           <button id="btn-refresh-lexicon" class="ghost">Refresh</button>
         </div>
         <div id="lexicon-list" class="lexicon-list"></div>
@@ -130,6 +124,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=7"></script>
+  <script src="/static/app.js?v=8"></script>
 </body>
 </html>

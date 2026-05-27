@@ -1,5 +1,15 @@
 // ---------------------------------------------------------------------------
-// Voice-grounded medical corrector — minimal client
+// Medical Voice — Gulf Arabic client.
+//
+// Two pipelines are wired here:
+//   • DEFAULT (Record button) → /api/transcribe_debug
+//       Returns: raw transcript, MMS-aligned word timestamps, phonetic
+//       flags with candidates, optional LLM 'likely_term', and an
+//       auto-corrected transcript (high-confidence LLM fixes applied).
+//   • LEGACY (file upload, paste text) → /api/transcribe_stream
+//       The older pipeline with the LLM detect/decide trace.
+//
+// Both render into the same tabbed result card.
 // ---------------------------------------------------------------------------
 
 const $ = (id) => document.getElementById(id);
@@ -13,6 +23,23 @@ const escapeHtml = (s) =>
 
 let lastRawText = "";
 let lastSessionId = null;
+let lastFlags = [];
+let lastAudioUrl = null;
+
+// ---------------------------------------------------------------------------
+// Tabs
+// ---------------------------------------------------------------------------
+function activateTab(name) {
+  document.querySelectorAll(".tab").forEach((b) => {
+    b.classList.toggle("active", b.dataset.tab === name);
+  });
+  document.querySelectorAll(".tab-panel").forEach((p) => {
+    p.classList.toggle("active", p.id === "tab-" + name);
+  });
+}
+document.querySelectorAll(".tab").forEach((b) => {
+  b.addEventListener("click", () => activateTab(b.dataset.tab));
+});
 
 // ---------------------------------------------------------------------------
 // HTTP helpers
@@ -27,60 +54,152 @@ async function postJson(url, body) {
   return r.json();
 }
 
-async function postForm(url, form) {
-  const r = await fetch(url, { method: "POST", body: form });
-  if (!r.ok) {
-    let msg = `HTTP ${r.status}`;
-    try {
-      msg = (await r.json()).error || msg;
-    } catch (_) {
-      msg = await r.text();
-    }
-    throw new Error(msg);
+// ---------------------------------------------------------------------------
+// Main result renderer — used by both pipelines.
+// ---------------------------------------------------------------------------
+function showDebugResult(data) {
+  if (data.error) {
+    alert("Pipeline error: " + data.error);
+    return;
   }
-  return r.json();
-}
+  $("result-card").hidden = false;
 
-function showResult(payload) {
-  $("result").hidden = false;
-  lastRawText = payload.raw_text || "";
-  lastSessionId = payload.session_id || null;
-  $("raw-text").textContent = lastRawText;
-  $("corrected-text").value = payload.corrected_text || "";
+  // 1) Corrected transcript tab
+  const corrected = data.corrected_transcript || data.transcript || "";
+  const raw = data.transcript || "";
+  lastRawText = raw;
+  lastSessionId = data.session_id || null;
+  lastFlags = data.flags || [];
+  lastAudioUrl = data.audio_url || null;
+
+  $("corrected-text").value = corrected;
+  $("raw-text").textContent = raw;
   $("save-status").textContent = "";
 
-  // Dual-ASR breakdown: shown only when the backend ran USE_DUAL_ASR=1
-  // and returned both raw transcripts plus the Calme merge reason.
-  const dual = payload.asr && payload.asr.dual;
-  const dualSection = $("dual-asr-section");
-  if (dual && (dual.transcript_a_gulf_lora || dual.transcript_b_base)) {
-    dualSection.hidden = false;
-    $("dual-text-a").textContent = dual.transcript_a_gulf_lora || "";
-    $("dual-text-b").textContent = dual.transcript_b_base || "";
-    $("dual-reason").textContent = dual.merge_reason || "";
-    dualSection.open = true;  // expand by default so the user can see it
+  const applied = data.auto_corrections || [];
+  if (applied.length) {
+    const summary = applied
+      .map((a) => `${a.original.trim()} → ${a.corrected}`)
+      .join(", ");
+    $("correction-meta").innerHTML =
+      `<span class="muted">${applied.length} auto-correction${applied.length === 1 ? "" : "s"} applied:</span> ${escapeHtml(summary)}`;
+  } else if (lastFlags.length) {
+    $("correction-meta").innerHTML =
+      `<span class="muted">No auto-corrections applied. ${lastFlags.length} word${lastFlags.length === 1 ? "" : "s"} flagged for review.</span>`;
   } else {
-    dualSection.hidden = true;
+    $("correction-meta").innerHTML =
+      `<span class="muted">No suspicious words detected.</span>`;
   }
 
-  const tbody = $("spans-table").querySelector("tbody");
+  // 2) Flags tab — the main attraction
+  renderFlags(data);
+
+  // 3) Audio player
+  if (lastAudioUrl) {
+    $("debug-audio").src = lastAudioUrl;
+  }
+
+  // Update tab badge
+  const badge = $("flag-badge");
+  if (lastFlags.length) {
+    badge.hidden = false;
+    badge.textContent = lastFlags.length;
+  } else {
+    badge.hidden = true;
+  }
+
+  activateTab("corrected");
+}
+
+function renderFlags(data) {
+  const flagsEl = $("flags-list");
+  flagsEl.innerHTML = "";
+  const flags = data.flags || [];
+
+  if (!flags.length) {
+    $("flag-summary").textContent = "No suspicious medical words found. 🎉";
+  } else {
+    $("flag-summary").textContent =
+      `${flags.length} suspicious word${flags.length === 1 ? "" : "s"} found. ` +
+      `Click ▶ to listen to each flagged span.`;
+  }
+
+  for (const f of flags) {
+    const top = (f.candidates || [])[0];
+    const llm = f.llm_likely_term || "";
+    const conf = f.llm_confidence;
+    const proposed = llm || (top && top.term) || "?";
+
+    // Determine confidence class for styling
+    let confClass = "";
+    if (conf != null && conf >= 0.9) confClass = "high-conf";
+    else if (conf != null && conf >= 0.6) confClass = "medium-conf";
+
+    const div = document.createElement("div");
+    div.className = "flag-row " + confClass;
+
+    const cands = (f.candidates || [])
+      .slice(0, 3)
+      .map((c, idx) => {
+        const cls = idx === 0 ? "candidate-chip top" : "candidate-chip";
+        return `<span class="${cls}">${escapeHtml(c.term)} <span class="muted">${(c.phonetic_similarity || 0).toFixed(2)}</span></span>`;
+      })
+      .join("");
+
+    const t0 = f.start_s != null ? f.start_s.toFixed(2) : null;
+    const t1 = f.end_s != null ? f.end_s.toFixed(2) : null;
+    const playBtn =
+      t0 != null && t1 != null
+        ? `<button class="ghost play-slice" data-start="${f.start_s}" data-end="${f.end_s}">▶ ${t0}–${t1}s</button>`
+        : `<span class="muted small">no alignment</span>`;
+
+    const llmInfo = conf != null
+      ? `LLM: <code>${escapeHtml(llm || "—")}</code> ${(conf * 100).toFixed(0)}%`
+      : (llm ? `LLM: <code>${escapeHtml(llm)}</code>` : "");
+
+    div.innerHTML = `
+      <div class="flag-header">
+        <div>
+          <span class="flag-word" dir="auto">${escapeHtml(f.word || "")}</span>
+          <span class="flag-arrow">→</span>
+          <span class="flag-corrected">${escapeHtml(proposed)}</span>
+        </div>
+        ${playBtn}
+      </div>
+      <div class="flag-meta">
+        <span>#${f.index}</span>
+        <span>${escapeHtml(f.reason || "")}</span>
+        ${llmInfo ? `<span>${llmInfo}</span>` : ""}
+      </div>
+      <div class="flag-candidates">${cands}</div>
+    `;
+    flagsEl.appendChild(div);
+  }
+
+  // Per-word alignment table
+  const tbody = $("words-table").querySelector("tbody");
   tbody.innerHTML = "";
-  // /api/transcribe returns `suspicious[]`; /api/correct returns `suspicious_spans[]`.
-  const spans = payload.suspicious || payload.suspicious_spans || [];
-  spans.forEach((span) => {
-    const orig = span.span || span.original_text || "";
-    const chosen = span.chosen || span.possible_correction || "—";
-    const conf =
-      (span.audio_hits && span.audio_hits[0] && `audio sim ${span.audio_hits[0].similarity}`) ||
-      (span.confidence != null ? `conf ${span.confidence}` : "");
+  (data.words || []).forEach((w, i) => {
     const tr = document.createElement("tr");
-    tr.innerHTML = `
-      <td><code>${escapeHtml(orig)}</code></td>
-      <td><code>${escapeHtml(chosen)}</code></td>
-      <td>${escapeHtml(conf)}</td>`;
+    const s = w.start_s != null ? w.start_s.toFixed(2) : "—";
+    const e = w.end_s != null ? w.end_s.toFixed(2) : "—";
+    tr.innerHTML = `<td>${i}</td><td dir="auto"><code>${escapeHtml(w.word)}</code></td><td>${s}</td><td>${e}</td><td>${(w.confidence ?? 0).toFixed(2)}</td>`;
     tbody.appendChild(tr);
   });
-  $("corrected-text").focus();
+
+  // Wire play buttons (slice playback)
+  const audioEl = $("debug-audio");
+  flagsEl.querySelectorAll(".play-slice").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      if (!audioEl.src && lastAudioUrl) audioEl.src = lastAudioUrl;
+      const t0 = parseFloat(btn.dataset.start);
+      const t1 = parseFloat(btn.dataset.end);
+      audioEl.currentTime = Math.max(0, t0);
+      audioEl.play();
+      const wait = Math.max(80, (t1 - t0) * 1000 + 100);
+      setTimeout(() => audioEl.pause(), wait);
+    });
+  });
 }
 
 // ---------------------------------------------------------------------------
@@ -93,9 +212,6 @@ let recordedBlob = null;
 let recordedMime = "audio/webm";
 let recordTimer = null;
 let recordStart = 0;
-// When non-null, the recorder feeds the captured blob to this function
-// instead of the default transcribe pipeline. Set by the Debug button.
-let recordingMode = "default";
 
 const PREFERRED_MIMES = [
   "audio/webm;codecs=opus",
@@ -115,8 +231,6 @@ function pickMime() {
 
 function setRecordingUI(isRecording) {
   $("btn-record").hidden = isRecording;
-  const debugBtn = document.getElementById("btn-record-debug");
-  if (debugBtn) debugBtn.hidden = isRecording;
   $("btn-stop").hidden = !isRecording;
   $("btn-record").classList.toggle("recording", isRecording);
 }
@@ -145,9 +259,9 @@ async function startRecording() {
     stream = await navigator.mediaDevices.getUserMedia({ audio: true });
   } catch (err) {
     if (err.name === "NotAllowedError" || err.name === "SecurityError") {
-      $("record-status").textContent = "❌ Microphone permission denied. Allow it in the address bar.";
+      $("record-status").textContent = "❌ Microphone permission denied.";
     } else if (err.name === "NotFoundError") {
-      $("record-status").textContent = "❌ No microphone found on this device.";
+      $("record-status").textContent = "❌ No microphone found.";
     } else {
       $("record-status").textContent = "❌ " + err.message;
     }
@@ -157,7 +271,9 @@ async function startRecording() {
   mediaStream = stream;
   recordedChunks = [];
   try {
-    mediaRecorder = mime ? new MediaRecorder(stream, { mimeType: mime }) : new MediaRecorder(stream);
+    mediaRecorder = mime
+      ? new MediaRecorder(stream, { mimeType: mime })
+      : new MediaRecorder(stream);
   } catch (err) {
     $("record-status").textContent = "❌ Recorder failed: " + err.message;
     stream.getTracks().forEach((t) => t.stop());
@@ -185,31 +301,27 @@ async function startRecording() {
     const playback = $("record-playback");
     playback.src = URL.createObjectURL(recordedBlob);
     playback.hidden = false;
-    $("record-status").textContent = `Transcribing ${(recordedBlob.size / 1024).toFixed(0)} KB...`;
+    $("record-status").textContent =
+      `Processing ${(recordedBlob.size / 1024).toFixed(0)} KB…`;
     try {
-      if (recordingMode === "debug") {
-        await debugTranscribeBlob(recordedBlob);
-      } else {
-        await transcribeBlob(recordedBlob);
-      }
+      await transcribeDebug(recordedBlob);
       $("record-status").textContent = "Done.";
     } catch (err) {
       $("record-status").textContent = "❌ " + err.message;
-    } finally {
-      recordingMode = "default";
     }
   };
 
   mediaRecorder.onerror = (e) => {
-    $("record-status").textContent = "❌ Recorder error: " + (e.error?.message || "unknown");
+    $("record-status").textContent =
+      "❌ Recorder error: " + (e.error?.message || "unknown");
   };
 
   mediaRecorder.start(250);
   recordStart = Date.now();
   setRecordingUI(true);
-  $("record-status").textContent = "🔴 Recording 00:00";
+  $("record-status").textContent = "Recording 00:00";
   recordTimer = setInterval(() => {
-    $("record-status").textContent = "🔴 Recording " + fmtTime(Date.now() - recordStart);
+    $("record-status").textContent = "Recording " + fmtTime(Date.now() - recordStart);
   }, 250);
 }
 
@@ -221,144 +333,41 @@ function stopRecording() {
   }
 }
 
-async function transcribeBlob(blob) {
-  const form = new FormData();
-  const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
-  form.append("audio", blob, `recording.${ext}`);
-  const lang = $("lang").value;
-  if (lang) form.append("language", lang);
-  form.append("model_size", $("model").value);
-  await streamTranscribe(form);
-}
-
 // ---------------------------------------------------------------------------
-// Debug pipeline: transcript + flags + per-flag audio slices
+// Default pipeline — calls /api/transcribe_debug (transcript + flags + align).
 // ---------------------------------------------------------------------------
-async function debugTranscribeBlob(blob) {
+async function transcribeDebug(blob) {
   const form = new FormData();
   const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
   form.append("audio", blob, `recording.${ext}`);
   const lang = $("lang").value;
   if (lang) form.append("language", lang);
 
-  const card = $("debug-card");
-  card.hidden = false;
-  $("debug-status").textContent = "Running ASR + flag + alignment...";
-  $("debug-transcript").textContent = "";
-  $("debug-flag-count").textContent = "";
-  $("debug-flags-list").innerHTML = "";
-  $("debug-words-table").querySelector("tbody").innerHTML = "";
+  $("flag-summary").textContent = "Running ASR + flag + alignment…";
+  $("flags-list").innerHTML = "";
+  $("result-card").hidden = false;
 
   const r = await fetch("/api/transcribe_debug", { method: "POST", body: form });
   if (!r.ok) {
     let msg = `HTTP ${r.status}`;
     try { msg = (await r.json()).error || msg; } catch (_) { msg = await r.text(); }
-    $("debug-status").textContent = "❌ " + msg;
+    $("flag-summary").textContent = "❌ " + msg;
     throw new Error(msg);
   }
   const data = await r.json();
-  if (data.error) {
-    $("debug-status").textContent = "❌ " + data.error;
-    return;
-  }
-  renderDebug(data);
+  showDebugResult(data);
 }
 
-function renderDebug(data) {
-  $("debug-status").textContent =
-    `audio ${data.duration_s?.toFixed(2)}s · ${data.words?.length || 0} words aligned`;
-  $("debug-transcript").textContent = data.transcript || "";
-
-  // Auto-corrected transcript (high-confidence LLM picks only).
-  const correctedEl = $("debug-corrected");
-  const correctedMetaEl = $("debug-correction-meta");
-  if (correctedEl) {
-    const applied = data.auto_corrections || [];
-    const corr = data.corrected_transcript || data.transcript || "";
-    correctedEl.textContent = corr;
-    if (applied.length) {
-      const summary = applied.map((a) =>
-        `${a.original.trim()} → ${a.corrected} (${(a.confidence || 0).toFixed(2)})`
-      ).join(" · ");
-      correctedMetaEl.textContent =
-        `${applied.length} change${applied.length === 1 ? "" : "s"} ` +
-        `at conf ≥ ${data.correction_threshold ?? 0.9}: ${summary}`;
-    } else {
-      correctedMetaEl.textContent = "no high-confidence corrections applied";
-    }
-  }
-
-  const flagsEl = $("debug-flags-list");
-  flagsEl.innerHTML = "";
-  const flags = data.flags || [];
-  $("debug-flag-count").textContent = flags.length
-    ? `${flags.length} suspicious word${flags.length === 1 ? "" : "s"}.`
-    : "No suspicious words flagged.";
-
-  const audioEl = $("debug-audio");
-  if (data.audio_url) {
-    audioEl.src = data.audio_url;
-    audioEl.load();
-  }
-
-  for (const f of flags) {
-    const div = document.createElement("div");
-    div.className = "flag-row";
-    const cands = (f.candidates || [])
-      .map((c) => `<code>${escapeHtml(c.term)}</code> <span class="muted small">${c.phonetic_similarity?.toFixed(2)}</span>`)
-      .join(" · ");
-    const llm = f.llm_likely_term
-      ? `<div class="muted small">LLM guess: <code>${escapeHtml(f.llm_likely_term)}</code></div>`
-      : "";
-    const reason = f.reason || (f.llm_reason ? "llm_flag" : "");
-    const t0 = (f.start_s != null) ? f.start_s.toFixed(2) : "—";
-    const t1 = (f.end_s != null) ? f.end_s.toFixed(2) : "—";
-    const align = (f.start_s != null && f.end_s != null)
-      ? `<button class="ghost play-slice" data-start="${f.start_s}" data-end="${f.end_s}">▶ play ${t0}-${t1}s</button>`
-      : `<span class="muted small">no alignment</span>`;
-    div.innerHTML = `
-      <div class="row" style="justify-content:space-between">
-        <div>
-          <strong dir="auto">${escapeHtml(f.word || "")}</strong>
-          <span class="muted small"> #${f.index} · ${escapeHtml(reason)}</span>
-        </div>
-        ${align}
-      </div>
-      <div>Candidates: ${cands || '<span class="muted small">none</span>'}</div>
-      ${llm}
-    `;
-    flagsEl.appendChild(div);
-  }
-
-  // Per-word alignment table
-  const tbody = $("debug-words-table").querySelector("tbody");
-  (data.words || []).forEach((w, i) => {
-    const tr = document.createElement("tr");
-    const s = w.start_s != null ? w.start_s.toFixed(2) : "—";
-    const e = w.end_s != null ? w.end_s.toFixed(2) : "—";
-    tr.innerHTML = `<td>${i}</td><td dir="auto"><code>${escapeHtml(w.word)}</code></td><td>${s}</td><td>${e}</td><td>${(w.confidence ?? 0).toFixed(2)}</td>`;
-    tbody.appendChild(tr);
-  });
-
-  // Wire play buttons
-  flagsEl.querySelectorAll(".play-slice").forEach((btn) => {
-    btn.addEventListener("click", () => {
-      const t0 = parseFloat(btn.dataset.start);
-      const t1 = parseFloat(btn.dataset.end);
-      audioEl.currentTime = Math.max(0, t0);
-      audioEl.play();
-      // Pause when we cross t1 (rough; setTimeout because audio events
-      // aren't sub-second precise across browsers).
-      const wait = Math.max(50, (t1 - t0) * 1000 + 80);
-      setTimeout(() => audioEl.pause(), wait);
-    });
-  });
-}
-
+// ---------------------------------------------------------------------------
+// Legacy streaming pipeline — used by the file upload + paste-text inputs.
+// Streams trace events into the Pipeline tab.
+// ---------------------------------------------------------------------------
 async function streamTranscribe(form) {
   resetTrace();
-  $("trace-card").hidden = false;
-  $("trace-status").textContent = "Pipeline running...";
+  $("result-card").hidden = false;
+  $("trace-status").textContent = "Pipeline running…";
+  activateTab("trace");
+
   const r = await fetch("/api/transcribe_stream", { method: "POST", body: form });
   if (!r.ok) {
     let msg = `HTTP ${r.status}`;
@@ -383,11 +392,35 @@ async function streamTranscribe(form) {
         const event = JSON.parse(line);
         appendTraceEvent(event);
         if (event.stage === "final") final = event.payload;
-      } catch (_) { /* ignore */ }
+      } catch (_) {}
     }
   }
   $("trace-status").textContent = "Done.";
-  if (final) showResult(final);
+
+  // Adapt the legacy 'final' payload into the same shape showDebugResult expects.
+  if (final) {
+    const adapted = {
+      session_id: final.session_id,
+      transcript: final.raw_text,
+      corrected_transcript: final.corrected_text,
+      auto_corrections: [],
+      flags: (final.suspicious || []).map((s, i) => ({
+        index: i,
+        word: s.span || "",
+        start_s: s.start_s,
+        end_s: s.end_s,
+        reason: s.reason || "legacy",
+        candidates: (s.candidates || []).map((c) => ({
+          term: c.term,
+          phonetic_similarity: c.similarity || 0,
+        })),
+        llm_likely_term: s.chosen || "",
+      })),
+      words: (final.asr && final.asr.words) || [],
+      audio_url: `/api/session_audio/${final.session_id}`,
+    };
+    showDebugResult(adapted);
+  }
 }
 
 function resetTrace() {
@@ -398,7 +431,7 @@ function appendTraceEvent(event) {
   const wrap = document.createElement("div");
   wrap.className = "trace-event";
   wrap.dataset.stage = event.stage;
-  const t = (event.t != null) ? event.t.toFixed(3) + "s" : "";
+  const t = event.t != null ? event.t.toFixed(3) + "s" : "";
   const summary = traceSummary(event.stage, event.payload);
   wrap.innerHTML = `
     <div class="head">
@@ -419,61 +452,53 @@ function appendTraceEvent(event) {
 
 function traceSummary(stage, payload) {
   if (!payload || typeof payload !== "object") return "";
-  if (stage === "asr.start") return `${payload.size_bytes} bytes, model ${payload.model}`;
-  if (stage === "asr.done")  return `${payload.raw_text}`;
-  if (stage === "detect.spans") return `${(payload.spans||[]).length} spans`;
-  if (stage === "voice_first.spans") return `${(payload.spans||[]).length} spans`;
-  if (stage === "spans.merged") return `${(payload.spans||[]).length} merged`;
-  if (stage === "retrieve.span") {
-    const auto = payload.auto ? " AUTO" : "";
-    const top = (payload.user_hits||[])[0];
-    const sim = top ? ` user-top ${top.term}@${top.similarity}` : "";
-    return `${payload.span_text}${auto}${sim}`;
-  }
-  if (stage === "decide.request") return `${(payload.user?.spans||[]).length} spans -> LLM`;
-  if (stage === "decide.response") return (payload.raw||"").slice(0, 80);
-  if (stage === "decide.done") return JSON.stringify(payload.decisions||{});
-  if (stage === "detect.request") return "LLM detect call";
-  if (stage === "detect.response") return (payload.raw||"").slice(0, 80);
-  if (stage === "final") return `corrected: ${(payload.corrected_text||"").slice(0,80)}`;
+  if (stage === "asr.start") return `${payload.size_bytes} bytes`;
+  if (stage === "asr.done") return (payload.raw_text || "").slice(0, 80);
+  if (stage === "detect.spans") return `${(payload.spans || []).length} spans`;
+  if (stage === "voice_first.spans") return `${(payload.spans || []).length} spans`;
+  if (stage === "spans.merged") return `${(payload.spans || []).length} merged`;
+  if (stage === "decide.done") return JSON.stringify(payload.decisions || {});
+  if (stage === "final") return `corrected: ${(payload.corrected_text || "").slice(0, 80)}`;
   if (stage.endsWith(".error")) return payload.error || "";
   return "";
 }
 
-$("btn-record").addEventListener("click", () => {
-  recordingMode = "default";
-  startRecording();
-});
-$("btn-record-debug").addEventListener("click", () => {
-  recordingMode = "debug";
-  startRecording();
-});
+// ---------------------------------------------------------------------------
+// Button wiring
+// ---------------------------------------------------------------------------
+$("btn-record").addEventListener("click", startRecording);
 $("btn-stop").addEventListener("click", stopRecording);
 
 document.addEventListener("keydown", (e) => {
   if (e.code !== "Space" || e.repeat) return;
-  const t = e.target;
-  if (t && /INPUT|TEXTAREA|SELECT/.test(t.tagName)) return;
+  const tgt = e.target;
+  if (tgt && /INPUT|TEXTAREA|SELECT/.test(tgt.tagName)) return;
   e.preventDefault();
   if (mediaRecorder?.state === "recording") return;
   startRecording();
 });
 document.addEventListener("keyup", (e) => {
   if (e.code !== "Space") return;
-  const t = e.target;
-  if (t && /INPUT|TEXTAREA|SELECT/.test(t.tagName)) return;
+  const tgt = e.target;
+  if (tgt && /INPUT|TEXTAREA|SELECT/.test(tgt.tagName)) return;
   if (mediaRecorder?.state === "recording") stopRecording();
 });
 
-// ---------------------------------------------------------------------------
-// Text correction
-// ---------------------------------------------------------------------------
 $("btn-correct").addEventListener("click", async () => {
   const text = $("raw-input").value.trim();
   if (!text) return;
   try {
     const data = await postJson("/api/correct", { text });
-    showResult(data);
+    // Adapt to showDebugResult shape.
+    showDebugResult({
+      session_id: data.session_id,
+      transcript: data.raw_text || text,
+      corrected_transcript: data.corrected_text || text,
+      auto_corrections: [],
+      flags: [],
+      words: [],
+      audio_url: null,
+    });
   } catch (e) {
     alert(e.message);
   }
@@ -484,9 +509,6 @@ $("btn-example").addEventListener("click", () => {
     "Patient with myokardial infarction. Start metoprol and atorvasta and clopidogr.";
 });
 
-// ---------------------------------------------------------------------------
-// File upload
-// ---------------------------------------------------------------------------
 $("btn-upload").addEventListener("click", async () => {
   const f = $("upload-file").files?.[0];
   if (!f) {
@@ -497,9 +519,12 @@ $("btn-upload").addEventListener("click", async () => {
   form.append("audio", f, f.name);
   const lang = $("lang").value;
   if (lang) form.append("language", lang);
-  form.append("model_size", $("model").value);
   try {
-    await streamTranscribe(form);
+    // For file uploads use the debug pipeline too — it's the new default.
+    const r = await fetch("/api/transcribe_debug", { method: "POST", body: form });
+    if (!r.ok) throw new Error(await r.text());
+    const data = await r.json();
+    showDebugResult(data);
   } catch (e) {
     alert(e.message);
   }
@@ -512,7 +537,7 @@ $("btn-save-edits").addEventListener("click", async () => {
   const corrected = $("corrected-text").value.trim();
   if (!corrected || !lastRawText) return;
   $("btn-save-edits").disabled = true;
-  $("save-status").textContent = "Saving...";
+  $("save-status").textContent = "Saving…";
   try {
     const data = await postJson("/api/learn_from_edit", {
       raw_text: lastRawText,
@@ -521,14 +546,14 @@ $("btn-save-edits").addEventListener("click", async () => {
       type: "drug",
     });
     const learnedTerms = (data.learned_text || []).map((l) =>
-      l.from_alias ? `${l.entry.term} (was: ${l.from_alias})` : l.entry.term
+      l.from_alias ? `${l.entry.term} (was: ${l.from_alias})` : l.entry.term,
     );
     const learnedVoices = (data.learned_voices || []).map((v) => v.voice.term);
     const parts = [];
     if (learnedTerms.length) parts.push(`text: ${learnedTerms.join(", ")}`);
     if (learnedVoices.length) parts.push(`voice: ${learnedVoices.join(", ")}`);
     if (!parts.length) {
-      $("save-status").textContent = "✓ No new terms — your edits already match the database.";
+      $("save-status").textContent = "✓ No new terms.";
     } else {
       $("save-status").textContent = `✓ Learned ${parts.join(" | ")}`;
     }
@@ -552,9 +577,7 @@ async function refreshLexicon() {
     allEntries = data.entries || [];
     $("lexicon-count").textContent = `(${data.count})`;
     renderLexicon($("vocab-search").value);
-  } catch (_) {
-    /* ignore */
-  }
+  } catch (_) {}
 }
 
 function renderLexicon(query) {
@@ -563,7 +586,7 @@ function renderLexicon(query) {
     ? allEntries.filter(
         (e) =>
           e.term.toLowerCase().includes(q) ||
-          (e.aliases || []).some((a) => a.toLowerCase().includes(q))
+          (e.aliases || []).some((a) => a.toLowerCase().includes(q)),
       )
     : allEntries;
   const list = $("lexicon-list");
