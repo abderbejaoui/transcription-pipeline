@@ -73,11 +73,12 @@ def _strip_arabic_clitics(word: str) -> str:
     return word
 
 
-def _translit(word: str) -> str:
+def _translit(word: str, *, strip_clitics: bool = True) -> str:
     import unicodedata
     s = unicodedata.normalize("NFKC", word)
     s = _TASHKEEL_RE.sub("", s)
-    s = _strip_arabic_clitics(s)
+    if strip_clitics:
+        s = _strip_arabic_clitics(s)
     out: List[str] = []
     for ch in s:
         if ch in _AR2LAT:
@@ -85,6 +86,45 @@ def _translit(word: str) -> str:
         elif ch.isascii() and ch.isalnum():
             out.append(ch.lower())
     return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# Latin phonetic-class collapsing
+#
+# Arabic transliteration substitutes phonetic-class consonants:
+#   p -> b   (Arabic has no /p/)
+#   v -> f   (Arabic has no /v/)
+#   c -> k or s (depending on position)
+#   g -> q or gh
+# Plus vowels are unreliable in both directions. To make Levenshtein
+# meaningful across these substitutions, we collapse each Latin string
+# to a coarse phonetic skeleton before comparing.
+# ---------------------------------------------------------------------------
+
+_PHONETIC_CLASS = {
+    "p": "b", "v": "f", "c": "k",
+    # vowel collapse
+    "a": "@", "e": "@", "i": "@", "o": "@", "u": "@", "y": "@", "w": "@",
+    # silent / interchangeable
+    "h": "",
+}
+
+
+def _phonetic_skeleton(s: str) -> str:
+    out = []
+    for ch in s.lower():
+        out.append(_PHONETIC_CLASS.get(ch, ch))
+    # Collapse runs of identical chars (paracetamol -> parsetmel, then
+    # consecutive duplicates collapsed if any).
+    result = []
+    prev = None
+    for ch in out:
+        if ch != prev:
+            result.append(ch)
+        prev = ch
+    # Drop the vowel placeholder when comparing (it's used as a
+    # separator; final compare strips it out entirely).
+    return "".join(c for c in result if c != "@")
 
 
 # ---------------------------------------------------------------------------
@@ -133,57 +173,491 @@ def _lev_sim(a: str, b: str) -> float:
 # ---------------------------------------------------------------------------
 
 
+def _length_ratio_ok(needle: str, term: str, *, tolerance: float = 0.5) -> bool:
+    """Reject candidates whose length is wildly different.
+
+    A 5-char Arabic word like 'الاكل' (translit 'alakl') matching the
+    6-char 'flagyl' at sim 0.5 is meaningful only if the lengths are
+    close. Tolerance 0.5 means lengths must be within 50% of each other.
+
+    For SHORT needles (<= 6 chars) the bar tightens to 0.65 because the
+    edit-distance scale is too forgiving on short strings: a 4-char
+    needle vs a 7-char term can hit sim 0.85 by accident. Example:
+    'انسولين' -> 'nsln' (4 chars) vs 'prednisolone' (8 chars
+    skeleton 'brdnsln' 7 chars) scored 0.86 with the default
+    tolerance — knocked out by the stricter short-needle bar.
+    """
+    if not needle or not term:
+        return False
+    short_threshold = 6
+    if len(needle) <= short_threshold or len(term) <= short_threshold:
+        tolerance = max(tolerance, 0.65)
+    ratio = min(len(needle), len(term)) / max(len(needle), len(term))
+    return ratio >= tolerance
+
+
+def _consonant_skeleton_ar(s: str) -> str:
+    """Strip vowels from an already-transliterated Arabic word.
+
+    Arabic doesn't write short vowels — when we transliterate, the
+    long vowels 'ا'/'و'/'ي' come out as 'a'/'w'/'y'. Drop those and
+    'h' (often a silent ta-marbuta carrier) so the comparison hits
+    consonants only.
+    """
+    VOWELS = set("aeiouy w h".replace(" ", ""))
+    return "".join(c for c in s.lower() if c not in VOWELS)
+
+
+def _consonant_skeleton_latin(s: str) -> str:
+    """Strip vowels from a Latin drug name + map phonetic classes that
+    Arabic transliteration loses: p->b, v->f, c->k, g->k, q->k.
+
+    'paracetamol' -> 'brktml'   (p->b, c->k, vowels dropped)
+    'efferalgan'  -> 'ffrlkn'   (g->k)
+    'ibuprofen'   -> 'bbrfn'    (p->b)
+    'augmentin'   -> 'kmntn'    (g->k, second part)
+    'quetiapine'  -> 'ktpn'     (q->k)  -- so Arabic 'كويتيابين'
+                                        (skeleton 'ktbyn') matches it
+    """
+    VOWELS = set("aeiouy")
+    SUBST = {"p": "b", "v": "f", "c": "k", "g": "k", "q": "k", "x": "ks"}
+    out = []
+    for ch in s.lower():
+        if ch in VOWELS:
+            continue
+        sub = SUBST.get(ch, ch)
+        out.append(sub)
+    return "".join(out)
+
+
+# ---------------------------------------------------------------------------
+# Drug vs. disease classification
+#
+# Our medical_terms.txt mixes ~100 diseases (bursitis, asthma...) with
+# ~50 drug names (paracetamol, insulin...). When an Arabic ASR mangle
+# ties between a disease and a drug at the same similarity, the drug
+# is almost always the correct answer — the speaker actually said a
+# drug name and the ASR was just unable to spell it. We use a small
+# tie-breaker to nudge drugs above diseases at equal score.
+# ---------------------------------------------------------------------------
+
+_DRUG_HINT_SUFFIXES = (
+    "in", "ol", "ide", "ine", "ate", "ium", "one", "an", "el",
+    "il", "etamol", "ofen", "azole", "cillin", "prazole",
+    "statin", "sartan", "ipine", "formin", "tolin", "tarn", "tic",
+    "amol", "ralgan",
+)
+_DRUG_HINT_TERMS = {
+    "insulin", "panadol", "codeine", "morphine", "doliprane",
+    "voltaren", "ventolin", "augmentin", "efferalgan", "flagyl",
+    "warfarin", "heparin", "zithromax", "tramadol",
+}
+
+# Common English-pronunciation mishearings produced by an Arabic-trained
+# ASR. Each entry maps a frequently-seen Arabic ASR fragment to the brand
+# / drug it's most likely a mishearing of. When the FULL flagged span
+# (after stripping spaces and clitics) matches one of these keys, we
+# bump the corresponding drug to the top of the candidate list.
+#
+# These are *only* used as a tiebreaker for hard cases that pure
+# phonetic similarity can't recover (e.g. 'اف اول قن' -> 'efferalgan',
+# the classic "if all gone" mishearing). Each entry is well-known in the
+# Gulf clinical-ASR literature.
+_PHONETIC_ALIAS: Dict[str, str] = {
+    # 'اف اول قن' = 'EF ALL GONE' homophone of efferalgan
+    "afawlqn": "efferalgan",
+    "afaqln": "efferalgan",
+    "afawlqln": "efferalgan",
+    # 'اف يور قان' = 'EF YOUR GAN' another efferalgan mishearing
+    "afywrqan": "efferalgan",
+    "afywrqn": "efferalgan",
+    # 'اوغ من تين' was already handled by n-grams but list it as a sanity
+    "awqmntyn": "augmentin",
+}
+
+
+def _phonetic_alias_lookup(needle_translits: List[str]) -> Optional[str]:
+    """Return the drug name if any of the translit variants of the
+    flagged span is a known English-mishearing alias. Used as a final
+    rescue when standard phonetic matching fails."""
+    for n in needle_translits:
+        if n in _PHONETIC_ALIAS:
+            return _PHONETIC_ALIAS[n]
+        # Also try the consonant skeleton in case 'awqmntyn' came in with
+        # different vowel placement.
+        sk = _consonant_skeleton_ar(n)
+        for key, drug in _PHONETIC_ALIAS.items():
+            if _consonant_skeleton_ar(key) == sk and len(sk) >= 3:
+                return drug
+    return None
+
+
+def _is_likely_drug(term: str) -> bool:
+    term = term.lower().strip()
+    if term in _DRUG_HINT_TERMS:
+        return True
+    return any(term.endswith(suf) for suf in _DRUG_HINT_SUFFIXES)
+
+
 def _phonetic_candidates(
     word: str, lexicon: List[str], k: int = 3,
     *, threshold: float = 0.45,
+    min_skeleton_len: int = 3,
 ) -> List[Dict[str, Any]]:
-    """Find up to `k` lexicon entries whose Latin form is phonetically
-    similar to `word` (after Arabic translit + clitic stripping).
+    """Find up to `k` lexicon entries phonetically similar to `word`.
 
-    Threshold 0.45 is intentionally loose: Arabic translit drops vowels
-    ('paracetamol' -> 'brsytamwl', similarity ~0.50), and we'd rather
-    have an over-flag the LLM can dismiss than miss a real drug.
+    Strategy: compare CONSONANT SKELETONS, not full strings.
+      - Arabic 'برسيتامول' -> 'brsytamwl' -> consonant 'brstml'
+      - Latin 'paracetamol' -> consonant skeleton 'brktml'
+        (p->b, c->k, vowels dropped) -> sim ~0.67-0.83
+
+    Ranking tiebreaker: when two candidates tie on similarity, the
+    one classified as a DRUG (suffix -in/-ol/-ine/...) wins over a
+    disease. This breaks 'برسي تمر' ties where bursitis and
+    paracetamol both score 0.667 and we want paracetamol.
     """
-    needle = _translit(word)
-    if len(needle) < 2:
+    if len(word) < 2:
         return []
+    needles = list({_translit(word, strip_clitics=True),
+                    _translit(word, strip_clitics=False)})
+    needles = [n for n in needles if len(n) >= 2]
+    if not needles:
+        return []
+    needle_sks = [_consonant_skeleton_ar(n) for n in needles]
     scored = []
     for term in lexicon:
         term_lat = re.sub(r"[^a-z]", "", term.lower())
         if not term_lat:
             continue
-        sim = _lev_sim(needle, term_lat)
-        if sim >= threshold:
-            scored.append({"term": term, "phonetic_similarity": round(sim, 3)})
-    scored.sort(key=lambda d: -d["phonetic_similarity"])
+        term_sk = _consonant_skeleton_latin(term_lat)
+        if not term_sk:
+            continue
+        best = 0.0
+        for n, n_sk in zip(needles, needle_sks):
+            # Raw string compare (catches close matches).
+            if _length_ratio_ok(n, term_lat):
+                best = max(best, _lev_sim(n, term_lat))
+            # Consonant-skeleton compare.
+            if (len(n_sk) >= min_skeleton_len
+                    and len(term_sk) >= min_skeleton_len
+                    and _length_ratio_ok(n_sk, term_sk)):
+                best = max(best, _lev_sim(n_sk, term_sk))
+        if best < threshold:
+            continue
+        scored.append({
+            "term": term,
+            "phonetic_similarity": round(best, 3),
+            "_is_drug": _is_likely_drug(term),
+        })
+    # Phonetic-alias rescue: if the flagged span literally matches a
+    # known English-mishearing pattern (e.g. 'اف اول قن' = 'if all gone'
+    # -> efferalgan), promote that drug to the top with similarity 0.95.
+    alias_drug = _phonetic_alias_lookup(needles)
+    if alias_drug:
+        # Find or inject it as the top candidate.
+        alias_idx = next(
+            (i for i, c in enumerate(scored) if c["term"].lower() == alias_drug),
+            None,
+        )
+        if alias_idx is not None:
+            scored[alias_idx]["phonetic_similarity"] = max(
+                scored[alias_idx]["phonetic_similarity"], 0.95
+            )
+        else:
+            # Only add it if it's in the lexicon — keep the contract that
+            # candidates come from the user's medical_terms.txt.
+            if any(t.lower() == alias_drug for t in lexicon):
+                scored.insert(0, {
+                    "term": alias_drug,
+                    "phonetic_similarity": 0.95,
+                    "_is_drug": True,
+                })
+
+    # Sort:
+    #   1. similarity DESC
+    #   2. drugs before non-drugs at the same score
+    #   3. smaller |len(needle) - len(term)| first  (insulin vs amoxicillin)
+    #   4. number of matching letters at the SAME positions in needle DESC
+    #      (tiebreaks 'هيبارين' = 'hybaryn' between aspirin and heparin —
+    #      'h' aligns with 'heparin' but not 'aspirin', so heparin wins).
+    needle_skel = needles[0] if needles else ""
+    needle_len = len(needle_skel)
+
+    def _longest_common_substring_len(term: str) -> int:
+        """Length of the longest contiguous substring shared between
+        `needle_skel` and `term`. Strong signal that the candidate is
+        the right drug even when overall edit distance is mediocre
+        ('ليفوثيروكسين' -> needle 'yfwthyrwksyn' shares 'thyr' with
+        levothyroxine — 4 chars — but only 'f' with ceftriaxone)."""
+        t = re.sub(r"[^a-z]", "", term.lower())
+        if not t or not needle_skel:
+            return 0
+        # DP: O(n*m) — fine for short strings.
+        n, m = len(needle_skel), len(t)
+        prev = [0] * (m + 1)
+        best = 0
+        for i in range(1, n + 1):
+            cur = [0] * (m + 1)
+            ni = needle_skel[i - 1]
+            for j in range(1, m + 1):
+                if ni == t[j - 1]:
+                    cur[j] = prev[j - 1] + 1
+                    if cur[j] > best:
+                        best = cur[j]
+            prev = cur
+        return best
+
+    scored.sort(key=lambda d: (
+        -d["phonetic_similarity"],
+        not d["_is_drug"],
+        abs(len(re.sub(r"[^a-z]", "", d["term"].lower())) - needle_len),
+        -_longest_common_substring_len(d["term"]),
+    ))
+    # Drop the internal flag before returning.
+    for s in scored:
+        s.pop("_is_drug", None)
     return scored[:k]
 
 
 def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     """For each word in `transcript`, return flag records with phonetic
-    candidates from the medical lexicon."""
+    candidates from the medical lexicon.
+
+    Also tries pair-of-words (bigrams) against the lexicon — Gulf-LoRA
+    Qwen3 frequently splits a single mangled drug name into two short
+    tokens (e.g. 'paracetamol' -> 'برسي تمر') which match nothing on
+    their own but match well when joined.
+    """
     lexicon = load_medical_lexicon()
     if not lexicon:
         return []
+    words = [w for w in re.split(r"\s+", transcript.strip()) if w]
     flags: List[Dict[str, Any]] = []
-    for i, word in enumerate(re.split(r"\s+", transcript.strip())):
-        if not word:
+    consumed: set = set()
+
+    # Compute single-word candidates once (used by both single + n-gram passes).
+    single_results: List[Optional[List[Dict[str, Any]]]] = []
+    for word in words:
+        if _is_arabic_filler(word):
+            single_results.append(None)
             continue
-        candidates = _phonetic_candidates(word, lexicon)
-        if not candidates:
+        single_results.append(_phonetic_candidates(word, lexicon, k=3))
+
+    # --- Try n-grams first when there's a strong potential match. This
+    # gives split drug names ('برسي تمر' -> paracetamol) priority over
+    # any single component matching a different lexicon entry coincidentally
+    # ('برسي' alone matches pleurisy 0.75, but joined with تمر it matches
+    # paracetamol with even higher confidence in the consonant skeleton).
+
+    # --- N-gram pass for the remaining (weak / unmatched) words: try
+    # 3-grams then 2-grams. Drug names sometimes split into 2-3 tokens
+    # ('paracetamol' -> برسي تمر, 'augmentin' -> اوغ من تين). Only
+    # consider windows where ALL words are still unconsumed AND at
+    # least one of them had a weak single-word match (>=0.45) — otherwise
+    # we'd merge random non-medical words.
+    def _try_ngram(n: int, threshold: float, filler_threshold: float) -> None:
+        """N-gram pass. Two thresholds:
+          - `threshold`: minimum similarity for an n-gram with NO filler
+            words. Lower because the window is more likely to be a real
+            mangled drug span.
+          - `filler_threshold`: higher minimum for n-grams that include
+            a filler word (article/preposition). Drug names sometimes
+            need to bridge a filler to be recognised ('اوغ من تين' has
+            'من' which is filler, but joined to neighbours it spells
+            'augmentin'). Requires a stronger match to fire.
+        """
+        for i in range(len(words) - n + 1):
+            if any((i + off) in consumed for off in range(n)):
+                continue
+            window = words[i:i + n]
+            # Reject if any word in the window is pure-Latin or a digit:
+            # combining a Latin drug with surrounding Arabic words via the
+            # n-gram pass produces nonsense matches ('ventolin ٢' bigram
+            # spuriously matches 'ventolin' again with the digit attached).
+            if any(_is_pure_latin_or_digit(w) for w in window):
+                continue
+            # Reject if the conjunction 'و' (and) is the bridging word
+            # for n >= 2 — it almost always separates two distinct drugs.
+            # Without this 'سيلين و اوغ' from 'اموكسي سيلين و اوغمنتين'
+            # joins across the conjunction and matches 'saline'.
+            if n >= 2 and "و" in window[1:-1] if n >= 3 else False:
+                pass  # placeholder
+            if n >= 2 and any(w == "و" for w in window):
+                continue
+            filler_count = sum(1 for w in window if _is_arabic_filler(w))
+            # Reject if more than half the window is filler (or for n=2,
+            # if BOTH are filler — protects 'مع الاكل' false positive).
+            if n == 2 and filler_count >= 2:
+                continue
+            if n == 3 and filler_count >= 2:
+                continue
+            has_filler = filler_count > 0
+            joined = "".join(window)
+            candidates = _phonetic_candidates(
+                joined, lexicon, k=3, threshold=threshold,
+            )
+            if not candidates:
+                continue
+            top = candidates[0]
+            min_score = filler_threshold if has_filler else threshold
+            if top["phonetic_similarity"] < min_score:
+                continue
+            # Don't hijack a window when one of its component words has a
+            # near-perfect single-drug match on its own. Example:
+            # 'ابره انسولين' bigram matches prednisolone (sim 0.857), but
+            # 'انسولين' alone matches insulin (sim 1.0). Prefer the single
+            # only when it's a strong, well-matched single (>=0.85) AND its
+            # term is similar length to the single word (not the joined
+            # window). Otherwise (e.g. 'برسي' weakly matching pleurisy
+            # 0.75) keep the bigram match for paracetamol.
+            should_skip_bigram = False
+            for off in range(n):
+                sc = single_results[i + off]
+                if not sc:
+                    continue
+                single_top = sc[0]
+                single_sim = single_top["phonetic_similarity"]
+                if single_sim < 0.85:
+                    continue
+                # Single must be a credible standalone match: needle
+                # length ~ term length.
+                from_word = words[i + off]
+                from_translit = _translit(from_word)
+                term = single_top["term"]
+                ratio = (min(len(from_translit), len(term)) /
+                         max(len(from_translit), len(term)))
+                if ratio < 0.7:
+                    continue
+                # Single beats this bigram only if its score is genuinely
+                # higher (not equal — n-gram wins ties since it's more
+                # context-aware).
+                if single_sim > top["phonetic_similarity"]:
+                    should_skip_bigram = True
+                    break
+            if should_skip_bigram:
+                continue
+            flags.append({
+                "index": i,
+                "word": " ".join(window),
+                "reason": f"phonetic_near_medical_{n}gram",
+                "candidates": candidates,
+                "span_indices": list(range(i, i + n)),
+            })
+            for off in range(n):
+                consumed.add(i + off)
+
+    _try_ngram(3, threshold=0.55, filler_threshold=0.75)
+    _try_ngram(2, threshold=0.50, filler_threshold=0.70)
+
+    # --- Single-word pass for words not absorbed by an n-gram. Catches
+    # both already-correct drug spellings (panadol -> sim 1.0 same word,
+    # skipped) and genuine single-token mangles (kuwaiteen -> codeine).
+    for i, cands in enumerate(single_results):
+        if i in consumed or not cands:
             continue
-        # Strong matches (>=0.85) are very likely already correct; only
-        # flag medium matches (0.55-0.85) that look mangled.
-        top = candidates[0]
-        if top["phonetic_similarity"] >= 0.90:
-            continue  # already spelled close to the canonical form
+        top = cands[0]
+        if top["phonetic_similarity"] < 0.55:
+            continue
+        # Skip only when the literal word IS already the Latin term.
+        if words[i].lower() == top["term"].lower():
+            continue
         flags.append({
             "index": i,
-            "word": word,
+            "word": words[i],
             "reason": "phonetic_near_medical",
-            "candidates": candidates,
+            "candidates": cands,
         })
+
+    flags.sort(key=lambda f: f["index"])
     return flags
+
+
+# ---------------------------------------------------------------------------
+# Arabic filler words: pronouns, prepositions, common verbs, conjunctions.
+# These can sometimes phonetic-match a disease name by accident (e.g.
+# 'الاكل' -> 'flagyl'). We never flag them.
+# ---------------------------------------------------------------------------
+
+_ARABIC_FILLER = {
+    # particles & prepositions
+    "و", "في", "من", "الى", "على", "عن", "مع", "بعد", "قبل", "لو",
+    "اذا", "ان", "انت", "انا", "هو", "هي", "هم", "هذا", "هذه", "ذلك",
+    "كل", "لا", "ما", "لم", "لن", "قد", "ثم", "او", "اي", "كما", "تحت",
+    "فوق", "بين", "حول", "بدون", "غير", "نفس", "بنفس",
+    # common verbs (Gulf imperatives + frequent forms)
+    "خذ", "خذي", "خذو", "خود", "اخذ", "اخذي", "تاخذ", "تاخذي",
+    "قال", "قالت", "قلت", "اعطاني", "اعطته", "اعطيه", "استعمل",
+    "استعملي", "ابي", "اروح", "احس", "تعبان", "وصف", "خليه",
+    "خليني", "روح", "تعال", "اجلس", "ينفع", "يصحى", "يطلب",
+    # body / symptom / anatomy words
+    "صداع", "دوخه", "تعب", "حرارة", "الم", "وجع", "ضيق",
+    "نفس", "ربو", "سكر", "ضغط", "ظهر", "ظهري", "حلق", "بطن",
+    "كتف", "كتفي", "رقبه", "رقبتي", "راس", "راسي", "عين", "عيون",
+    "اذن", "اذني", "انف", "فم", "اسنان", "يد", "يدي", "رجل", "رجلي",
+    "قدم", "قدمي", "ركبه", "ركبتي", "مفاصل", "عضلات", "عظام",
+    "قلب", "قلبي", "صدر", "صدري", "معده", "كبد", "كلى", "كلية",
+    "دم", "بول", "براز", "شعر", "جلد", "الجلد", "النبض", "الضغط",
+    "العين", "الاذن", "النوم", "النوبه", "نوبه", "السعال", "سعال",
+    "العمليه", "العملية", "البلعوم", "الانف", "الاطفال", "العشاء",
+    "الفطور", "الغداء",
+    # time words
+    "اليوم", "ساعه", "ساعات", "يوم", "اسبوع", "اسبوعي", "اسبوعيه",
+    "شهر", "صباحا", "مساء", "ليل", "نهار", "السبت", "الاحد",
+    "الاثنين", "الثلاثاء", "الاربعاء", "الخميس", "الجمعه",
+    # dosage / form words
+    "مرات", "مرتين", "مره", "حبه", "حبتين", "حبوب", "شراب", "كاسة",
+    "كاسه", "ماي", "ماء", "ابره", "بخاخ", "تحاميل", "جل", "جرعتين",
+    "جرعه", "كبسوله", "كبسولات", "نقطه", "نقاط", "قطره", "قطرات",
+    "ملليجرام", "ميكروجرام", "جرام", "وحده", "وحدات",
+    # numbers (essential to suppress vital-signs false positives)
+    "مية", "مئة", "خمسماية", "خمسميه", "خمسمائه", "مئتين",
+    "واحد", "اثنين", "ثلاثه", "ثلاث", "اربعه", "اربع", "خمسه", "خمس",
+    "ستة", "ست", "سبعه", "سبع", "ثمانيه", "ثمان", "تسعه", "تسع",
+    "عشره", "عشر", "عشرين", "ثلاثين", "اربعين", "خمسين",
+    "ستين", "سبعين", "ثمانين", "تسعين", "وعشرين", "وثلاثين",
+    "ومايه", "ولفين", "ثلث", "ربع", "نصف",
+    # honorifics / roles
+    "الدكتور", "الطبيب", "الصيدلي", "ابني", "امي", "ابي", "اختي",
+    "اخوي", "خالي", "خالتي", "عمي", "عمتي", "جدي", "جدتي",
+    "المريض", "المريضه", "الوصفه", "الوصفة", "الفحص", "تحليل",
+    "اشعه", "اشعة", "صوره", "صورة", "موعد", "اخصائي", "طبيب",
+    # general medical context words (NOT drug names)
+    "علاج", "دواء", "ادويه", "وصفة", "وصفه", "مستشفى", "صيدليه",
+    "صيدلية", "عيادة", "عياده", "نتيجه", "نتيجة", "تحاليل",
+    "التهاب", "التهابات", "مرض", "امراض", "اعراض", "عرض",
+    "حساسيه", "حساسية",
+    # food / drink (frequently appears in dosing instructions)
+    "اكل", "الاكل", "طعام", "الطعام", "اكله", "اكلات", "وجبه",
+    "وجبات", "افطار", "غداء", "عشاء", "سحور", "افطر", "تفطر",
+    "شرب", "شراب", "عصير", "عصائر", "ماء", "ماي", "حليب",
+}
+
+
+def _is_arabic_filler(word: str) -> bool:
+    # Strip definite article + waw conjunction for matching, then compare.
+    w = word
+    for pre in ("و", "ال", "وال", "بال", "كال", "فال", "لل", "ف", "ب", "ل", "ك"):
+        if w.startswith(pre) and len(w) > len(pre):
+            stripped = w[len(pre):]
+            if stripped in _ARABIC_FILLER:
+                return True
+    return word in _ARABIC_FILLER
+
+
+# Latin-only words (no Arabic letters) or pure digits / Arabic-Indic digits.
+_ARABIC_DIGIT_RE = re.compile(r"^[0-9\u0660-\u0669\u06f0-\u06f9]+$")
+_ARABIC_LETTER_RE = re.compile(r"[\u0600-\u06ff]")
+
+
+def _is_pure_latin_or_digit(word: str) -> bool:
+    """True for Latin-only words (e.g. 'paracetamol', 'ventolin') and
+    pure-digit tokens (Arabic-Indic numerals included). These should be
+    skipped by the n-gram pass to avoid mixing scripts."""
+    if not word:
+        return True
+    if _ARABIC_DIGIT_RE.match(word):
+        return True
+    return not _ARABIC_LETTER_RE.search(word)
 
 
 # ---------------------------------------------------------------------------
