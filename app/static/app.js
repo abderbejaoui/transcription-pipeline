@@ -115,6 +115,8 @@ function pickMime() {
 
 function setRecordingUI(isRecording) {
   $("btn-record").hidden = isRecording;
+  const debugBtn = document.getElementById("btn-record-debug");
+  if (debugBtn) debugBtn.hidden = isRecording;
   $("btn-stop").hidden = !isRecording;
   $("btn-record").classList.toggle("recording", isRecording);
 }
