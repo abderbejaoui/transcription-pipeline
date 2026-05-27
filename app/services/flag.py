@@ -230,6 +230,33 @@ def _consonant_skeleton_latin(s: str) -> str:
     return "".join(out)
 
 
+def _longest_common_substring(a: str, b: str) -> int:
+    """Length of the longest CONTIGUOUS substring shared between a and b.
+
+    Used as a secondary precision check for n-grams: when two n-grams
+    score similarly under edit distance, the one with a longer contiguous
+    shared run is almost always the right drug. Edit distance alone
+    can be fooled by scattered letter overlap (e.g. a person's name
+    'فواد علي النزار' shares 'f', 'l', 'n', 'z' with 'fluconazole' but
+    no run longer than 2 chars, which is coincidental).
+    """
+    if not a or not b:
+        return 0
+    n, m = len(a), len(b)
+    prev = [0] * (m + 1)
+    best = 0
+    for i in range(1, n + 1):
+        cur = [0] * (m + 1)
+        ai = a[i - 1]
+        for j in range(1, m + 1):
+            if ai == b[j - 1]:
+                cur[j] = prev[j - 1] + 1
+                if cur[j] > best:
+                    best = cur[j]
+        prev = cur
+    return best
+
+
 # ---------------------------------------------------------------------------
 # Drug vs. disease classification
 #
@@ -502,6 +529,19 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
             min_score = filler_threshold if has_filler else threshold
             if top["phonetic_similarity"] < min_score:
                 continue
+            # Precision check for borderline n-grams: when the
+            # similarity is in the noisy 0.55-0.65 range AND the
+            # contiguous shared skeleton substring is only 2 chars or
+            # less, drop the match. This kills false positives like a
+            # person's name 'فواد علي النزار' which matches fluconazole
+            # at 0.57 with LCS=2 — pure scattered-letter coincidence.
+            # Real mangled drugs almost always have EITHER a higher
+            # similarity (≥0.65) OR a 3+ contiguous shared substring.
+            joined_skel = _consonant_skeleton_ar(_translit(joined))
+            term_skel = _consonant_skeleton_latin(top["term"])
+            lcs_len = _longest_common_substring(joined_skel, term_skel)
+            if top["phonetic_similarity"] < 0.65 and lcs_len < 3:
+                continue
             # Don't hijack a window when one of its component words has a
             # near-perfect single-drug match on its own. Example:
             # 'ابره انسولين' bigram matches prednisolone (sim 0.857), but
@@ -517,7 +557,10 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                     continue
                 single_top = sc[0]
                 single_sim = single_top["phonetic_similarity"]
-                if single_sim < 0.85:
+                # 0.80 (was 0.85): 'البرسيتامول' alone matches
+                # paracetamol at 0.833, but the bigram البرسيتامول+لمدة
+                # also passes the n-gram threshold and was hijacking it.
+                if single_sim < 0.80:
                     continue
                 # Single must be a credible standalone match: needle
                 # length ~ term length.
@@ -526,7 +569,16 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 term = single_top["term"]
                 ratio = (min(len(from_translit), len(term)) /
                          max(len(from_translit), len(term)))
-                if ratio < 0.7:
+                if ratio < 0.65:
+                    continue
+                # Don't let the single block the bigram when the bigram
+                # is materially longer than the single AND covers it.
+                # Example: 'سيلين' alone matches 'saline' (1.0), but the
+                # bigram 'اموكسي سيلين' is the real drug 'amoxicillin'
+                # and the single is just half of it. Joined-len > 1.7x
+                # single-len is a strong signal of a split-drug.
+                joined_translit = _translit(joined)
+                if len(joined_translit) > 1.7 * len(from_translit):
                     continue
                 # Single beats this bigram only if its score is genuinely
                 # higher (not equal — n-gram wins ties since it's more
@@ -561,6 +613,18 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
         # Skip only when the literal word IS already the Latin term.
         if words[i].lower() == top["term"].lower():
             continue
+        # Precision check for borderline single matches: when sim is
+        # only 0.55-0.65 AND the contiguous shared skeleton is only
+        # 2 chars or less, drop it. Example: 'النزار' (skel 'nzr')
+        # matches 'olanzapine' (skel 'lnzpn') at 0.6 by scattered-letter
+        # coincidence (LCS=2). A real drug match usually scores ≥0.65
+        # or has LCS≥3.
+        if top["phonetic_similarity"] < 0.65:
+            word_skel = _consonant_skeleton_ar(_translit(words[i]))
+            term_skel = _consonant_skeleton_latin(top["term"])
+            lcs = _longest_common_substring(word_skel, term_skel)
+            if lcs < 3:
+                continue
         flags.append({
             "index": i,
             "word": words[i],
@@ -630,6 +694,23 @@ _ARABIC_FILLER = {
     "اكل", "الاكل", "طعام", "الطعام", "اكله", "اكلات", "وجبه",
     "وجبات", "افطار", "غداء", "عشاء", "سحور", "افطر", "تفطر",
     "شرب", "شراب", "عصير", "عصائر", "ماء", "ماي", "حليب",
+    # common Arabic first names (suppress 'الدكتور <name>' false flags)
+    "محمد", "احمد", "علي", "حسن", "حسين", "ابراهيم", "اسماعيل",
+    "يوسف", "ادم", "موسى", "عيسى", "نوح", "خالد", "سعد", "سعيد",
+    "سالم", "سلمان", "سليمان", "صالح", "ناصر", "فهد", "فيصل",
+    "بدر", "ماجد", "طلال", "عبدالله", "عبدالرحمن", "عبدالعزيز",
+    "عبدالكريم", "عبدالمجيد", "عمر", "عثمان", "ابوبكر", "بكر",
+    "زيد", "ياسر", "فؤاد", "فواد", "كريم", "نبيل", "وليد", "هاني",
+    "طارق", "ايمن", "سامي", "اسامه", "اسامة", "حمد", "حمدان",
+    "راشد", "سيف", "زايد", "منصور", "سلطان", "حربي", "مطلق",
+    "فاطمه", "فاطمة", "عائشه", "عائشة", "خديجه", "خديجة", "مريم",
+    "زينب", "هدى", "نوره", "نورة", "موضي", "نوف", "ساره", "سارة",
+    "هند", "ريم", "لمى", "شهد", "غلا", "العنود", "الجوهره",
+    # Tribal/family-name particles (al-, ibn-, abu-, umm-)
+    "ابو", "أبو", "ام", "أم", "ابن", "بنت", "بن", "بنت",
+    # identity / possession words
+    "اسم", "اسمي", "اسمك", "اسمه", "اسمها", "عمري", "عمرك", "عمره",
+    "بلدي", "بلدك", "جنسيتي", "رقمي", "هاتفي", "تلفوني",
 }
 
 
