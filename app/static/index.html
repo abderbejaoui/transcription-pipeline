@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Voice Platform — Demo</title>
-  <link rel="stylesheet" href="/static/styles.css?v=5" />
+  <link rel="stylesheet" href="/static/styles.css?v=6" />
 </head>
 <body>
   <main>
@@ -17,6 +17,7 @@
       <div class="row">
         <button id="btn-record" class="primary">🎙️ Record</button>
         <button id="btn-stop" class="ghost" hidden>■ Stop</button>
+        <button id="btn-record-debug" class="ghost" title="Record + show transcript, flags and per-flag audio slices">🔬 Record (debug)</button>
         <span id="record-status" class="muted small"></span>
       </div>
       <audio id="record-playback" controls hidden></audio>
@@ -92,6 +93,28 @@
       </details>
     </section>
 
+    <section id="debug-card" class="card" hidden>
+      <h2>🔬 Debug — transcript · flags · audio slices</h2>
+      <p class="muted small" id="debug-status"></p>
+
+      <h3>1) Full transcript</h3>
+      <pre id="debug-transcript" dir="auto"></pre>
+
+      <h3>2) Flagged words</h3>
+      <p class="muted small" id="debug-flag-count"></p>
+      <div id="debug-flags-list" class="stack"></div>
+
+      <details>
+        <summary class="muted small">Show per-word alignment table</summary>
+        <table id="debug-words-table">
+          <thead><tr><th>#</th><th>Word</th><th>Start</th><th>End</th><th>Conf.</th></tr></thead>
+          <tbody></tbody>
+        </table>
+      </details>
+
+      <audio id="debug-audio" controls></audio>
+    </section>
+
     <section class="card">
       <details>
         <summary><strong>Vocabulary</strong> <span id="lexicon-count" class="muted small"></span></summary>
@@ -104,6 +127,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=5"></script>
+  <script src="/static/app.js?v=6"></script>
 </body>
 </html>

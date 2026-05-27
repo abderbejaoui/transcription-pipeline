@@ -588,6 +588,92 @@ async def transcribe_stream(
 
 
 # ---------------------------------------------------------------------------
+# /api/transcribe_debug — transcript + flags + per-flag audio slice info
+# ---------------------------------------------------------------------------
+#
+# Pipeline: ASR -> phonetic+LLM flagging -> CTC forced alignment of each
+# flagged word back to (start_s, end_s). The UI shows all three so the
+# user can see exactly where in the audio each suspicious word lives.
+
+from .services import alignment as _alignment, flag as _flag
+
+
+@app.post("/api/transcribe_debug")
+async def transcribe_debug(
+    audio: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+    use_llm_flag: bool = Form(True),
+) -> Dict[str, Any]:
+    """Run ASR + flagging + alignment and return everything for the UI."""
+    session_id, session_path, size = _save_upload(audio)
+    effective_lang = language or DEFAULT_LANGUAGE
+    print(
+        f"[transcribe_debug] session={session_id} type={audio.content_type!r} "
+        f"size={size}B lang={effective_lang}"
+    )
+    if size < 200:
+        return JSONResponse(
+            status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
+        )
+    try:
+        # 1) ASR (same path as /api/transcribe)
+        asr_result = asr.transcribe(session_path, model_size=DEFAULT_WHISPER_SIZE,
+                                    language=effective_lang)
+        transcript = asr_result.get("text", "")
+        duration_s = float(asr_result.get("duration", 0.0))
+
+        # 2) Word-level CTC forced alignment of the full transcript.
+        try:
+            words_aligned = _alignment.align_words(session_path, transcript)
+        except Exception as exc:
+            print(f"[transcribe_debug] alignment failed: {exc!r}")
+            words_aligned = []
+
+        # 3) Flag suspicious words (phonetic + optional LLM).
+        try:
+            flags = _flag.flag_suspicious(transcript, use_llm=use_llm_flag)
+        except Exception as exc:
+            print(f"[transcribe_debug] flagging failed: {exc!r}")
+            flags = []
+
+        # 4) Stitch alignment into each flag so the UI knows where to slice.
+        for f in flags:
+            idx = f.get("index")
+            if isinstance(idx, int) and 0 <= idx < len(words_aligned):
+                f["start_s"] = words_aligned[idx].get("start_s")
+                f["end_s"] = words_aligned[idx].get("end_s")
+                f["alignment_confidence"] = words_aligned[idx].get("confidence", 0.0)
+            else:
+                f["start_s"] = None
+                f["end_s"] = None
+                f["alignment_confidence"] = 0.0
+
+        return {
+            "session_id": session_id,
+            "audio_url": f"/api/session_audio/{session_id}",
+            "transcript": transcript,
+            "duration_s": duration_s,
+            "words": words_aligned,
+            "flags": flags,
+        }
+    except Exception as exc:
+        print(f"[transcribe_debug] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
+@app.get("/api/session_audio/{session_id}")
+def get_session_audio(session_id: str):
+    """Serve the raw session audio so the browser can <audio>-play it
+    and the UI can seek to flagged-word offsets."""
+    # session_id is opaque; only allow files we actually have.
+    for ext in (".webm", ".wav", ".mp3", ".m4a", ".ogg", ".flac"):
+        p = SESSIONS_DIR / f"{session_id}{ext}"
+        if p.exists():
+            return FileResponse(p)
+    return JSONResponse(status_code=404, content={"error": "audio not found"})
+
+
+# ---------------------------------------------------------------------------
 # /api/learn_from_edit
 # ---------------------------------------------------------------------------
 

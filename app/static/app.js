@@ -93,6 +93,9 @@ let recordedBlob = null;
 let recordedMime = "audio/webm";
 let recordTimer = null;
 let recordStart = 0;
+// When non-null, the recorder feeds the captured blob to this function
+// instead of the default transcribe pipeline. Set by the Debug button.
+let recordingMode = "default";
 
 const PREFERRED_MIMES = [
   "audio/webm;codecs=opus",
@@ -182,10 +185,16 @@ async function startRecording() {
     playback.hidden = false;
     $("record-status").textContent = `Transcribing ${(recordedBlob.size / 1024).toFixed(0)} KB...`;
     try {
-      await transcribeBlob(recordedBlob);
+      if (recordingMode === "debug") {
+        await debugTranscribeBlob(recordedBlob);
+      } else {
+        await transcribeBlob(recordedBlob);
+      }
       $("record-status").textContent = "Done.";
     } catch (err) {
       $("record-status").textContent = "❌ " + err.message;
+    } finally {
+      recordingMode = "default";
     }
   };
 
@@ -218,6 +227,111 @@ async function transcribeBlob(blob) {
   if (lang) form.append("language", lang);
   form.append("model_size", $("model").value);
   await streamTranscribe(form);
+}
+
+// ---------------------------------------------------------------------------
+// Debug pipeline: transcript + flags + per-flag audio slices
+// ---------------------------------------------------------------------------
+async function debugTranscribeBlob(blob) {
+  const form = new FormData();
+  const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
+  form.append("audio", blob, `recording.${ext}`);
+  const lang = $("lang").value;
+  if (lang) form.append("language", lang);
+
+  const card = $("debug-card");
+  card.hidden = false;
+  $("debug-status").textContent = "Running ASR + flag + alignment...";
+  $("debug-transcript").textContent = "";
+  $("debug-flag-count").textContent = "";
+  $("debug-flags-list").innerHTML = "";
+  $("debug-words-table").querySelector("tbody").innerHTML = "";
+
+  const r = await fetch("/api/transcribe_debug", { method: "POST", body: form });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { msg = (await r.json()).error || msg; } catch (_) { msg = await r.text(); }
+    $("debug-status").textContent = "❌ " + msg;
+    throw new Error(msg);
+  }
+  const data = await r.json();
+  if (data.error) {
+    $("debug-status").textContent = "❌ " + data.error;
+    return;
+  }
+  renderDebug(data);
+}
+
+function renderDebug(data) {
+  $("debug-status").textContent =
+    `audio ${data.duration_s?.toFixed(2)}s · ${data.words?.length || 0} words aligned`;
+  $("debug-transcript").textContent = data.transcript || "";
+
+  const flagsEl = $("debug-flags-list");
+  flagsEl.innerHTML = "";
+  const flags = data.flags || [];
+  $("debug-flag-count").textContent = flags.length
+    ? `${flags.length} suspicious word${flags.length === 1 ? "" : "s"}.`
+    : "No suspicious words flagged.";
+
+  const audioEl = $("debug-audio");
+  if (data.audio_url) {
+    audioEl.src = data.audio_url;
+    audioEl.load();
+  }
+
+  for (const f of flags) {
+    const div = document.createElement("div");
+    div.className = "flag-row";
+    const cands = (f.candidates || [])
+      .map((c) => `<code>${escapeHtml(c.term)}</code> <span class="muted small">${c.phonetic_similarity?.toFixed(2)}</span>`)
+      .join(" · ");
+    const llm = f.llm_likely_term
+      ? `<div class="muted small">LLM guess: <code>${escapeHtml(f.llm_likely_term)}</code></div>`
+      : "";
+    const reason = f.reason || (f.llm_reason ? "llm_flag" : "");
+    const t0 = (f.start_s != null) ? f.start_s.toFixed(2) : "—";
+    const t1 = (f.end_s != null) ? f.end_s.toFixed(2) : "—";
+    const align = (f.start_s != null && f.end_s != null)
+      ? `<button class="ghost play-slice" data-start="${f.start_s}" data-end="${f.end_s}">▶ play ${t0}-${t1}s</button>`
+      : `<span class="muted small">no alignment</span>`;
+    div.innerHTML = `
+      <div class="row" style="justify-content:space-between">
+        <div>
+          <strong dir="auto">${escapeHtml(f.word || "")}</strong>
+          <span class="muted small"> #${f.index} · ${escapeHtml(reason)}</span>
+        </div>
+        ${align}
+      </div>
+      <div>Candidates: ${cands || '<span class="muted small">none</span>'}</div>
+      ${llm}
+    `;
+    flagsEl.appendChild(div);
+  }
+
+  // Per-word alignment table
+  const tbody = $("debug-words-table").querySelector("tbody");
+  (data.words || []).forEach((w, i) => {
+    const tr = document.createElement("tr");
+    const s = w.start_s != null ? w.start_s.toFixed(2) : "—";
+    const e = w.end_s != null ? w.end_s.toFixed(2) : "—";
+    tr.innerHTML = `<td>${i}</td><td dir="auto"><code>${escapeHtml(w.word)}</code></td><td>${s}</td><td>${e}</td><td>${(w.confidence ?? 0).toFixed(2)}</td>`;
+    tbody.appendChild(tr);
+  });
+
+  // Wire play buttons
+  flagsEl.querySelectorAll(".play-slice").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const t0 = parseFloat(btn.dataset.start);
+      const t1 = parseFloat(btn.dataset.end);
+      audioEl.currentTime = Math.max(0, t0);
+      audioEl.play();
+      // Pause when we cross t1 (rough; setTimeout because audio events
+      // aren't sub-second precise across browsers).
+      const wait = Math.max(50, (t1 - t0) * 1000 + 80);
+      setTimeout(() => audioEl.pause(), wait);
+    });
+  });
 }
 
 async function streamTranscribe(form) {
@@ -305,7 +419,14 @@ function traceSummary(stage, payload) {
   return "";
 }
 
-$("btn-record").addEventListener("click", startRecording);
+$("btn-record").addEventListener("click", () => {
+  recordingMode = "default";
+  startRecording();
+});
+$("btn-record-debug").addEventListener("click", () => {
+  recordingMode = "debug";
+  startRecording();
+});
 $("btn-stop").addEventListener("click", stopRecording);
 
 document.addEventListener("keydown", (e) => {
