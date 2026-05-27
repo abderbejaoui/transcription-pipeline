@@ -269,6 +269,25 @@ function renderDebug(data) {
     `audio ${data.duration_s?.toFixed(2)}s · ${data.words?.length || 0} words aligned`;
   $("debug-transcript").textContent = data.transcript || "";
 
+  // Auto-corrected transcript (high-confidence LLM picks only).
+  const correctedEl = $("debug-corrected");
+  const correctedMetaEl = $("debug-correction-meta");
+  if (correctedEl) {
+    const applied = data.auto_corrections || [];
+    const corr = data.corrected_transcript || data.transcript || "";
+    correctedEl.textContent = corr;
+    if (applied.length) {
+      const summary = applied.map((a) =>
+        `${a.original.trim()} → ${a.corrected} (${(a.confidence || 0).toFixed(2)})`
+      ).join(" · ");
+      correctedMetaEl.textContent =
+        `${applied.length} change${applied.length === 1 ? "" : "s"} ` +
+        `at conf ≥ ${data.correction_threshold ?? 0.9}: ${summary}`;
+    } else {
+      correctedMetaEl.textContent = "no high-confidence corrections applied";
+    }
+  }
+
   const flagsEl = $("debug-flags-list");
   flagsEl.innerHTML = "";
   const flags = data.flags || [];

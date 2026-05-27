@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Voice Platform — Demo</title>
-  <link rel="stylesheet" href="/static/styles.css?v=6" />
+  <link rel="stylesheet" href="/static/styles.css?v=7" />
 </head>
 <body>
   <main>
@@ -97,10 +97,13 @@
       <h2>🔬 Debug — transcript · flags · audio slices</h2>
       <p class="muted small" id="debug-status"></p>
 
-      <h3>1) Full transcript</h3>
+      <h3>1) Full transcript (raw ASR)</h3>
       <pre id="debug-transcript" dir="auto"></pre>
 
-      <h3>2) Flagged words</h3>
+      <h3>2) Auto-corrected transcript <span class="muted small" id="debug-correction-meta"></span></h3>
+      <pre id="debug-corrected" dir="auto"></pre>
+
+      <h3>3) Flagged words</h3>
       <p class="muted small" id="debug-flag-count"></p>
       <div id="debug-flags-list" class="stack"></div>
 
@@ -127,6 +130,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=6"></script>
+  <script src="/static/app.js?v=7"></script>
 </body>
 </html>
