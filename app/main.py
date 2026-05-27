@@ -595,7 +595,7 @@ async def transcribe_stream(
 # flagged word back to (start_s, end_s). The UI shows all three so the
 # user can see exactly where in the audio each suspicious word lives.
 
-from .services import alignment as _alignment, flag as _flag
+from .services import alignment_v2 as _alignment, flag as _flag
 
 
 @app.post("/api/transcribe_debug")
