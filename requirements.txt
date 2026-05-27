@@ -14,8 +14,14 @@ faster-whisper>=1.0
 soundfile>=0.12
 numpy>=1.24
 
-# Forced alignment (Whisper word-timestamps drive our debug pipeline)
-# Use openai-whisper (no CTranslate2 needed) so it works on the DGX ARM build.
+# Forced alignment
+# - ctc-forced-aligner: MMS character-level Viterbi alignment, accuracy ~30 ms
+#   on Arabic. This is the primary aligner for the /api/transcribe_debug
+#    'play this exact word' UI.
+# - openai-whisper: fallback for when MMS isn't installed yet. Approximate
+#   word timestamps (~200 ms error on Arabic) but no model download needed
+#   beyond what whisper already pulls.
+ctc-forced-aligner>=0.2.0
 openai-whisper>=20231117
 
 # ASR fine-tuning (scripts/finetune_*).
