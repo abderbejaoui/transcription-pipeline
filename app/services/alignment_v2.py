@@ -71,6 +71,7 @@ def _ensure_aligner():
             import torch
             from ctc_forced_aligner import (
                 load_alignment_model,
+                load_audio,
                 generate_emissions,
                 preprocess_text,
                 get_alignments,
@@ -80,7 +81,8 @@ def _ensure_aligner():
         except Exception as exc:
             _aligner_unavailable_reason = (
                 f"ctc-forced-aligner not available ({exc!r}). "
-                "Run: pip install ctc-forced-aligner"
+                "Install from GitHub (not PyPI): "
+                "pip install git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git"
             )
             print(f"[align_v2] {_aligner_unavailable_reason}")
             return None
@@ -106,6 +108,7 @@ def _ensure_aligner():
             "tokenizer": tokenizer,
             "device": device,
             "dtype": dtype,
+            "load_audio": load_audio,
             "generate_emissions": generate_emissions,
             "preprocess_text": preprocess_text,
             "get_alignments": get_alignments,
@@ -147,9 +150,13 @@ def align_words(
     tmp = wav_path if wav_path != audio_path else None
 
     try:
+        # MMS expects a torch Tensor waveform on the model's device/dtype.
+        waveform = agg["load_audio"](
+            str(wav_path), agg["model"].dtype, agg["model"].device,
+        )
         emissions, stride = agg["generate_emissions"](
             agg["model"],
-            str(wav_path),
+            waveform,
             batch_size=1,
         )
         tokens_starred, text_starred = agg["preprocess_text"](
@@ -175,17 +182,25 @@ def align_words(
             try: tmp.unlink()
             except OSError: pass
 
-    # Map MMS output back to our target word list. MMS already returns
-    # one record per whitespace-separated word, so the mapping is 1:1.
+    # MMS returns one timestamp record per whitespace-separated chunk of
+    # the romanised text, in target order. Re-pair with the ORIGINAL
+    # Arabic words so the UI shows what the user spoke (not the romanised
+    # form like 'al-brsytamwl').
+    import re
+    target_words = [w for w in re.split(r"\s+", target_transcript.strip()) if w]
     out: List[Dict[str, Any]] = []
-    for rec in word_timestamps:
+    for i, word in enumerate(target_words):
+        if i >= len(word_timestamps):
+            out.append({"word": word, "start_s": None, "end_s": None, "confidence": 0.0})
+            continue
+        rec = word_timestamps[i]
         start = float(rec.get("start", 0.0))
         end = float(rec.get("end", 0.0))
         score = float(rec.get("score", 0.0))
         out.append({
-            "word": rec.get("text", ""),
+            "word": word,
             "start_s": max(0.0, start - pad_s),
             "end_s": end + pad_s,
-            "confidence": score,
+            "confidence": score if score != 0.0 else 1.0,
         })
     return out
