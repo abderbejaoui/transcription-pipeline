@@ -133,16 +133,31 @@ def _lev_sim(a: str, b: str) -> float:
 # ---------------------------------------------------------------------------
 
 
+def _length_ratio_ok(needle: str, term: str, *, tolerance: float = 0.5) -> bool:
+    """Reject candidates whose length is wildly different.
+
+    A 5-char Arabic word like 'الاكل' (translit 'alakl') matching the
+    6-char 'flagyl' at sim 0.5 is meaningful only if the lengths are
+    close. Tolerance 0.5 means lengths must be within 50% of each other:
+    e.g. needle=5 -> term must be 3..10. Rejects the worst false
+    positives without hurting real matches (where Arabic translit
+    drops at most ~30% of the letters).
+    """
+    if not needle or not term:
+        return False
+    ratio = min(len(needle), len(term)) / max(len(needle), len(term))
+    return ratio >= tolerance
+
+
 def _phonetic_candidates(
     word: str, lexicon: List[str], k: int = 3,
     *, threshold: float = 0.45,
 ) -> List[Dict[str, Any]]:
-    """Find up to `k` lexicon entries whose Latin form is phonetically
-    similar to `word` (after Arabic translit + clitic stripping).
+    """Find up to `k` lexicon entries phonetically similar to `word`.
 
-    Threshold 0.45 is intentionally loose: Arabic translit drops vowels
-    ('paracetamol' -> 'brsytamwl', similarity ~0.50), and we'd rather
-    have an over-flag the LLM can dismiss than miss a real drug.
+    Filters: normalised Levenshtein similarity >= threshold (default 0.45)
+    AND length ratio >= 0.5 (to drop wildly mismatched lengths that score
+    high by accident on short words).
     """
     needle = _translit(word)
     if len(needle) < 2:
@@ -152,37 +167,82 @@ def _phonetic_candidates(
         term_lat = re.sub(r"[^a-z]", "", term.lower())
         if not term_lat:
             continue
+        if not _length_ratio_ok(needle, term_lat):
+            continue
         sim = _lev_sim(needle, term_lat)
-        if sim >= threshold:
-            scored.append({"term": term, "phonetic_similarity": round(sim, 3)})
+        if sim < threshold:
+            continue
+        scored.append({"term": term, "phonetic_similarity": round(sim, 3)})
     scored.sort(key=lambda d: -d["phonetic_similarity"])
     return scored[:k]
 
 
 def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     """For each word in `transcript`, return flag records with phonetic
-    candidates from the medical lexicon."""
+    candidates from the medical lexicon.
+
+    Also tries pair-of-words (bigrams) against the lexicon — Gulf-LoRA
+    Qwen3 frequently splits a single mangled drug name into two short
+    tokens (e.g. 'paracetamol' -> 'برسي تمر') which match nothing on
+    their own but match well when joined.
+    """
     lexicon = load_medical_lexicon()
     if not lexicon:
         return []
+    words = [w for w in re.split(r"\s+", transcript.strip()) if w]
     flags: List[Dict[str, Any]] = []
-    for i, word in enumerate(re.split(r"\s+", transcript.strip())):
-        if not word:
+    consumed: set = set()  # word indices already covered by a bigram flag
+
+    # --- Bigram pass first (greedy) so a strong pair beats two weak singles.
+    for i in range(len(words) - 1):
+        if i in consumed or (i + 1) in consumed:
+            continue
+        pair = words[i] + words[i + 1]
+        # Loose threshold for bigrams (drugs sometimes split into 2-3 tokens
+        # with very low per-token similarity but recognisable when joined).
+        candidates = _phonetic_candidates(pair, lexicon, k=3, threshold=0.40)
+        if not candidates:
+            continue
+        top = candidates[0]
+        if top["phonetic_similarity"] >= 0.90:
+            continue  # already correctly spelled
+        # Only flag the pair if it beats either word on its own — otherwise
+        # the single-word flag below is more specific.
+        single_a = _phonetic_candidates(words[i], lexicon, k=1, threshold=0.45)
+        single_b = _phonetic_candidates(words[i + 1], lexicon, k=1, threshold=0.45)
+        best_single = max(
+            (c["phonetic_similarity"] for c in (single_a + single_b)),
+            default=0.0,
+        )
+        if top["phonetic_similarity"] < best_single + 0.05:
+            continue
+        flags.append({
+            "index": i,
+            "word": words[i] + " " + words[i + 1],
+            "reason": "phonetic_near_medical_bigram",
+            "candidates": candidates,
+            "span_indices": [i, i + 1],
+        })
+        consumed.add(i)
+        consumed.add(i + 1)
+
+    # --- Single-word pass for the words not absorbed by a bigram flag.
+    for i, word in enumerate(words):
+        if i in consumed:
             continue
         candidates = _phonetic_candidates(word, lexicon)
         if not candidates:
             continue
-        # Strong matches (>=0.85) are very likely already correct; only
-        # flag medium matches (0.55-0.85) that look mangled.
         top = candidates[0]
         if top["phonetic_similarity"] >= 0.90:
-            continue  # already spelled close to the canonical form
+            continue
         flags.append({
             "index": i,
             "word": word,
             "reason": "phonetic_near_medical",
             "candidates": candidates,
         })
+    flags.sort(key=lambda f: f["index"])
     return flags
 
 
