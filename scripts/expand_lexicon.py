@@ -416,7 +416,7 @@ def main() -> None:
     ap = argparse.ArgumentParser(description=__doc__)
     ap.add_argument("--ollama-url", default="http://localhost:11434")
     ap.add_argument("--ollama-model",
-                    default="calme-3.2-instruct-78b-GGUF:IQ4_XS")
+                    default="hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS")
     ap.add_argument("--seed", nargs="+",
                     default=["data/medical_lexicon.jsonl",
                              "data/gulf_drug_brands.jsonl"])
