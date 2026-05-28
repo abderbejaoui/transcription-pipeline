@@ -139,17 +139,40 @@ def generate_sentences(
     return kept
 
 
-def synthesize_one(tts_url: str, text: str, voice: str) -> bytes:
-    """Call VoxCPM2 TTS and return WAV bytes."""
-    resp = requests.post(
-        f"{tts_url}/tts",
-        json={"text": text, "voice_description": voice},
-        timeout=120,
-    )
+def synthesize_one(
+    tts_url: str,
+    text: str,
+    voice: str | None = None,
+    reference_wav_path: str | None = None,
+    reference_text: str | None = None,
+) -> bytes:
+    """Call VoxCPM2 TTS and return WAV bytes.
+
+    Two modes are supported:
+      (a) Voice cloning  — pass `reference_wav_path` (and optionally
+          `reference_text` for Ultimate Cloning). This is the
+          documented way to get a specific dialect / accent out of
+          VoxCPM2 and is the path used when references are available.
+      (b) Voice design   — pass `voice` (natural-language description).
+          Used as a fallback when no references are available. Note
+          the VoxCPM2 model card explicitly lists steering for
+          gender/age/tone/emotion/pace, not for Arabic dialect — so
+          (a) gives much better Gulf-accent results.
+    """
+    payload: dict = {"text": text}
+    if reference_wav_path:
+        payload["reference_wav_path"] = reference_wav_path
+        if reference_text:
+            payload["reference_text"] = reference_text
+    elif voice:
+        payload["voice_description"] = voice
+    resp = requests.post(f"{tts_url}/tts", json=payload, timeout=180)
     resp.raise_for_status()
     return resp.content
 
 
+# Fallback voice-design strings used ONLY when no UAE reference WAVs
+# are configured. With references configured these are ignored.
 VOICES = [
     "Gulf Arabic male doctor, calm professional tone",
     "Gulf Arabic male patient, casual conversational tone",
@@ -158,6 +181,26 @@ VOICES = [
     "Gulf Arabic young male, nervous speaking to doctor",
     "Gulf Arabic elderly male, slow calm speech",
 ]
+
+
+def load_voice_references(refs_path: Path) -> list[dict]:
+    """Load the UAE reference manifest produced by
+    scripts/extract_uae_references.py. Returns a list of dicts each
+    with at least `audio_path` and `transcript`.
+    """
+    if not refs_path.exists():
+        return []
+    refs = []
+    with refs_path.open(encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            if not row.get("audio_path") or not Path(row["audio_path"]).exists():
+                continue
+            refs.append(row)
+    return refs
 
 
 def _samples_for_tier(tier: int, defaults: dict[int, int]) -> int:
@@ -188,6 +231,17 @@ def main():
                         help="Sentences per tier-3 term (long tail).")
     parser.add_argument("--target-hours", type=float, default=70.0,
                         help="Stop generating audio after reaching this many hours.")
+    parser.add_argument("--voice-references",
+                        default="data/tts_references/references.jsonl",
+                        help="Path to references.jsonl produced by "
+                             "scripts/extract_uae_references.py. If present, "
+                             "the script uses VoxCPM2 voice cloning with these "
+                             "real UAE Emirati reference clips — the documented "
+                             "way to get dialect-accurate output. If absent, "
+                             "falls back to natural-language voice prompts.")
+    parser.add_argument("--no-voice-cloning", action="store_true",
+                        help="Disable reference-based voice cloning even if "
+                             "references.jsonl exists. Use only for debugging.")
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--sentences-only", action="store_true",
                         help="Generate sentences JSON only, skip TTS")
@@ -356,6 +410,26 @@ def main():
             cursors[t] += take
     all_sentences = interleaved
 
+    # Load UAE Emirati voice-cloning references (documented dialect-steering
+    # method per VoxCPM2 model card). Falls back to natural-language voice
+    # design if no references are configured.
+    voice_refs: list[dict] = []
+    if not args.no_voice_cloning:
+        voice_refs = load_voice_references(Path(args.voice_references))
+    if voice_refs:
+        print(f"[gen] voice cloning ENABLED — {len(voice_refs)} UAE references")
+        for r in voice_refs[:5]:
+            print(f"        {r['ref_id']}  "
+                  f"({r.get('duration_s', 0):.1f}s) "
+                  f"{r.get('source', '?')}")
+        if len(voice_refs) > 5:
+            print(f"        ... and {len(voice_refs) - 5} more")
+    else:
+        print(f"[gen] voice cloning DISABLED — no references found at "
+              f"{args.voice_references}. Using natural-language voice "
+              f"prompts. WARNING: these will NOT reliably produce Gulf "
+              f"dialect — run scripts/extract_uae_references.py first.")
+
     manifest_entries: list[dict] = []
     done = 0
     skipped_existing = 0
@@ -398,9 +472,22 @@ def main():
             skipped_existing += 1
             continue
 
-        voice = random.choice(VOICES)
-        try:
-            wav_bytes = synthesize_one(args.tts_url, rec["text"], voice)
+try:
+            if voice_refs:
+                # Voice cloning mode — rotate through UAE references so the
+                # dataset spans multiple Emirati speakers.
+                ref = random.choice(voice_refs)
+                wav_bytes = synthesize_one(
+                    args.tts_url, rec["text"],
+                    reference_wav_path=ref["audio_path"],
+                    reference_text=ref.get("transcript"),
+                )
+                ref_tag = ref["ref_id"]
+            else:
+                # Fallback voice-design mode.
+                voice = random.choice(VOICES)
+                wav_bytes = synthesize_one(args.tts_url, rec["text"], voice=voice)
+                ref_tag = None
             wav_path.write_bytes(wav_bytes)
             dur = _wav_duration_s(wav_path)
             audio_seconds += dur
@@ -415,7 +502,8 @@ def main():
                 print(f"  [{done}/{len(all_sentences)}] {fname} "
                       f"({len(wav_bytes) // 1024}KB) "
                       f"audio={audio_seconds / 3600:.2f}h "
-                      f"({pct:.1f}%) ETA {eta_s / 60:.0f}m")
+                      f"({pct:.1f}%) ETA {eta_s / 60:.0f}m"
+                      + (f"  ref={ref_tag}" if ref_tag else ""))
         except Exception as e:
             print(f"  [ERR] {fname}: {e}")
             continue
@@ -427,6 +515,7 @@ def main():
             "type": rec.get("type", "medical"),
             "tier": rec.get("tier", 3),
             "duration_s": dur,
+            "voice_ref": ref_tag,
         })
 
     # Write manifest.
