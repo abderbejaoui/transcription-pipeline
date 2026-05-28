@@ -472,7 +472,7 @@ def main():
             skipped_existing += 1
             continue
 
-try:
+        try:
             if voice_refs:
                 # Voice cloning mode — rotate through UAE references so the
                 # dataset spans multiple Emirati speakers.
