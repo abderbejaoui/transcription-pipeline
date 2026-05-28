@@ -533,34 +533,103 @@ class OmniAsrBackend(Backend):
 
 
 class WhisperGulfBackend(Backend):
+    """Whisper-small fine-tuned on MASC Gulf Arabic.
+
+    Originally this backend used faster-whisper (CTranslate2), but the
+    DGX Spark builds of CTranslate2 ship without CUDA support on ARM64,
+    so model load raised:
+        ValueError("This CTranslate2 package was not compiled with CUDA support")
+    We instead use plain HF transformers (WhisperForConditionalGeneration +
+    AutoProcessor), which works on any CUDA-capable GPU.
+    """
+
     name = "whisper-small-gulf"
 
     def __init__(self, repo_id: str = "otozz/whisper-small-dialect_gulf"):
         self.repo_id = repo_id
         self._model = None
+        self._processor = None
+        self._device = None
+        self._dtype = None
 
     def prepare(self) -> None:
-        from faster_whisper import WhisperModel
-        device = "cuda" if __import__("torch").cuda.is_available() else "cpu"
-        compute_type = "float16" if device == "cuda" else "int8"
-        print(f"[whisper-gulf] loading {self.repo_id} on {device}")
-        self._model = WhisperModel(self.repo_id, device=device, compute_type=compute_type)
+        import torch
+        from transformers import (
+            AutoProcessor,
+            WhisperForConditionalGeneration,
+        )
+
+        if torch.cuda.is_available():
+            self._device, dtype = "cuda:0", torch.float16
+        elif torch.backends.mps.is_available():
+            self._device, dtype = "mps", torch.float16
+        else:
+            self._device, dtype = "cpu", torch.float32
+        self._dtype = dtype
+
+        print(f"[whisper-gulf] loading {self.repo_id} on {self._device} ({dtype}) via transformers")
+        self._processor = AutoProcessor.from_pretrained(self.repo_id)
+        self._model = WhisperForConditionalGeneration.from_pretrained(
+            self.repo_id,
+            torch_dtype=dtype,
+            low_cpu_mem_usage=True,
+        ).to(self._device).eval()
 
     def transcribe(self, wav_path: Path, *, language: Optional[str] = None) -> Prediction:
-        assert self._model is not None
+        assert self._model is not None and self._processor is not None
+        import torch
+        import soundfile as sf
+
         t0 = time.time()
-        # Force Arabic for Arabic/mixed clips; English for English
-        lang = "ar" if (language or "en") in ("ar", "mixed") else "en"
-        segs, info = self._model.transcribe(
-            str(wav_path),
-            language=lang,
-            beam_size=5,
-            vad_filter=False,
-            without_timestamps=True,
-        )
-        text = "".join(s.text for s in segs).strip()
-        return Prediction(text=text, inference_seconds=time.time() - t0,
-                          extra={"detected_language": info.language})
+        try:
+            audio, sr = sf.read(str(wav_path), dtype="float32")
+            if audio.ndim > 1:
+                audio = audio.mean(axis=1)
+            if sr != 16000:
+                try:
+                    import librosa
+                    audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
+                    sr = 16000
+                except Exception as exc:
+                    return Prediction(
+                        text="", inference_seconds=time.time() - t0,
+                        extra={"error": f"resample failed: {exc!r}"},
+                    )
+
+            inputs = self._processor(
+                audio, sampling_rate=sr, return_tensors="pt",
+            )
+            input_features = inputs.input_features.to(self._device, dtype=self._dtype)
+
+            # Force Arabic for Arabic/mixed clips; English for English.
+            lang = "ar" if (language or "en") in ("ar", "mixed") else "en"
+            try:
+                forced_ids = self._processor.get_decoder_prompt_ids(
+                    language=lang, task="transcribe",
+                )
+            except Exception:
+                forced_ids = None
+
+            with torch.inference_mode():
+                gen = self._model.generate(
+                    input_features,
+                    forced_decoder_ids=forced_ids,
+                    max_new_tokens=440,
+                    num_beams=1,
+                    do_sample=False,
+                )
+            text = self._processor.batch_decode(
+                gen, skip_special_tokens=True,
+            )[0].strip()
+            return Prediction(
+                text=text, inference_seconds=time.time() - t0,
+                extra={"lang_hint": lang},
+            )
+        except Exception as exc:
+            return Prediction(
+                text="", inference_seconds=time.time() - t0,
+                extra={"error": repr(exc)},
+            )
 
 
 # ---------------------------------------------------------------------------
@@ -589,6 +658,125 @@ class QwenUaeBackend(_Qwen3AsrBase):
     def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
         # UAE-tuned model: always force Arabic except for explicit English.
         return "English" if (language or "") == "en" else "Arabic"
+
+
+# ---------------------------------------------------------------------------
+# Backend: our own Gulf-Arabic LoRA fine-tune of Qwen3-ASR-1.7B
+# ---------------------------------------------------------------------------
+
+
+class QwenGulfLoraBackend(_Qwen3AsrBase):
+    """Loads Qwen3-ASR-1.7B and stacks a locally-trained LoRA adapter on top.
+
+    The adapter directory is controlled by the QWEN3_GULF_ADAPTER env var
+    (default: runs/qwen3_lora_r6/final_adapter). It must contain a PEFT
+    `adapter_config.json` and `adapter_model.safetensors` saved via
+    model.save_pretrained(...).
+
+    Subclasses can override `name` and `DEFAULT_ADAPTER` to evaluate
+    specific training checkpoints alongside the final adapter (so each
+    checkpoint gets its own predictions/<name>/ cache directory).
+    """
+
+    name = "qwen3-asr-gulf-lora"
+    repo_id = "Qwen/Qwen3-ASR-1.7B"  # base model
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/final_adapter"
+
+    def __init__(self, adapter_path: Optional[str] = None):
+        super().__init__()
+        # Precedence: explicit ctor arg > env var > class default.
+        # Only the *base* gulf-lora backend honors the env var; per-checkpoint
+        # subclasses set their own DEFAULT_ADAPTER and ignore the env so a
+        # single bakeoff invocation can evaluate multiple checkpoints.
+        if adapter_path is not None:
+            self.adapter_path = adapter_path
+        elif type(self).DEFAULT_ADAPTER == QwenGulfLoraBackend.DEFAULT_ADAPTER:
+            self.adapter_path = os.environ.get(
+                "QWEN3_GULF_ADAPTER", self.DEFAULT_ADAPTER
+            )
+        else:
+            self.adapter_path = type(self).DEFAULT_ADAPTER
+
+    def prepare(self) -> None:
+        # Load base model + processor via the parent class. This populates
+        # either self._model (transformers PreTrainedModel) when
+        # transformers registers qwen3_asr, OR self._model (Qwen3ASRModel
+        # wrapper) when the qwen_asr pip wrapper is used.
+        super().prepare()
+
+        # Resolve adapter path against the repo root if it's relative.
+        adapter_dir = Path(self.adapter_path)
+        if not adapter_dir.is_absolute():
+            adapter_dir = (PROJECT_ROOT / adapter_dir).resolve()
+        if not adapter_dir.exists():
+            raise FileNotFoundError(
+                f"Adapter directory not found: {adapter_dir}. Set "
+                f"QWEN3_GULF_ADAPTER or pass --adapter-path."
+            )
+
+        try:
+            from peft import PeftModel
+        except ImportError as exc:
+            raise RuntimeError(
+                "peft is required for LoRA loading. Run: pip install peft"
+            ) from exc
+
+        print(f"[{self.name}] attaching LoRA adapter: {adapter_dir}")
+
+        if self._backend == "transformers":
+            # Direct: wrap the PreTrainedModel.
+            self._model = PeftModel.from_pretrained(
+                self._model, str(adapter_dir),
+            ).to(self._device).eval()
+            return
+
+        # qwen_asr wrapper path: the wrapper holds the actual nn.Module on
+        # `.model`. Replace that attribute with the PEFT-wrapped version so
+        # subsequent wrapper.transcribe() calls route through the LoRA
+        # layers. This matches how finetune_qwen3_lora.py applied PEFT
+        # during training.
+        inner = getattr(self._model, "model", None)
+        if inner is None:
+            raise RuntimeError(
+                f"qwen_asr wrapper has no .model attribute; cannot attach "
+                f"LoRA. Wrapper type: {type(self._model).__name__}"
+            )
+        peft_model = PeftModel.from_pretrained(inner, str(adapter_dir))
+        # Move to the same device the wrapper is on (cuda:0 typically).
+        peft_model = peft_model.to(self._device).eval()
+        self._model.model = peft_model
+
+    def _qwen_language_label(self, language: Optional[str]) -> Optional[str]:
+        # Gulf-tuned model: always force Arabic except for explicit English.
+        return "English" if (language or "") == "en" else "Arabic"
+
+
+# Per-checkpoint variants — each writes to its own predictions/<name>/ dir
+# so a single bakeoff run can compare multiple checkpoints side-by-side.
+
+class QwenGulfLoraCkpt12000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt12000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-12000"
+
+
+class QwenGulfLoraCkpt14000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt14000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-14000"
+
+
+class QwenGulfLoraCkpt16000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt16000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-16000"
+
+
+class QwenGulfLoraCkpt18000Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt18000"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-18000"
+
+
+class QwenGulfLoraCkpt19636Backend(QwenGulfLoraBackend):
+    name = "qwen3-asr-gulf-lora-ckpt19636"
+    DEFAULT_ADAPTER = "runs/qwen3_lora_r6/checkpoint-19636"
 
 
 # ---------------------------------------------------------------------------
@@ -627,8 +815,13 @@ class VoxtralBackend(Backend):
         self._dtype = dtype
         print(f"[{self.name}] loading {self.repo_id} on {self._device} ({dtype})")
         self._processor = AutoProcessor.from_pretrained(self.repo_id)
+        
+        # Use auto device mapping for large models (24B params) to spread across GPU+CPU
+        device_map = "auto" if "24b" in self.repo_id.lower() else self._device
+        print(f"[{self.name}] using device_map={device_map}")
+        
         self._model = VoxtralForConditionalGeneration.from_pretrained(
-            self.repo_id, torch_dtype=dtype, device_map=self._device,
+            self.repo_id, torch_dtype=dtype, device_map=device_map,
         )
 
     def _voxtral_lang(self, language: Optional[str]) -> str:
@@ -702,13 +895,15 @@ def run_backend(
     pred_dir = PREDICTIONS_DIR / backend.name
     pred_dir.mkdir(parents=True, exist_ok=True)
 
-    # If skip_existing, load already-computed rows without preparing the model.
+    # If skip_existing, load already-computed rows without preparing the model
+    # — but only when ALL manifest clips are already covered.
     if skip_existing:
-        existing = list(pred_dir.glob("*.json"))
-        if len(existing) > 0:
-            print(f"  → found {len(existing)} existing predictions, loading without re-running")
+        existing = {p.stem for p in pred_dir.glob("*.json")}
+        manifest_ids = {clip["id"] for clip in manifest}
+        if existing >= manifest_ids:
+            print(f"  → found {len(existing)} existing predictions (all clips covered), skipping")
             rows = []
-            for p in existing:
+            for p in pred_dir.glob("*.json"):
                 try:
                     d = json.loads(p.read_text(encoding="utf-8"))
                     rows.append({
@@ -725,6 +920,8 @@ def run_backend(
                 except Exception:
                     pass
             return rows
+        elif existing:
+            print(f"  → found {len(existing)}/{len(manifest_ids)} existing predictions, resuming from where we left off")
 
     try:
         backend.prepare()
@@ -912,29 +1109,41 @@ def write_report(summary: Dict[str, Any]) -> Path:
 
 
 BACKENDS: Dict[str, Callable[[], Backend]] = {
-    "whisper":        WhisperBackend,
-    "qwen3":          QwenAsrBackend,
-    "vibevoice":      VibeVoiceBackend,
-    "omniASR":        OmniAsrBackend,
-    "whisper_gulf":   WhisperGulfBackend,
-    "qwen3_ksa":      QwenKsaBackend,
-    "qwen3_uae":      QwenUaeBackend,
-    "voxtral_mini":   VoxtralMiniBackend,
-    "voxtral_small":  VoxtralSmallBackend,
+    "whisper":             WhisperBackend,
+    "qwen3":               QwenAsrBackend,
+    "vibevoice":           VibeVoiceBackend,
+    "omniASR":             OmniAsrBackend,
+    "whisper_gulf":        WhisperGulfBackend,
+    "qwen3_ksa":           QwenKsaBackend,
+    "qwen3_uae":           QwenUaeBackend,
+    "qwen3_gulf":          QwenGulfLoraBackend,
+    "qwen3_gulf_ckpt12k":  QwenGulfLoraCkpt12000Backend,
+    "qwen3_gulf_ckpt14k":  QwenGulfLoraCkpt14000Backend,
+    "qwen3_gulf_ckpt16k":  QwenGulfLoraCkpt16000Backend,
+    "qwen3_gulf_ckpt18k":  QwenGulfLoraCkpt18000Backend,
+    "qwen3_gulf_ckpt19k":  QwenGulfLoraCkpt19636Backend,
+    "voxtral_mini":        VoxtralMiniBackend,
+    "voxtral_small":       VoxtralSmallBackend,
 }
 
 # Map CLI model key -> backend class.name (the directory name used to cache
 # predictions). Used by --rescore-only to find the cached predictions.
 _MODEL_KEY_TO_DIR: Dict[str, str] = {
-    "whisper":        WhisperBackend.name,
-    "qwen3":          QwenAsrBackend.name,
-    "vibevoice":      VibeVoiceBackend.name,
-    "omniASR":        OmniAsrBackend.name,
-    "whisper_gulf":   WhisperGulfBackend.name,
-    "qwen3_ksa":      QwenKsaBackend.name,
-    "qwen3_uae":      QwenUaeBackend.name,
-    "voxtral_mini":   VoxtralMiniBackend.name,
-    "voxtral_small":  VoxtralSmallBackend.name,
+    "whisper":             WhisperBackend.name,
+    "qwen3":               QwenAsrBackend.name,
+    "vibevoice":           VibeVoiceBackend.name,
+    "omniASR":             OmniAsrBackend.name,
+    "whisper_gulf":        WhisperGulfBackend.name,
+    "qwen3_ksa":           QwenKsaBackend.name,
+    "qwen3_uae":           QwenUaeBackend.name,
+    "qwen3_gulf":          QwenGulfLoraBackend.name,
+    "qwen3_gulf_ckpt12k":  QwenGulfLoraCkpt12000Backend.name,
+    "qwen3_gulf_ckpt14k":  QwenGulfLoraCkpt14000Backend.name,
+    "qwen3_gulf_ckpt16k":  QwenGulfLoraCkpt16000Backend.name,
+    "qwen3_gulf_ckpt18k":  QwenGulfLoraCkpt18000Backend.name,
+    "qwen3_gulf_ckpt19k":  QwenGulfLoraCkpt19636Backend.name,
+    "voxtral_mini":        VoxtralMiniBackend.name,
+    "voxtral_small":       VoxtralSmallBackend.name,
 }
 
 
@@ -1001,9 +1210,9 @@ def main() -> int:
     p.add_argument(
         "--models",
         nargs="+",
-        choices=list(BACKENDS.keys()),
+        choices=list(BACKENDS.keys()) + ["all"],
         default=list(BACKENDS.keys()),
-        help="Which backends to run (default: all)",
+        help="Which backends to run (default: all). Pass 'all' to run every backend.",
     )
     p.add_argument(
         "--max-clips",
@@ -1033,6 +1242,10 @@ def main() -> int:
              "current normalize_text() and write a fresh report.",
     )
     args = p.parse_args()
+
+    # Expand "all" shorthand to every registered backend.
+    if args.models and "all" in args.models:
+        args.models = list(BACKENDS.keys())
 
     if args.eval_dir is not None:
         eval_dir = args.eval_dir

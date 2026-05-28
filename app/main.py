@@ -50,7 +50,7 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_dual, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 
 
@@ -95,8 +95,11 @@ SESSIONS_DIR = PROJECT_ROOT / "data" / "sessions"
 SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
-DEFAULT_LANGUAGE = os.environ.get("WHISPER_LANGUAGE", "en")
+DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "")  # "" = auto-detect (Arabic+English)
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
+# When 1, transcription runs the dual-ASR (Gulf LoRA + base Qwen3) with an
+# LLM judge merging the two outputs. Costs 2x GPU memory + one extra LLM call.
+USE_DUAL_ASR = os.environ.get("USE_DUAL_ASR", "0") == "1"
 
 # Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
 # scale (normalized Levenshtein over greedy wav2vec2-base-960h transcripts).
@@ -151,10 +154,10 @@ async def _no_cache_static(request, call_next):
 def _prewarm() -> None:
     def _bg() -> None:
         try:
-            asr._load_model(DEFAULT_WHISPER_SIZE)
-            print(f"[startup] faster-whisper '{DEFAULT_WHISPER_SIZE}' ready.")
+            asr._load_model()
+            print("[startup] Gulf Arabic ASR model ready.")
         except Exception as exc:
-            print(f"[startup] Whisper warmup failed: {exc}")
+            print(f"[startup] ASR warmup failed: {exc}")
 
     threading.Thread(target=_bg, daemon=True).start()
     voice_match.warm_up()
@@ -326,15 +329,19 @@ def _run_transcribe_pipeline(
     """The full pipeline. Calls into services that emit trace events via
     `app.services.tracing`, so this function can be run with or without an
     active Tracer."""
-    # 1) Whisper.
+    # 1) ASR. If USE_DUAL_ASR=1, run both Gulf LoRA + base Qwen3 in parallel
+    # and merge their outputs with an LLM judge. Otherwise just the LoRA.
     tracing.emit("asr.start", {
         "session_id": session_id,
         "audio_path": str(session_path),
-        "model": model_size,
+        "model": "dual_asr" if USE_DUAL_ASR else model_size,
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
     })
-    asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
+    if USE_DUAL_ASR:
+        asr_result = asr_dual.transcribe_and_merge(session_path, language=language)
+    else:
+        asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
     raw_text = asr_result["text"]
     words = list(asr_result["words"])
     tracing.emit("asr.done", {
@@ -342,6 +349,7 @@ def _run_transcribe_pipeline(
         "language": asr_result["language"],
         "duration_s": asr_result["duration"],
         "words": words,
+        "extra": asr_result.get("extra", {}),
     })
     print(f"[transcribe] raw text: {raw_text!r}  ({len(words)} tokens)")
 
@@ -592,8 +600,11 @@ def _run_transcribe_pipeline(
             "language": asr_result["language"],
             "language_probability": asr_result["language_probability"],
             "duration": asr_result["duration"],
-            "model_size": model_size,
+            "model_size": "dual_asr" if USE_DUAL_ASR else model_size,
             "words": words,
+            # When USE_DUAL_ASR=1 this exposes both raw ASR outputs and the
+            # LLM merge reason so the UI can show them side-by-side.
+            "dual": asr_result.get("extra"),
         },
     }
 
@@ -691,6 +702,103 @@ async def transcribe_stream(
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ---------------------------------------------------------------------------
+# /api/transcribe_debug — transcript + flags + per-flag audio slice info
+# ---------------------------------------------------------------------------
+#
+# Pipeline: ASR -> phonetic+LLM flagging -> CTC forced alignment of each
+# flagged word back to (start_s, end_s). The UI shows all three so the
+# user can see exactly where in the audio each suspicious word lives.
+
+from .services import alignment_v2 as _alignment, flag as _flag
+
+
+@app.post("/api/transcribe_debug")
+async def transcribe_debug(
+    audio: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+    use_llm_flag: bool = Form(True),
+) -> Dict[str, Any]:
+    """Run ASR + flagging + alignment and return everything for the UI."""
+    session_id, session_path, size = _save_upload(audio)
+    effective_lang = language or DEFAULT_LANGUAGE
+    print(
+        f"[transcribe_debug] session={session_id} type={audio.content_type!r} "
+        f"size={size}B lang={effective_lang}"
+    )
+    if size < 200:
+        return JSONResponse(
+            status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
+        )
+    try:
+        # 1) ASR (same path as /api/transcribe)
+        asr_result = asr.transcribe(session_path, model_size=DEFAULT_WHISPER_SIZE,
+                                    language=effective_lang)
+        transcript = asr_result.get("text", "")
+        duration_s = float(asr_result.get("duration", 0.0))
+
+        # 2) Word-level CTC forced alignment of the full transcript.
+        try:
+            words_aligned = _alignment.align_words(session_path, transcript)
+        except Exception as exc:
+            print(f"[transcribe_debug] alignment failed: {exc!r}")
+            words_aligned = []
+
+        # 3) Flag suspicious words (phonetic + optional LLM).
+        try:
+            flags = _flag.flag_suspicious(transcript, use_llm=use_llm_flag)
+        except Exception as exc:
+            print(f"[transcribe_debug] flagging failed: {exc!r}")
+            flags = []
+
+        # 4) Stitch alignment into each flag so the UI knows where to slice.
+        for f in flags:
+            idx = f.get("index")
+            if isinstance(idx, int) and 0 <= idx < len(words_aligned):
+                f["start_s"] = words_aligned[idx].get("start_s")
+                f["end_s"] = words_aligned[idx].get("end_s")
+                f["alignment_confidence"] = words_aligned[idx].get("confidence", 0.0)
+            else:
+                f["start_s"] = None
+                f["end_s"] = None
+                f["alignment_confidence"] = 0.0
+
+        # 5) Auto-apply HIGH-confidence LLM corrections (conf >= 0.90).
+        # Surfaced as a separate string so the user can compare to raw.
+        try:
+            corrected = _flag.apply_high_confidence_corrections(transcript, flags)
+        except Exception as exc:
+            print(f"[transcribe_debug] auto-correct failed: {exc!r}")
+            corrected = {"corrected_transcript": transcript, "applied": [], "threshold": 0.90}
+
+        return {
+            "session_id": session_id,
+            "audio_url": f"/api/session_audio/{session_id}",
+            "transcript": transcript,
+            "corrected_transcript": corrected["corrected_transcript"],
+            "auto_corrections": corrected["applied"],
+            "correction_threshold": corrected["threshold"],
+            "duration_s": duration_s,
+            "words": words_aligned,
+            "flags": flags,
+        }
+    except Exception as exc:
+        print(f"[transcribe_debug] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
+@app.get("/api/session_audio/{session_id}")
+def get_session_audio(session_id: str):
+    """Serve the raw session audio so the browser can <audio>-play it
+    and the UI can seek to flagged-word offsets."""
+    # session_id is opaque; only allow files we actually have.
+    for ext in (".webm", ".wav", ".mp3", ".m4a", ".ogg", ".flac"):
+        p = SESSIONS_DIR / f"{session_id}{ext}"
+        if p.exists():
+            return FileResponse(p)
+    return JSONResponse(status_code=404, content={"error": "audio not found"})
 
 
 # ---------------------------------------------------------------------------
