@@ -316,6 +316,46 @@ def main():
         return
 
     # Phase 2: Synthesize via TTS, stopping when we hit the hour cap.
+    #
+    # CRITICAL: shuffle sentences with a tier-weighted order so that
+    # when we hit the 70h cap, every tier is proportionally represented.
+    # Without this shuffle, tier-1 sentences (which lead the list)
+    # would consume the entire 70h budget before tier-2 or tier-3
+    # ever get synthesized — defeating the whole point of the 10k
+    # lexicon.
+    #
+    # Strategy: interleave tiers by their hour budget ratios. With
+    # defaults (60/12/2 samples-per-term), the natural ratio of
+    # sentences-per-tier is roughly 32k / 18k / 16k. We shuffle within
+    # each tier then round-robin pull from all three at proportional
+    # rates so the first 1000 TTS calls span all tiers.
+    by_tier: dict[int, list[dict]] = {1: [], 2: [], 3: []}
+    for rec in all_sentences:
+        by_tier.setdefault(int(rec.get("tier", 3)), []).append(rec)
+    rng = random.Random(42)
+    for t in by_tier:
+        rng.shuffle(by_tier[t])
+    # Compute proportional pull rates from the actual counts.
+    counts = {t: len(by_tier.get(t, [])) for t in (1, 2, 3)}
+    total = max(1, sum(counts.values()))
+    print(f"[gen] TTS queue composition: "
+          f"T1={counts.get(1, 0)} ({counts.get(1, 0) * 100 / total:.1f}%) "
+          f"T2={counts.get(2, 0)} ({counts.get(2, 0) * 100 / total:.1f}%) "
+          f"T3={counts.get(3, 0)} ({counts.get(3, 0) * 100 / total:.1f}%)")
+    # Round-robin interleave proportionally — like a weighted merge.
+    cursors = {t: 0 for t in (1, 2, 3)}
+    interleaved: list[dict] = []
+    while any(cursors[t] < counts.get(t, 0) for t in (1, 2, 3)):
+        for t in (1, 2, 3):
+            if cursors[t] >= counts.get(t, 0):
+                continue
+            # Pull a chunk proportional to this tier's share.
+            chunk = max(1, counts.get(t, 0) // 100)
+            take = min(chunk, counts[t] - cursors[t])
+            interleaved.extend(by_tier[t][cursors[t]:cursors[t] + take])
+            cursors[t] += take
+    all_sentences = interleaved
+
     manifest_entries: list[dict] = []
     done = 0
     skipped_existing = 0
