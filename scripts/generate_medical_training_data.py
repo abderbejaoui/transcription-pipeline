@@ -26,21 +26,48 @@ from pathlib import Path
 
 import requests
 
-# Gulf Arabic sentence templates the LLM must follow
-SYSTEM_PROMPT = """You are a Gulf Arabic (Emirati/Saudi) medical dialogue generator.
-Generate realistic sentences that a PATIENT or DOCTOR would say in a Gulf Arabic medical clinic.
-The sentences MUST:
-- Be in Gulf Arabic dialect (Khaleeji), NOT Modern Standard Arabic
-- Naturally include the given medical term (keep it in English if it's a drug/diagnosis name)
-- Mix Arabic and English naturally (code-switching), like real Gulf clinic conversations
-- Be 5-20 words each
-- Be diverse: different speakers (patient/doctor), different contexts (symptoms, prescriptions, follow-up)
-- Use Gulf dialect markers: وايد، يالله، إنشاء الله، خلاص، شو، ليش، هيه
+# Gulf Arabic sentence templates the LLM must follow.
+# Emphasis on REAL Gulf clinical patterns:
+#   - Drug names usually written in Latin INSIDE the Arabic sentence
+#     (this is what we want the ASR to learn — preserve the English)
+#   - Doctor uses MSA/educated Gulf, patient uses pure Khaleeji
+#   - Common prescription frames: خذ X, وصف لي X, اعطيتك X, لازم تاخذ X
+#   - Dosage: مرتين في اليوم, قبل الاكل, بعد الفطور, لمدة اسبوع
+SYSTEM_PROMPT = """You are a Gulf Arabic (Emirati/Saudi/Kuwaiti) medical dialogue generator.
+Generate realistic sentences that a PATIENT or DOCTOR would say in a Gulf Arabic clinic.
+
+CRITICAL RULES:
+- Use Gulf Arabic dialect (Khaleeji), NOT Modern Standard Arabic.
+- Drug names MUST stay in their original LATIN spelling (e.g. write "paracetamol"
+  not "باراسيتامول", "voltaren" not "فولتارين"). This is exactly how real bilingual
+  doctors/pharmacists write prescriptions in the Gulf.
+- However, if `aliases` for the term shows it commonly appears in Arabic script
+  (e.g. "بنادول" for panadol), produce SOME sentences using each form so the model
+  learns both spellings.
+- Mix Arabic + English naturally (code-switching) at PHRASE level, not whole-language switches.
+- Use real Gulf clinical patterns:
+    * Prescriptions: خذ <DRUG> <DOSE> ملليجرام مرتين في اليوم
+    * Indication: اخذ <DRUG> للحرارة / للالم / للضغط / للسكر
+    * Brand context: الصيدلي اعطاني <DRUG>
+    * Multi-drug: <DRUG1> صباحا و <DRUG2> مساء
+    * Time markers: قبل الاكل / بعد الفطور / لمدة اسبوع / كل ٨ ساعات
+    * Patient concerns: حسيت بدوخه من <DRUG>, <DRUG> ما عطاني نتيجه
+- Gulf dialect markers: وايد، شوي، يالله، خلاص، شو، ليش، هيه، حق، عشان
+- 5-20 words per sentence.
+- Mix speakers: doctor, pharmacist, patient, parent (about child).
 
 Return ONLY a JSON array of strings. No explanation. No markdown."""
 
 USER_TEMPLATE = """Generate {n} different Gulf Arabic medical sentences containing the term "{term}".
 The term type is: {term_type}.
+Aliases (Arabic-script forms commonly heard in clinics): {aliases}
+
+Generate a MIX:
+- ~70% sentences keep "{term}" in its Latin spelling inside Arabic text.
+- ~30% sentences use one of the Arabic-script aliases (if provided).
+Make every sentence sound like a real Gulf clinic moment — prescriptions, dosing,
+side-effects, patient questions, pharmacist instructions.
+
 Return ONLY a JSON array of strings."""
 
 
@@ -50,13 +77,17 @@ def generate_sentences(
     n: int,
     ollama_url: str,
     model: str,
+    aliases: list[str] | None = None,
 ) -> list[str]:
     """Ask Ollama to generate n Gulf Arabic sentences containing `term`."""
+    aliases_str = ", ".join(aliases) if aliases else "(none)"
     resp = requests.post(
         f"{ollama_url}/api/generate",
         json={
             "model": model,
-            "prompt": USER_TEMPLATE.format(n=n, term=term, term_type=term_type),
+            "prompt": USER_TEMPLATE.format(
+                n=n, term=term, term_type=term_type, aliases=aliases_str,
+            ),
             "system": SYSTEM_PROMPT,
             "stream": False,
             "options": {"temperature": 0.9, "num_predict": 4096},
@@ -105,7 +136,13 @@ VOICES = [
 
 def main():
     parser = argparse.ArgumentParser()
-    parser.add_argument("--lexicon", default="data/medical_lexicon.jsonl")
+    parser.add_argument(
+        "--lexicon", nargs="+",
+        default=["data/medical_lexicon.jsonl", "data/gulf_drug_brands.jsonl"],
+        help="One or more JSONL lexicon files. Lines are merged and "
+             "deduplicated by `term`. Default loads the international "
+             "lexicon plus the Gulf-specific brand-name lexicon.",
+    )
     parser.add_argument("--tts-url", default="http://100.68.87.28:7900")
     parser.add_argument("--ollama-url", default="http://100.68.87.28:11434")
     parser.add_argument("--ollama-model", default="calme-3.2-instruct-78b-GGUF:IQ4_XS")
@@ -122,14 +159,36 @@ def main():
     sentences_path = out_dir / "sentences.jsonl"
     manifest_path = out_dir / "manifest.jsonl"
 
-    # Load lexicon
-    lexicon = []
-    with open(args.lexicon) as f:
-        for line in f:
-            line = line.strip()
-            if line:
-                lexicon.append(json.loads(line))
-    print(f"[gen] {len(lexicon)} terms, target {args.samples_per_term} sentences each")
+    # Load lexicon(s) — multiple files merged, deduped by `term`.
+    lexicon_by_term: dict[str, dict] = {}
+    for lex_path in args.lexicon:
+        if not Path(lex_path).exists():
+            print(f"[gen] skipping missing lexicon: {lex_path}")
+            continue
+        with open(lex_path) as f:
+            for line in f:
+                line = line.strip()
+                if not line:
+                    continue
+                entry = json.loads(line)
+                term = entry.get("term", "").strip().lower()
+                if not term:
+                    continue
+                # Later files override earlier ones; aliases are merged.
+                if term in lexicon_by_term:
+                    existing = lexicon_by_term[term]
+                    merged_aliases = list({
+                        *(existing.get("aliases") or []),
+                        *(entry.get("aliases") or []),
+                    })
+                    existing.update(entry)
+                    existing["aliases"] = merged_aliases
+                else:
+                    lexicon_by_term[term] = entry
+    lexicon = list(lexicon_by_term.values())
+    print(f"[gen] {len(lexicon)} unique terms across "
+          f"{len(args.lexicon)} lexicon file(s), "
+          f"target {args.samples_per_term} sentences each")
 
     # Check services
     try:
@@ -163,6 +222,7 @@ def main():
                     sents = generate_sentences(
                         term, term_type, args.samples_per_term,
                         args.ollama_url, args.ollama_model,
+                        aliases=entry.get("aliases") or [],
                     )
                     for s in sents:
                         rec = {"term": term, "type": term_type, "text": s}

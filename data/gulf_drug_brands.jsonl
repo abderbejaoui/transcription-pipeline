@@ -1,0 +1,93 @@
+{"term": "panadol", "type": "drug", "aliases": ["بنادول", "بانادول"], "priority": 1.0, "region": "gulf"}
+{"term": "doliprane", "type": "drug", "aliases": ["دوليبران", "دوليفران"], "priority": 1.0, "region": "gulf"}
+{"term": "efferalgan", "type": "drug", "aliases": ["إفيرالغان", "افرلجن", "ايف رالجن"], "priority": 1.0, "region": "gulf"}
+{"term": "voltaren", "type": "drug", "aliases": ["فولتارين", "فولتارن"], "priority": 1.0, "region": "gulf"}
+{"term": "augmentin", "type": "drug", "aliases": ["أوغمنتين", "اوغمنتين"], "priority": 1.0, "region": "gulf"}
+{"term": "ventolin", "type": "drug", "aliases": ["فينتولين", "فنتولين"], "priority": 1.0, "region": "gulf"}
+{"term": "advil", "type": "drug", "aliases": ["ادفيل"], "priority": 1.0, "region": "gulf"}
+{"term": "brufen", "type": "drug", "aliases": ["بروفين"], "priority": 1.0, "region": "gulf"}
+{"term": "flagyl", "type": "drug", "aliases": ["فلاجيل"], "priority": 1.0, "region": "gulf"}
+{"term": "zithromax", "type": "drug", "aliases": ["زيثروماكس"], "priority": 1.0, "region": "gulf"}
+{"term": "klacid", "type": "drug", "aliases": ["كلاسيد"], "priority": 1.0, "region": "gulf"}
+{"term": "amoxil", "type": "drug", "aliases": ["اموكسيل"], "priority": 1.0, "region": "gulf"}
+{"term": "nexium", "type": "drug", "aliases": ["نكسيوم"], "priority": 1.0, "region": "gulf"}
+{"term": "gaviscon", "type": "drug", "aliases": ["جافيسكون"], "priority": 1.0, "region": "gulf"}
+{"term": "maalox", "type": "drug", "aliases": ["مالوكس"], "priority": 1.0, "region": "gulf"}
+{"term": "claritine", "type": "drug", "aliases": ["كلاريتين"], "priority": 1.0, "region": "gulf"}
+{"term": "telfast", "type": "drug", "aliases": ["تلفاست"], "priority": 1.0, "region": "gulf"}
+{"term": "zyrtec", "type": "drug", "aliases": ["زيرتك"], "priority": 1.0, "region": "gulf"}
+{"term": "lipitor", "type": "drug", "aliases": ["ليبيتور"], "priority": 1.0, "region": "gulf"}
+{"term": "crestor", "type": "drug", "aliases": ["كريستور"], "priority": 1.0, "region": "gulf"}
+{"term": "concor", "type": "drug", "aliases": ["كونكور"], "priority": 1.0, "region": "gulf"}
+{"term": "norvasc", "type": "drug", "aliases": ["نورفاسك"], "priority": 1.0, "region": "gulf"}
+{"term": "diovan", "type": "drug", "aliases": ["ديوفان"], "priority": 1.0, "region": "gulf"}
+{"term": "aprovel", "type": "drug", "aliases": ["ابروفيل"], "priority": 1.0, "region": "gulf"}
+{"term": "cozaar", "type": "drug", "aliases": ["كوزار"], "priority": 1.0, "region": "gulf"}
+{"term": "glucophage", "type": "drug", "aliases": ["جلوكوفاج", "غلوكوفاج"], "priority": 1.0, "region": "gulf"}
+{"term": "amaryl", "type": "drug", "aliases": ["اماريل"], "priority": 1.0, "region": "gulf"}
+{"term": "lantus", "type": "drug", "aliases": ["لانتوس"], "priority": 1.0, "region": "gulf"}
+{"term": "ozempic", "type": "drug", "aliases": ["اوزمبيك", "أوزمبيك"], "priority": 1.0, "region": "gulf"}
+{"term": "trulicity", "type": "drug", "aliases": ["تروليسيتي"], "priority": 1.0, "region": "gulf"}
+{"term": "januvia", "type": "drug", "aliases": ["جانوفيا"], "priority": 1.0, "region": "gulf"}
+{"term": "seroxat", "type": "drug", "aliases": ["سيروكسات"], "priority": 1.0, "region": "gulf"}
+{"term": "lexotanil", "type": "drug", "aliases": ["لكسوتانيل"], "priority": 1.0, "region": "gulf"}
+{"term": "xanax", "type": "drug", "aliases": ["زاناكس"], "priority": 1.0, "region": "gulf"}
+{"term": "valium", "type": "drug", "aliases": ["فاليوم"], "priority": 1.0, "region": "gulf"}
+{"term": "tramadol", "type": "drug", "aliases": ["ترامادول"], "priority": 1.0, "region": "gulf"}
+{"term": "neurontin", "type": "drug", "aliases": ["نيورونتين"], "priority": 1.0, "region": "gulf"}
+{"term": "lyrica", "type": "drug", "aliases": ["ليريكا"], "priority": 1.0, "region": "gulf"}
+{"term": "betadine", "type": "drug", "aliases": ["بيتادين"], "priority": 1.0, "region": "gulf"}
+{"term": "fucidin", "type": "drug", "aliases": ["فيوسيدين", "فوسيدين"], "priority": 1.0, "region": "gulf"}
+{"term": "polyfax", "type": "drug", "aliases": ["بوليفاكس"], "priority": 1.0, "region": "gulf"}
+{"term": "rocephin", "type": "drug", "aliases": ["روسيفين"], "priority": 1.0, "region": "gulf"}
+{"term": "cipro", "type": "drug", "aliases": ["سيبرو"], "priority": 1.0, "region": "gulf"}
+{"term": "monurol", "type": "drug", "aliases": ["مونورول"], "priority": 1.0, "region": "gulf"}
+{"term": "imodium", "type": "drug", "aliases": ["ايموديوم"], "priority": 1.0, "region": "gulf"}
+{"term": "buscopan", "type": "drug", "aliases": ["بوسكوبان"], "priority": 1.0, "region": "gulf"}
+{"term": "motilium", "type": "drug", "aliases": ["موتيليوم"], "priority": 1.0, "region": "gulf"}
+{"term": "primperan", "type": "drug", "aliases": ["بريمبران"], "priority": 1.0, "region": "gulf"}
+{"term": "ergotamine", "type": "drug", "aliases": ["ارجوتامين"], "priority": 1.0, "region": "gulf"}
+{"term": "rivotril", "type": "drug", "aliases": ["ريفوتريل"], "priority": 1.0, "region": "gulf"}
+{"term": "rhinocort", "type": "drug", "aliases": ["رينوكورت"], "priority": 1.0, "region": "gulf"}
+{"term": "flixonase", "type": "drug", "aliases": ["فليكسوناز"], "priority": 1.0, "region": "gulf"}
+{"term": "symbicort", "type": "drug", "aliases": ["سيمبيكورت"], "priority": 1.0, "region": "gulf"}
+{"term": "seretide", "type": "drug", "aliases": ["سيريتايد"], "priority": 1.0, "region": "gulf"}
+{"term": "spiriva", "type": "drug", "aliases": ["سبيريفا"], "priority": 1.0, "region": "gulf"}
+{"term": "pulmicort", "type": "drug", "aliases": ["بولميكورت"], "priority": 1.0, "region": "gulf"}
+{"term": "nasonex", "type": "drug", "aliases": ["نازونيكس"], "priority": 1.0, "region": "gulf"}
+{"term": "exforge", "type": "drug", "aliases": ["اكسفورج"], "priority": 1.0, "region": "gulf"}
+{"term": "twynsta", "type": "drug", "aliases": ["تويناستا"], "priority": 1.0, "region": "gulf"}
+{"term": "micardis", "type": "drug", "aliases": ["ميكارديس"], "priority": 1.0, "region": "gulf"}
+{"term": "atacand", "type": "drug", "aliases": ["اتاكاند"], "priority": 1.0, "region": "gulf"}
+{"term": "tenormin", "type": "drug", "aliases": ["تينورمين"], "priority": 1.0, "region": "gulf"}
+{"term": "inderal", "type": "drug", "aliases": ["انديرال"], "priority": 1.0, "region": "gulf"}
+{"term": "lasix", "type": "drug", "aliases": ["لازيكس"], "priority": 1.0, "region": "gulf"}
+{"term": "moduretic", "type": "drug", "aliases": ["مودوريتيك"], "priority": 1.0, "region": "gulf"}
+{"term": "aldactone", "type": "drug", "aliases": ["الداكتون"], "priority": 1.0, "region": "gulf"}
+{"term": "plavix", "type": "drug", "aliases": ["بلافيكس"], "priority": 1.0, "region": "gulf"}
+{"term": "xarelto", "type": "drug", "aliases": ["اكسارلتو"], "priority": 1.0, "region": "gulf"}
+{"term": "eliquis", "type": "drug", "aliases": ["اليكيس", "اليكويس"], "priority": 1.0, "region": "gulf"}
+{"term": "warfarin", "type": "drug", "aliases": ["وارفارين", "ورفارين"], "priority": 1.0, "region": "gulf"}
+{"term": "marevan", "type": "drug", "aliases": ["ماريفان"], "priority": 1.0, "region": "gulf"}
+{"term": "clexane", "type": "drug", "aliases": ["كليكسان"], "priority": 1.0, "region": "gulf"}
+{"term": "fragmin", "type": "drug", "aliases": ["فراجمين"], "priority": 1.0, "region": "gulf"}
+{"term": "viagra", "type": "drug", "aliases": ["فياجرا"], "priority": 1.0, "region": "gulf"}
+{"term": "cialis", "type": "drug", "aliases": ["سياليس"], "priority": 1.0, "region": "gulf"}
+{"term": "levitra", "type": "drug", "aliases": ["ليفيترا"], "priority": 1.0, "region": "gulf"}
+{"term": "vermox", "type": "drug", "aliases": ["فيرموكس"], "priority": 1.0, "region": "gulf"}
+{"term": "zentel", "type": "drug", "aliases": ["زنتل"], "priority": 1.0, "region": "gulf"}
+{"term": "thyronorm", "type": "drug", "aliases": ["ثيرونورم"], "priority": 1.0, "region": "gulf"}
+{"term": "euthyrox", "type": "drug", "aliases": ["يوثيروكس", "اوثيروكس"], "priority": 1.0, "region": "gulf"}
+{"term": "levothroid", "type": "drug", "aliases": ["ليفوثرويد"], "priority": 1.0, "region": "gulf"}
+{"term": "synthroid", "type": "drug", "aliases": ["سينثرويد"], "priority": 1.0, "region": "gulf"}
+{"term": "humira", "type": "drug", "aliases": ["هوميرا"], "priority": 0.8, "region": "gulf"}
+{"term": "enbrel", "type": "drug", "aliases": ["انبريل"], "priority": 0.8, "region": "gulf"}
+{"term": "neosporin", "type": "drug", "aliases": ["نيوسبورين"], "priority": 1.0, "region": "gulf"}
+{"term": "savlon", "type": "drug", "aliases": ["سافلون"], "priority": 1.0, "region": "gulf"}
+{"term": "calpol", "type": "drug", "aliases": ["كالبول"], "priority": 1.0, "region": "gulf"}
+{"term": "junior paracetamol", "type": "drug", "aliases": ["بنادول اطفال", "panadol kids"], "priority": 1.0, "region": "gulf"}
+{"term": "vitamin d", "type": "drug", "aliases": ["فيتامين د", "vit d"], "priority": 1.0, "region": "gulf"}
+{"term": "vitamin b12", "type": "drug", "aliases": ["فيتامين ب12", "b12"], "priority": 1.0, "region": "gulf"}
+{"term": "iron", "type": "drug", "aliases": ["حديد", "ferro"], "priority": 1.0, "region": "gulf"}
+{"term": "folic acid", "type": "drug", "aliases": ["حمض الفوليك"], "priority": 1.0, "region": "gulf"}
+{"term": "calcium", "type": "drug", "aliases": ["كالسيوم"], "priority": 1.0, "region": "gulf"}
