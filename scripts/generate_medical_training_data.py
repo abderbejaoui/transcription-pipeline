@@ -175,7 +175,7 @@ def main():
     )
     parser.add_argument("--tts-url", default="http://localhost:7900")
     parser.add_argument("--ollama-url", default="http://localhost:11434")
-    parser.add_argument("--ollama-model", default="calme-3.2-instruct-78b-GGUF:IQ4_XS")
+    parser.add_argument("--ollama-model", default="hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS")
     parser.add_argument("--out", default="data/training/medical_gulf_v2")
     parser.add_argument("--samples-per-term", type=int, default=0,
                         help="Flat samples per term. If 0 (default), tier-weighted "
