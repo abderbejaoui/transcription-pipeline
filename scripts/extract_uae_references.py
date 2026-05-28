@@ -52,20 +52,30 @@ from typing import Any, Dict, List, Optional
 
 
 def _row_source(row: Dict[str, Any]) -> str:
-    """Best-effort dataset id."""
+    """Best-effort dataset id from filename or source field."""
     for key in ("source", "dataset", "corpus"):
         if key in row and row[key]:
             return str(row[key]).lower()
-    p = row.get("audio_filepath") or row.get("audio_path") or row.get("audio") or ""
+    p = (
+        row.get("audio_filepath") or row.get("audio_path")
+        or row.get("audio") or ""
+    )
     p = str(p).lower()
-    if "uae" in p or "vadim" in p:
-        return "uae"
+    # Order matters — more specific patterns first.
+    if "nexdata_uae" in p or "nexdata-uae" in p:
+        return "nexdata_uae"
+    if "vadim" in p or "uae_bilingual" in p or "uae_arabic_english" in p:
+        return "vadimbelsky_uae"
     if "mixat" in p:
         return "mixat"
-    if "nexdata" in p:
-        return "nexdata_uae"
+    if "uae" in p:
+        return "uae_other"
     if "sada" in p:
         return "sada"
+    if "worldspeech" in p or "ar_bh" in p or "ar_kw" in p or "ar_sa" in p:
+        return "worldspeech"
+    if "oman" in p:
+        return "oman"
     return "unknown"
 
 
@@ -74,6 +84,34 @@ def _row_audio(row: Dict[str, Any]) -> Optional[str]:
         v = row.get(k)
         if isinstance(v, str) and v:
             return v
+    return None
+
+
+def _resolve_audio_path(
+    rel_or_abs: str, manifest_parent: Path, audio_root: Optional[Path]
+) -> Optional[Path]:
+    """Try several common roots to resolve the audio path.
+
+    Manifest paths in this repo are usually relative to the manifest's
+    grandparent (data/dgx_full/preprocessed_audios/). We try:
+      1. as-is (absolute or relative to CWD)
+      2. relative to --audio-root if given
+      3. relative to manifest's parent (.../splits/)
+      4. relative to manifest's grandparent (.../preprocessed_audios/)
+    """
+    candidates = []
+    p = Path(rel_or_abs)
+    if p.is_absolute():
+        candidates.append(p)
+    else:
+        candidates.append(Path.cwd() / p)
+        if audio_root:
+            candidates.append(audio_root / p)
+        candidates.append(manifest_parent / p)
+        candidates.append(manifest_parent.parent / p)
+    for c in candidates:
+        if c.exists() and c.is_file():
+            return c
     return None
 
 
@@ -140,17 +178,36 @@ def main() -> None:
                     help="Reject clips quieter than this (dBFS).")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--preferred-sources", nargs="+",
-                    default=["uae", "mixat", "nexdata_uae"],
+                    default=["vadimbelsky_uae", "nexdata_uae",
+                             "mixat", "uae_other"],
                     help="Preferred source datasets in priority order.")
+    ap.add_argument("--audio-root",
+                    help="Root directory for relative audio paths. "
+                         "Auto-detected from manifest path if not given. "
+                         "For this repo typically "
+                         "data/dgx_full/preprocessed_audios/")
     args = ap.parse_args()
 
     out = Path(args.out)
     out.mkdir(parents=True, exist_ok=True)
 
-    # 1. Read manifest, bucket by source.
+    manifest_path = Path(args.manifest).resolve()
+    manifest_parent = manifest_path.parent
+    audio_root: Optional[Path] = (
+        Path(args.audio_root).resolve() if args.audio_root else None
+    )
+    print(f"[ref] manifest:       {manifest_path}")
+    print(f"[ref] manifest parent: {manifest_parent}")
+    if audio_root:
+        print(f"[ref] audio root:     {audio_root}")
+    else:
+        print(f"[ref] audio root:     (auto, will try several candidates)")
+
+    # 1. Read manifest, bucket by source. Drop unresolvable paths early.
     by_source: Dict[str, List[Dict[str, Any]]] = {}
     n_total = 0
-    with Path(args.manifest).open(encoding="utf-8") as fh:
+    n_missing = 0
+    with manifest_path.open(encoding="utf-8") as fh:
         for line in fh:
             line = line.strip()
             if not line:
@@ -159,13 +216,22 @@ def main() -> None:
             dur = _row_duration(row)
             if dur < args.min_dur or dur > args.max_dur:
                 continue
-            if _row_audio(row) is None or _row_text(row) is None:
+            raw_audio = _row_audio(row)
+            if not raw_audio or _row_text(row) is None:
                 continue
+            resolved = _resolve_audio_path(raw_audio, manifest_parent, audio_root)
+            if resolved is None:
+                n_missing += 1
+                continue
+            # Stash the resolved path back on the row so the rest of the
+            # pipeline doesn't have to repeat the work.
+            row["_resolved_audio"] = str(resolved)
             src = _row_source(row)
             by_source.setdefault(src, []).append(row)
             n_total += 1
 
-    print(f"[ref] loaded {n_total} candidate clips from {len(by_source)} sources")
+    print(f"[ref] loaded {n_total} candidate clips from {len(by_source)} sources "
+          f"(dropped {n_missing} with unresolvable paths)")
     for src, rows in sorted(by_source.items()):
         print(f"  {src:<20} {len(rows):>6}")
 
@@ -200,13 +266,15 @@ def main() -> None:
         chosen.append(row)
 
     # 4. Validate loudness + write refs.
-    manifest_path = out / "references.jsonl"
-    fh = manifest_path.open("w", encoding="utf-8")
+    refs_jsonl = out / "references.jsonl"
+    fh = refs_jsonl.open("w", encoding="utf-8")
     written = 0
     for row in chosen:
         if written >= args.n:
             break
-        src_audio = Path(_row_audio(row))
+        # Use the path we resolved earlier; falls back to raw if not present
+        # (shouldn't happen since we filtered above).
+        src_audio = Path(row.get("_resolved_audio") or _row_audio(row) or "")
         if not src_audio.exists():
             print(f"[ref] skip (missing file): {src_audio}")
             continue
@@ -236,7 +304,7 @@ def main() -> None:
 
     fh.close()
     print(f"\n[ref] wrote {written} references to {out}")
-    print(f"[ref] manifest: {manifest_path}")
+    print(f"[ref] manifest: {refs_jsonl}")
     if written < args.n:
         print(f"[ref] WARN only {written}/{args.n} references usable. "
               f"Consider loosening filters or adding more UAE data.")
