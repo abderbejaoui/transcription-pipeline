@@ -908,7 +908,7 @@ def main() -> None:
                     help="Skip the Calme brand-augmentation step.")
     ap.add_argument("--ollama-url", default="http://localhost:11434")
     ap.add_argument("--ollama-model",
-                    default="calme-3.2-instruct-78b-GGUF:IQ4_XS")
+                    default="hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS")
     ap.add_argument("--brand-augment-top", type=int, default=400,
                     help="Top-N ingredients to ask Calme for Gulf brand names.")
     args = ap.parse_args()
