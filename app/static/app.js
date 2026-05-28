@@ -21,9 +21,6 @@ const escapeHtml = (s) =>
     .replace(/"/g, "&quot;")
     .replace(/'/g, "&#39;");
 
-// ---------------------------------------------------------------------------
-// State
-// ---------------------------------------------------------------------------
 let lastRawText = "";
 let lastSessionId = null;
 let lastFlags = [];
@@ -310,9 +307,12 @@ async function startRecording() {
       await transcribeDebug(recordedBlob);
       $("record-status").textContent = "Done.";
     } catch (err) {
-      $("record-status").textContent = "❌ " + err.message;
+        clearInterval(progressInterval);
+        $("benchmark-status").innerHTML = "❌ " + escapeHtml(err.message);
+    } finally {
+        $("btn-upload").disabled = false;
     }
-  };
+};
 
   mediaRecorder.onerror = (e) => {
     $("record-status").textContent =

@@ -51,3 +51,5 @@ app/services/asr_benchmark.py
 data/download_sada.py
 fixes.md
 scripts/run_asr_benchmark.py
+.cache/
+.tmp/
