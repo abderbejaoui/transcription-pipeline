@@ -27,46 +27,60 @@ from pathlib import Path
 import requests
 
 # Gulf Arabic sentence templates the LLM must follow.
-# Emphasis on REAL Gulf clinical patterns:
-#   - Drug names usually written in Latin INSIDE the Arabic sentence
-#     (this is what we want the ASR to learn — preserve the English)
-#   - Doctor uses MSA/educated Gulf, patient uses pure Khaleeji
-#   - Common prescription frames: خذ X, وصف لي X, اعطيتك X, لازم تاخذ X
-#   - Dosage: مرتين في اليوم, قبل الاكل, بعد الفطور, لمدة اسبوع
+#
+# IMPORTANT: drug and disease terms ALWAYS stay in English (Latin script).
+# The ASR's target output is English drug names inside Arabic sentences,
+# because that's how Gulf doctors write prescriptions in real life. Any
+# Arabic-script transliteration of an English drug name in the training set
+# would teach the model the wrong thing and we'd have to undo it in
+# post-processing.
 SYSTEM_PROMPT = """You are a Gulf Arabic (Emirati/Saudi/Kuwaiti) medical dialogue generator.
-Generate realistic sentences that a PATIENT or DOCTOR would say in a Gulf Arabic clinic.
+Generate realistic sentences a PATIENT, DOCTOR, PHARMACIST, or PARENT would say
+in a Gulf Arabic clinic or pharmacy.
 
-CRITICAL RULES:
-- Use Gulf Arabic dialect (Khaleeji), NOT Modern Standard Arabic.
-- Drug names MUST stay in their original LATIN spelling (e.g. write "paracetamol"
-  not "باراسيتامول", "voltaren" not "فولتارين"). This is exactly how real bilingual
-  doctors/pharmacists write prescriptions in the Gulf.
-- However, if `aliases` for the term shows it commonly appears in Arabic script
-  (e.g. "بنادول" for panadol), produce SOME sentences using each form so the model
-  learns both spellings.
-- Mix Arabic + English naturally (code-switching) at PHRASE level, not whole-language switches.
-- Use real Gulf clinical patterns:
-    * Prescriptions: خذ <DRUG> <DOSE> ملليجرام مرتين في اليوم
-    * Indication: اخذ <DRUG> للحرارة / للالم / للضغط / للسكر
-    * Brand context: الصيدلي اعطاني <DRUG>
-    * Multi-drug: <DRUG1> صباحا و <DRUG2> مساء
-    * Time markers: قبل الاكل / بعد الفطور / لمدة اسبوع / كل ٨ ساعات
-    * Patient concerns: حسيت بدوخه من <DRUG>, <DRUG> ما عطاني نتيجه
-- Gulf dialect markers: وايد، شوي، يالله، خلاص، شو، ليش، هيه، حق، عشان
-- 5-20 words per sentence.
-- Mix speakers: doctor, pharmacist, patient, parent (about child).
+CRITICAL RULES — read carefully:
+1. The medical TERM (drug or disease name) MUST appear in the sentence exactly
+   as given, spelled in ENGLISH (Latin letters). Never transliterate it to
+   Arabic script. Examples of CORRECT output:
+       "اعطاني الدكتور paracetamol مرتين في اليوم"
+       "عندي asthma من زمان"
+       "الصيدلي قال لي خذ augmentin بعد الاكل"
+   Examples of WRONG output (DO NOT produce these):
+       "اعطاني الدكتور باراسيتامول"          ← WRONG (transliterated)
+       "عندي ربو"                              ← WRONG (translated)
+       "خذ اوقمنتين"                           ← WRONG (transliterated)
+2. The rest of the sentence is Gulf Arabic dialect (Khaleeji), NOT MSA.
+3. Mix Arabic + English at PHRASE level. Numbers and dosing units may be in
+   either language: "two times" / "مرتين", "500 mg" / "500 ملي".
+4. Use real Gulf clinical patterns:
+     * Prescriptions: خذ <TERM> 500 mg مرتين في اليوم
+     * Indication:    اخذ <TERM> للحرارة / للالم / للضغط / للسكر
+     * Pharmacist:    الصيدلي اعطاني <TERM>
+     * Multi-drug:    <TERM1> صباحا و paracetamol مساء
+     * Diagnosis:     الدكتور قال عندي <TERM>
+     * Symptom:       حسيت بدوخه من <TERM>
+     * Compliance:    نسيت اخذ <TERM> الصبح
+     * Question:      <TERM> له اعراض جانبيه؟
+     * Time markers:  قبل الاكل / بعد الفطور / لمدة اسبوع / كل ٨ ساعات
+5. Gulf dialect markers: وايد، شوي، يالله، خلاص، شو، ليش، هيه، حق، عشان، أبغى.
+6. 5-20 words per sentence. Vary length naturally.
+7. Mix speakers: doctor, pharmacist, patient (male/female), parent about child.
 
 Return ONLY a JSON array of strings. No explanation. No markdown."""
 
-USER_TEMPLATE = """Generate {n} different Gulf Arabic medical sentences containing the term "{term}".
-The term type is: {term_type}.
-Aliases (Arabic-script forms commonly heard in clinics): {aliases}
 
-Generate a MIX:
-- ~70% sentences keep "{term}" in its Latin spelling inside Arabic text.
-- ~30% sentences use one of the Arabic-script aliases (if provided).
-Make every sentence sound like a real Gulf clinic moment — prescriptions, dosing,
-side-effects, patient questions, pharmacist instructions.
+USER_TEMPLATE = """Generate {n} different Gulf Arabic medical sentences.
+
+The medical term to include is: "{term}"
+The term type is: {term_type}
+
+Every sentence MUST contain the term "{term}" spelled exactly that way in
+English (Latin letters). Do NOT transliterate it to Arabic. Do NOT translate
+it. The surrounding sentence is Gulf Arabic.
+
+Make every sentence sound like a real Gulf clinic moment — prescriptions,
+dosing instructions, side-effects, patient questions, pharmacist guidance,
+parent worried about a child, etc.
 
 Return ONLY a JSON array of strings."""
 
@@ -77,17 +91,13 @@ def generate_sentences(
     n: int,
     ollama_url: str,
     model: str,
-    aliases: list[str] | None = None,
 ) -> list[str]:
     """Ask Ollama to generate n Gulf Arabic sentences containing `term`."""
-    aliases_str = ", ".join(aliases) if aliases else "(none)"
     resp = requests.post(
         f"{ollama_url}/api/generate",
         json={
             "model": model,
-            "prompt": USER_TEMPLATE.format(
-                n=n, term=term, term_type=term_type, aliases=aliases_str,
-            ),
+            "prompt": USER_TEMPLATE.format(n=n, term=term, term_type=term_type),
             "system": SYSTEM_PROMPT,
             "stream": False,
             "options": {"temperature": 0.9, "num_predict": 4096},
@@ -97,8 +107,7 @@ def generate_sentences(
     resp.raise_for_status()
     raw = resp.json().get("response", "")
 
-    # Parse JSON array from LLM output
-    # Try to find [...] in the response
+    # Parse JSON array from LLM output.
     start = raw.find("[")
     end = raw.rfind("]")
     if start == -1 or end == -1:
@@ -106,11 +115,28 @@ def generate_sentences(
         return []
     try:
         sentences = json.loads(raw[start:end + 1])
-        if isinstance(sentences, list):
-            return [s for s in sentences if isinstance(s, str) and len(s.strip()) > 5]
     except json.JSONDecodeError:
-        print(f"  [WARN] JSON parse failed for '{term}': {raw[start:start+200]}")
-    return []
+        print(f"  [WARN] JSON parse failed for '{term}': {raw[start:start + 200]}")
+        return []
+    if not isinstance(sentences, list):
+        return []
+
+    # Keep only strings that actually contain the English term verbatim.
+    # If the LLM transliterated it, drop the sentence — we don't want bad
+    # training pairs in the dataset.
+    term_lc = term.lower()
+    kept = []
+    for s in sentences:
+        if not isinstance(s, str):
+            continue
+        s = s.strip()
+        if len(s) < 5:
+            continue
+        if term_lc not in s.lower():
+            # The model transliterated the term. Skip this sentence.
+            continue
+        kept.append(s)
+    return kept
 
 
 def synthesize_one(tts_url: str, text: str, voice: str) -> bytes:
@@ -134,20 +160,34 @@ VOICES = [
 ]
 
 
+def _samples_for_tier(tier: int, defaults: dict[int, int]) -> int:
+    return defaults.get(tier, defaults.get(3, 1))
+
+
 def main():
     parser = argparse.ArgumentParser()
     parser.add_argument(
         "--lexicon", nargs="+",
-        default=["data/medical_lexicon.jsonl", "data/gulf_drug_brands.jsonl"],
+        default=["data/full_lexicon.jsonl"],
         help="One or more JSONL lexicon files. Lines are merged and "
-             "deduplicated by `term`. Default loads the international "
-             "lexicon plus the Gulf-specific brand-name lexicon.",
+             "deduplicated by `term`. Default loads the tiered full lexicon "
+             "built by scripts/build_full_lexicon.py.",
     )
-    parser.add_argument("--tts-url", default="http://100.68.87.28:7900")
-    parser.add_argument("--ollama-url", default="http://100.68.87.28:11434")
+    parser.add_argument("--tts-url", default="http://localhost:7900")
+    parser.add_argument("--ollama-url", default="http://localhost:11434")
     parser.add_argument("--ollama-model", default="calme-3.2-instruct-78b-GGUF:IQ4_XS")
-    parser.add_argument("--out", default="data/training/medical_gulf")
-    parser.add_argument("--samples-per-term", type=int, default=40)
+    parser.add_argument("--out", default="data/training/medical_gulf_v2")
+    parser.add_argument("--samples-per-term", type=int, default=0,
+                        help="Flat samples per term. If 0 (default), tier-weighted "
+                             "sampling is used instead (recommended).")
+    parser.add_argument("--tier1-samples", type=int, default=60,
+                        help="Sentences per tier-1 term (common drugs/diseases).")
+    parser.add_argument("--tier2-samples", type=int, default=12,
+                        help="Sentences per tier-2 term.")
+    parser.add_argument("--tier3-samples", type=int, default=2,
+                        help="Sentences per tier-3 term (long tail).")
+    parser.add_argument("--target-hours", type=float, default=70.0,
+                        help="Stop generating audio after reaching this many hours.")
     parser.add_argument("--skip-existing", action="store_true")
     parser.add_argument("--sentences-only", action="store_true",
                         help="Generate sentences JSON only, skip TTS")
@@ -174,21 +214,45 @@ def main():
                 term = entry.get("term", "").strip().lower()
                 if not term:
                     continue
-                # Later files override earlier ones; aliases are merged.
+                # Later files override earlier ones. We pick the lower tier
+                # (more important) when the same term appears in multiple files.
                 if term in lexicon_by_term:
                     existing = lexicon_by_term[term]
-                    merged_aliases = list({
-                        *(existing.get("aliases") or []),
-                        *(entry.get("aliases") or []),
-                    })
+                    new_tier = entry.get("tier", existing.get("tier", 3))
+                    old_tier = existing.get("tier", 3)
                     existing.update(entry)
-                    existing["aliases"] = merged_aliases
+                    existing["tier"] = min(new_tier, old_tier)
                 else:
+                    # Default to tier 3 if the file doesn't carry a tier.
+                    entry.setdefault("tier", 3)
                     lexicon_by_term[term] = entry
     lexicon = list(lexicon_by_term.values())
+
+    # Tier counts for the log line.
+    tier_counts: dict[int, int] = {}
+    for e in lexicon:
+        t = int(e.get("tier", 3))
+        tier_counts[t] = tier_counts.get(t, 0) + 1
+
+    tier_default = {
+        1: args.tier1_samples,
+        2: args.tier2_samples,
+        3: args.tier3_samples,
+    }
+    if args.samples_per_term > 0:
+        # Override: flat sampling.
+        tier_default = {t: args.samples_per_term for t in (1, 2, 3)}
+
     print(f"[gen] {len(lexicon)} unique terms across "
-          f"{len(args.lexicon)} lexicon file(s), "
-          f"target {args.samples_per_term} sentences each")
+          f"{len(args.lexicon)} lexicon file(s)")
+    for t in sorted(tier_counts.keys()):
+        print(f"[gen]   tier{t}: {tier_counts[t]} terms × "
+              f"{tier_default.get(t, 0)} sentences "
+              f"= {tier_counts[t] * tier_default.get(t, 0)} target sentences")
+    total_target = sum(tier_counts.get(t, 0) * tier_default.get(t, 0)
+                       for t in (1, 2, 3))
+    print(f"[gen]   total target: {total_target} sentences "
+          f"(~{total_target * 8 / 3600:.1f}h of audio at 8s/clip)")
 
     # Check services
     try:
@@ -199,75 +263,119 @@ def main():
             print(f"[gen] TTS not reachable: {e}")
             sys.exit(1)
 
-    # Phase 1: Generate sentences via LLM
-    all_sentences = []
+    # Phase 1: Generate sentences via LLM (tier-weighted).
+    all_sentences: list[dict] = []
     if sentences_path.exists():
         with open(sentences_path) as f:
             for line in f:
                 if line.strip():
                     all_sentences.append(json.loads(line))
-        print(f"[gen] Loaded {len(all_sentences)} existing sentences")
+        print(f"[gen] loaded {len(all_sentences)} existing sentences")
 
-    existing_terms = {s["term"] for s in all_sentences}
-    remaining = [e for e in lexicon if e["term"] not in existing_terms]
+    # How many sentences each term already has, so we can resume cleanly.
+    have_per_term: dict[str, int] = {}
+    for s in all_sentences:
+        have_per_term[s["term"]] = have_per_term.get(s["term"], 0) + 1
 
-    if remaining:
-        print(f"[gen] Generating sentences for {len(remaining)} remaining terms...")
-        with open(sentences_path, "a") as fh:
-            for i, entry in enumerate(remaining):
-                term = entry["term"]
-                term_type = entry.get("type", "medical")
-                print(f"  [{i+1}/{len(remaining)}] {term} ({term_type})...", end="", flush=True)
-                try:
-                    sents = generate_sentences(
-                        term, term_type, args.samples_per_term,
-                        args.ollama_url, args.ollama_model,
-                        aliases=entry.get("aliases") or [],
-                    )
-                    for s in sents:
-                        rec = {"term": term, "type": term_type, "text": s}
-                        fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
-                        all_sentences.append(rec)
-                    print(f" {len(sents)} sentences")
-                except Exception as e:
-                    print(f" ERROR: {e}")
-                    continue
+    # Process tier 1 first so the most important drugs are covered even if
+    # we get killed early.
+    lexicon_by_tier = sorted(lexicon, key=lambda e: int(e.get("tier", 3)))
 
-    print(f"[gen] Total sentences: {len(all_sentences)}")
+    print(f"[gen] generating sentences for {len(lexicon_by_tier)} terms ...")
+    with open(sentences_path, "a") as fh:
+        for i, entry in enumerate(lexicon_by_tier):
+            term = entry["term"]
+            term_type = entry.get("type", "medical")
+            tier = int(entry.get("tier", 3))
+            want = tier_default.get(tier, 1)
+            already = have_per_term.get(term, 0)
+            need = max(0, want - already)
+            if need == 0:
+                continue
+
+            print(f"  [{i + 1}/{len(lexicon_by_tier)}] T{tier} {term} ({term_type}) "
+                  f"need={need}...", end="", flush=True)
+            try:
+                sents = generate_sentences(
+                    term, term_type, need,
+                    args.ollama_url, args.ollama_model,
+                )
+                for s in sents:
+                    rec = {"term": term, "type": term_type, "tier": tier, "text": s}
+                    fh.write(json.dumps(rec, ensure_ascii=False) + "\n")
+                    all_sentences.append(rec)
+                print(f" got {len(sents)}")
+            except Exception as e:
+                print(f" ERROR: {e}")
+                continue
+
+    print(f"[gen] total sentences: {len(all_sentences)}")
 
     if args.sentences_only:
         print("[gen] --sentences-only mode, skipping TTS")
         return
 
-    # Phase 2: Synthesize via TTS
-    manifest_entries = []
+    # Phase 2: Synthesize via TTS, stopping when we hit the hour cap.
+    manifest_entries: list[dict] = []
     done = 0
+    skipped_existing = 0
+    audio_seconds = 0.0
+    target_seconds = args.target_hours * 3600
     t0 = time.time()
 
+    # If there's already a manifest from a previous run, load it so we
+    # know how many seconds we've accumulated. /tts/file returns duration
+    # but we only call /tts here, so probe via soundfile lazily.
+    import wave  # std-lib, no extra dep
+
+    def _wav_duration_s(path: Path) -> float:
+        try:
+            with wave.open(str(path), "rb") as wf:
+                return wf.getnframes() / float(wf.getframerate())
+        except Exception:
+            return 0.0
+
     for i, rec in enumerate(all_sentences):
+        if audio_seconds >= target_seconds:
+            print(f"[gen] hit target {args.target_hours}h "
+                  f"({audio_seconds / 3600:.2f}h) — stopping TTS phase")
+            break
+
         fname = f"med_{i:05d}.wav"
         wav_path = wav_dir / fname
 
         if args.skip_existing and wav_path.exists():
+            dur = _wav_duration_s(wav_path)
             manifest_entries.append({
                 "audio": str(wav_path),
                 "text": rec["text"],
                 "term": rec["term"],
                 "type": rec.get("type", "medical"),
+                "tier": rec.get("tier", 3),
+                "duration_s": dur,
             })
-            done += 1
+            audio_seconds += dur
+            skipped_existing += 1
             continue
 
         voice = random.choice(VOICES)
         try:
             wav_bytes = synthesize_one(args.tts_url, rec["text"], voice)
             wav_path.write_bytes(wav_bytes)
+            dur = _wav_duration_s(wav_path)
+            audio_seconds += dur
             done += 1
             elapsed = time.time() - t0
-            total = len(all_sentences)
-            eta = (elapsed / done) * (total - done) if done else 0
             if done % 50 == 0 or done < 5:
-                print(f"  [{done}/{total}] {fname} ({len(wav_bytes)//1024}KB) ETA {eta/60:.0f}m")
+                pct = (audio_seconds / target_seconds) * 100
+                eta_s = (
+                    (elapsed / done) * max(0, target_seconds - audio_seconds) / dur
+                    if dur > 0 and done > 0 else 0
+                )
+                print(f"  [{done}/{len(all_sentences)}] {fname} "
+                      f"({len(wav_bytes) // 1024}KB) "
+                      f"audio={audio_seconds / 3600:.2f}h "
+                      f"({pct:.1f}%) ETA {eta_s / 60:.0f}m")
         except Exception as e:
             print(f"  [ERR] {fname}: {e}")
             continue
@@ -277,16 +385,22 @@ def main():
             "text": rec["text"],
             "term": rec["term"],
             "type": rec.get("type", "medical"),
+            "tier": rec.get("tier", 3),
+            "duration_s": dur,
         })
 
-    # Write manifest
+    # Write manifest.
     with open(manifest_path, "w") as f:
         for entry in manifest_entries:
             f.write(json.dumps(entry, ensure_ascii=False) + "\n")
 
     elapsed = time.time() - t0
-    print(f"\n[gen] Done: {done}/{len(all_sentences)} samples in {elapsed/60:.0f}m")
-    print(f"[gen] Manifest: {manifest_path}")
+    print(f"\n[gen] DONE.")
+    print(f"[gen]   new clips synthesized : {done}")
+    print(f"[gen]   reused existing clips : {skipped_existing}")
+    print(f"[gen]   total audio in manifest: {audio_seconds / 3600:.2f}h")
+    print(f"[gen]   wall time             : {elapsed / 60:.0f}m")
+    print(f"[gen]   manifest              : {manifest_path}")
 
 
 if __name__ == "__main__":
