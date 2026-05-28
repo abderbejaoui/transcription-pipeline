@@ -178,9 +178,14 @@ def main() -> None:
                     help="Reject clips quieter than this (dBFS).")
     ap.add_argument("--seed", type=int, default=42)
     ap.add_argument("--preferred-sources", nargs="+",
-                    default=["vadimbelsky_uae", "nexdata_uae",
-                             "mixat", "uae_other"],
-                    help="Preferred source datasets in priority order.")
+                    default=["mixat", "vadimbelsky_uae",
+                             "nexdata_uae", "uae_other"],
+                    help="Preferred source datasets in priority order. "
+                         "mixat is preferred for the medical project because "
+                         "it is real spontaneous Emirati conversational speech "
+                         "with code-switching — the exact target distribution. "
+                         "nexdata_uae is mostly UAE parliamentary MSA which is "
+                         "the wrong dialect for clinical use.")
     ap.add_argument("--audio-root",
                     help="Root directory for relative audio paths. "
                          "Auto-detected from manifest path if not given. "
@@ -251,36 +256,59 @@ def main() -> None:
     if not pool:
         raise SystemExit("[ref] no usable clips in manifest.")
 
-    # 3. Pick n with speaker diversity.
+    # 3. Pick n with speaker diversity. We gather a generous superset
+    # (5x target) and let the loudness filter trim further. If the
+    # speaker proxy is collapsing too aggressively (small dataset where
+    # all clips share a filename prefix) we relax the dedup so we still
+    # get enough candidates.
     rng = random.Random(args.seed)
     rng.shuffle(pool)
     seen_speakers: set[str] = set()
     chosen: List[Dict[str, Any]] = []
+    target_superset = args.n * 5
+    # First pass: strict speaker dedup.
     for row in pool:
-        if len(chosen) >= args.n * 4:  # gather a generous superset, validate later
+        if len(chosen) >= target_superset:
             break
         spk = _row_speaker_proxy(row)
         if spk in seen_speakers:
             continue
         seen_speakers.add(spk)
         chosen.append(row)
+    # Second pass: if we're starved, drop the dedup and just take more
+    # clips so the loudness filter has more to chew through.
+    if len(chosen) < args.n * 2:
+        print(f"[ref] speaker dedup produced only {len(chosen)} candidates; "
+              f"relaxing dedup to gather more")
+        already = {id(r) for r in chosen}
+        for row in pool:
+            if len(chosen) >= target_superset:
+                break
+            if id(row) in already:
+                continue
+            chosen.append(row)
+    print(f"[ref] candidate superset: {len(chosen)} clips "
+          f"(target {target_superset})")
 
-    # 4. Validate loudness + write refs.
+    # 4. Validate loudness + write refs. Track drop reasons so we can
+    # tell what went wrong if we end up under target.
     refs_jsonl = out / "references.jsonl"
     fh = refs_jsonl.open("w", encoding="utf-8")
     written = 0
-    for row in chosen:
+    n_missing = 0
+    n_quiet = 0
+    for idx, row in enumerate(chosen):
         if written >= args.n:
             break
-        # Use the path we resolved earlier; falls back to raw if not present
-        # (shouldn't happen since we filtered above).
         src_audio = Path(row.get("_resolved_audio") or _row_audio(row) or "")
         if not src_audio.exists():
-            print(f"[ref] skip (missing file): {src_audio}")
+            print(f"[ref]   skip (missing): {src_audio}")
+            n_missing += 1
             continue
         peak = _wav_peak_dbfs(src_audio)
         if peak < args.peak_min_dbfs:
-            print(f"[ref] skip (too quiet, {peak:.1f} dBFS): {src_audio.name}")
+            print(f"[ref]   skip (quiet, {peak:.1f} dBFS): {src_audio.name}")
+            n_quiet += 1
             continue
         dst_wav = out / f"ref_{written + 1:03d}.wav"
         dst_txt = out / f"ref_{written + 1:03d}.txt"
@@ -303,11 +331,17 @@ def main() -> None:
               f"{text[:60]}...")
 
     fh.close()
-    print(f"\n[ref] wrote {written} references to {out}")
-    print(f"[ref] manifest: {refs_jsonl}")
+    print(f"\n[ref] DONE")
+    print(f"[ref]   written  : {written}")
+    print(f"[ref]   missing  : {n_missing}")
+    print(f"[ref]   too quiet: {n_quiet}")
+    print(f"[ref]   manifest : {refs_jsonl}")
     if written < args.n:
-        print(f"[ref] WARN only {written}/{args.n} references usable. "
-              f"Consider loosening filters or adding more UAE data.")
+        print(f"[ref] WARN only {written}/{args.n} references usable.")
+        print(f"[ref] Suggestions:")
+        print(f"[ref]   - Lower --peak-min-dbfs (default -30, try -40)")
+        print(f"[ref]   - Add --preferred-sources mixat (more spontaneous)")
+        print(f"[ref]   - Loosen --min-dur / --max-dur (default 4-10s)")
 
 
 if __name__ == "__main__":
