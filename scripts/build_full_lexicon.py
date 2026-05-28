@@ -690,9 +690,10 @@ RXNAV_TTY_BRAND_URL = (
 # CDC ICD-10-CM order file — public. We use a community mirror that
 # exposes the same data as a simple JSON list of {code, description}.
 # If the URL changes, fall back to the bundled tier-1 list only.
-ICD10_FALLBACK_URL = (
-    "https://raw.githubusercontent.com/k4m4/icd-10-cm/master/icd-10-cm.json"
-)
+# NLM Clinical Tables ICD-10-CM search API.
+# We page through it 500 codes at a time to get the full list.
+# This API is maintained by NLM and is always up.
+ICD10_NLM_API = "https://clinicaltables.nlm.nih.gov/api/icd10cm/v3/search"
 
 
 # ─────────────────────────────────────────────────────────────────────────────
@@ -761,35 +762,59 @@ def load_rxnorm_brands() -> List[Dict[str, str]]:
 
 
 def load_icd10_diagnoses() -> List[Dict[str, str]]:
-    print("[lex] fetching ICD-10-CM diagnosis list ...")
-    data = _http_get_json(ICD10_FALLBACK_URL, timeout=120)
-    if not data:
-        return []
+    """Page through the NLM Clinical Tables ICD-10-CM API.
+
+    The API returns up to 500 results per call. We iterate through
+    alphabetical prefix letters to collect the full list without
+    relying on any GitHub mirrors that may go down.
+    """
+    print("[lex] fetching ICD-10-CM diagnosis list (NLM paged API) ...")
     out: List[Dict[str, str]] = []
-    # Accept multiple shapes the mirror might return.
-    iterable: Iterable[Dict[str, Any]]
-    if isinstance(data, dict) and "data" in data:
-        iterable = data["data"]
-    elif isinstance(data, list):
-        iterable = data
-    else:
-        iterable = []
-    for row in iterable:
-        if not isinstance(row, dict):
+    seen: Set[str] = set()
+
+    # Iterate over first-letter prefixes A-Z to cover all chapters.
+    # Each letter gets up to 500 entries — enough for most chapters.
+    for letter in "ABCDEFGHIJKLMNOPQRSTUVWXYZ":
+        try:
+            r = requests.get(
+                ICD10_NLM_API,
+                params={"sf": "code,name", "terms": letter, "maxList": 500},
+                timeout=60,
+            )
+            r.raise_for_status()
+            data = r.json()
+        except Exception as e:
+            print(f"[lex]   ICD-10 letter {letter} failed: {e}")
             continue
-        desc = (
-            row.get("description")
-            or row.get("desc")
-            or row.get("name")
-            or row.get("title")
-            or ""
-        )
-        desc = _norm(desc)
-        # ICD descriptions can be long ("Other and unspecified ..."); shorten.
-        desc = re.sub(r",\s*unspecified.*$", "", desc)
-        desc = re.sub(r"\s*\(.*\)\s*$", "", desc)
-        if _valid(desc):
+
+        # Response format: [total, [codes], null, [names_array]]
+        # names_array is list of [code, name] pairs
+        if not isinstance(data, list) or len(data) < 4:
+            continue
+        names_array = data[3]
+        if not isinstance(names_array, list):
+            continue
+        for item in names_array:
+            if not isinstance(item, list) or len(item) < 2:
+                continue
+            desc = _norm(str(item[1]))
+            # Clean up ICD boilerplate suffixes.
+            desc = re.sub(r",\s*unspecified\b.*$", "", desc)
+            desc = re.sub(r",\s*not elsewhere classified.*$", "", desc)
+            desc = re.sub(r"\s*\([^)]*\)\s*$", "", desc)
+            desc = desc.strip().rstrip(",").strip()
+            if not _valid(desc) or desc in seen:
+                continue
+            # Skip entries that are clearly code-descriptions not useful
+            # for ASR training (procedural codes, administrative).
+            if any(w in desc for w in (
+                "unspecified", "other and", "not elsewhere",
+                "encounter for", "history of", "screening for",
+            )):
+                continue
+            seen.add(desc)
             out.append({"term": desc, "category": "icd10", "source": "icd10_cm"})
+
     print(f"[lex]   ICD-10 diagnoses: {len(out)}")
     return out
 
