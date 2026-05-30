@@ -45,6 +45,31 @@ def _row_duration_s(row: Dict[str, Any]) -> float:
     return 0.0
 
 
+def _resolve_audio_abs(audio_path: str, manifest_path: Path) -> str:
+    """Resolve a (possibly relative) audio path to an ABSOLUTE path, using the
+    same multi-root strategy as the trainer but anchored at the SOURCE manifest.
+
+    The 900h corpus stores paths like ``audio/sada2022_xxx.wav`` relative to the
+    preprocess dir (the manifest's parent or grandparent). We must bake the
+    absolute path into the sampled manifest, otherwise the trainer — which sits
+    in a different directory — can't find the file.
+    """
+    p = Path(audio_path)
+    if p.is_absolute():
+        return str(p)
+    mdir = manifest_path.resolve().parent
+    candidates = [
+        mdir / audio_path,                 # splits/audio/foo.wav
+        mdir.parent / audio_path,          # preprocessed_audios/audio/foo.wav  <-- expected
+        mdir.parent.parent / audio_path,   # one level up
+    ]
+    for cand in candidates:
+        if cand.exists():
+            return str(cand.resolve())
+    # Best guess (grandparent) so a later error is informative.
+    return str((mdir.parent / audio_path).resolve())
+
+
 def _source_of(row: Dict[str, Any]) -> str:
     """Best-effort dataset identifier for stratified sampling.
 
@@ -146,9 +171,21 @@ def main() -> None:
     print(f"[rehearsal] sampled {len(sampled)} clips, {sampled_hours:.2f} hours")
 
     rng.shuffle(sampled)  # shuffle across sources before writing
+    # Bake absolute audio paths so the trainer (run from a different dir) finds them.
+    missing = 0
     with out.open("w", encoding="utf-8") as fh:
         for row in sampled:
+            ap = row.get("audio_path") or row.get("audio") or row.get("path")
+            if ap:
+                abs_ap = _resolve_audio_abs(ap, src)
+                if not Path(abs_ap).exists():
+                    missing += 1
+                row["audio_path"] = abs_ap
+                row.pop("audio", None)
+                row.pop("path", None)
             fh.write(json.dumps(row, ensure_ascii=False) + "\n")
+    if missing:
+        print(f"[rehearsal] WARN: {missing} sampled clips have no resolvable audio file")
     print(f"[rehearsal] wrote {out}")
 
 
