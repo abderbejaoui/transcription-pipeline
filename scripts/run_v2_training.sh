@@ -60,21 +60,22 @@ echo "==================================================================="
 python3 scripts/sample_rehearsal.py \
   --manifest "$GULF_TRAIN" \
   --out      data/training/gulf_rehearsal/manifest.jsonl \
-  --target-hours 16 --seed 42
+  --target-hours 32 --seed 42
 
 echo "==================================================================="
 echo " STEP 2  build the mixed+shuffled master manifest"
 echo "==================================================================="
 # PHASE A (fast, do this FIRST): 2 real buckets only. Codeswitch/english use the
 # synthetic+rehearsal as harmless placeholders with near-zero ratio so the script
-# accepts 4 inputs but effectively trains on synth(40%)+rehearsal(58%).
+# accepts 4 inputs but effectively trains on synth(~40%)+rehearsal(~58%).
+# target-hours 52 so 40% = ~21h => ALL of the synthetic is used; rehearsal ~30h.
 python3 scripts/build_master_manifest.py \
   --synthetic   "$SYNTH" \
   --rehearsal   data/training/gulf_rehearsal/manifest.jsonl \
   --codeswitch  data/training/gulf_rehearsal/manifest.jsonl \
   --english-med "$SYNTH" \
   --out         data/training/master_v2/manifest.jsonl \
-  --target-hours 37 --ratios 0.40 0.58 0.01 0.01 --seed 42
+  --target-hours 52 --ratios 0.40 0.58 0.01 0.01 --seed 42
 
 # PHASE B (after download_codeswitch_english.py finishes) — real 4-bucket:
 #   python3 scripts/build_master_manifest.py \
