@@ -365,7 +365,7 @@ def main():
             if need == 0:
                 continue
 
-            print(f"  [{i + 1}/{len(lexicon_by_tier)}] T{tier} {term} ({term_type}) "
+            print(f"  [{i + 1}/{len(filtered_lexicon)}] T{tier} {term} ({term_type}) "
                   f"need={need}...", end="", flush=True)
             try:
                 sents = generate_sentences(
