@@ -99,8 +99,12 @@ else
 fi
 
 echo "==================================================================="
-echo " STEP 4  launch BOTH arms in DETACHED tmux sessions"
+echo " STEP 4  launch BOTH arms SEQUENTIALLY in ONE detached tmux session"
 echo "==================================================================="
+# SINGLE GPU: arms must NOT run concurrently (they would OOM). We run Arm B
+# (primary) first, and ONLY if it succeeds do we run Arm A (control). Both use
+# the whole GPU, one at a time. Everything runs in one detached tmux session
+# ('train_v2') so a disconnect/reboot can't kill it.
 mkdir -p logs
 # Guard: refuse to clobber a finished v2 run. Delete the dir yourself to retrain.
 for d in runs/qwen3_lora_v2_medical_B runs/qwen3_lora_v2_medical_A; do
@@ -119,26 +123,24 @@ COMMON_ARGS="\
   --learning-rate 5e-5 --num-epochs 2 \
   --eval-every-steps 1000 --early-stopping-patience 3 --early-stopping-metric wer"
 
-# ---- ARM B (PRIMARY): on the merged Gulf base ----
-tmux new -s train_B -d
-tmux send-keys -t train_B "cd ~/abder/transcription/transcription-pipeline && source .venv/bin/activate" Enter
-tmux send-keys -t train_B "python3 scripts/finetune_qwen3_lora.py \
+# Build the sequential command: B first, then A only if B exits 0 (&&).
+RUN_B="python3 scripts/finetune_qwen3_lora.py \
   --model-path runs/qwen3_gulf_merged_base \
   --output-dir runs/qwen3_lora_v2_medical_B \
-  $COMMON_ARGS 2>&1 | tee logs/train_v2_B.log" Enter
-
-# ---- ARM A (CONTROL): on stock base, SAME data/hparams ----
-# Run AFTER B finishes if you have one GPU; run concurrently only if you have 2.
-tmux new -s train_A -d
-tmux send-keys -t train_A "cd ~/abder/transcription/transcription-pipeline && source .venv/bin/activate" Enter
-tmux send-keys -t train_A "python3 scripts/finetune_qwen3_lora.py \
+  $COMMON_ARGS 2>&1 | tee logs/train_v2_B.log"
+RUN_A="python3 scripts/finetune_qwen3_lora.py \
   --model-path Qwen/Qwen3-ASR-1.7B \
   --output-dir runs/qwen3_lora_v2_medical_A \
-  $COMMON_ARGS 2>&1 | tee logs/train_v2_A.log" Enter
+  $COMMON_ARGS 2>&1 | tee logs/train_v2_A.log"
 
-echo "  launched. Monitor with:"
-echo "    tmux attach -t train_B     # primary"
-echo "    tail -f logs/train_v2_B.log"
+tmux new -s train_v2 -d
+tmux send-keys -t train_v2 "cd ~/abder/transcription/transcription-pipeline && source .venv/bin/activate" Enter
+# PIPESTATUS guards against tee masking the python exit code.
+tmux send-keys -t train_v2 "echo '=== ARM B START ==='; $RUN_B; test \${PIPESTATUS[0]} -eq 0 && { echo '=== ARM B DONE, ARM A START ==='; $RUN_A; } || echo '=== ARM B FAILED, NOT starting ARM A ==='" Enter
+
+echo "  launched (sequential, single session 'train_v2'). Monitor with:"
+echo "    tmux attach -t train_v2"
+echo "    tail -f logs/train_v2_B.log   # then logs/train_v2_A.log"
 echo "==================================================================="
 echo " STEP 5 (after training) — eval A vs B vs v1, pick winner"
 echo "==================================================================="
