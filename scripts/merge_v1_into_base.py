@@ -74,6 +74,21 @@ def main() -> int:
     print("[merge] merge_and_unload() — baking LoRA into base weights")
     merged = peft_model.merge_and_unload()
 
+    # Sanitize generation_config: newer transformers refuses to SAVE a config that
+    # has sampling-only fields (temperature/top_p/top_k) while do_sample=False.
+    # The base ships temperature=1e-6 + do_sample=False, which trips validation.
+    # We use greedy decoding for ASR, so just drop the sampling-only fields.
+    gen_cfg = getattr(merged, "generation_config", None)
+    if gen_cfg is not None:
+        if not getattr(gen_cfg, "do_sample", False):
+            for f in ("temperature", "top_p", "top_k"):
+                if hasattr(gen_cfg, f):
+                    setattr(gen_cfg, f, None)
+        try:
+            gen_cfg.validate(strict=False)
+        except Exception:  # noqa: BLE001 - best-effort; we already sanitized
+            pass
+
     args.output.mkdir(parents=True, exist_ok=True)
     print(f"[merge] saving merged full model -> {args.output}")
     merged.save_pretrained(str(args.output))
