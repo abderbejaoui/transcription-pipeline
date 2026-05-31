@@ -386,13 +386,19 @@ async function transcribeAB(blob) {
   form.append("audio", blob, `recording.${ext}`);
   const lang = $("lang").value;
   if (lang) form.append("language", lang);
+  const runPipeline = $("ab-run-pipeline") && $("ab-run-pipeline").checked;
+  if (runPipeline) form.append("run_pipeline", "true");
 
   $("ab-card").hidden = false;
-  $("ab-status").textContent = "Running both arms (first run loads the models, this can take a while)…";
+  $("ab-status").textContent = runPipeline
+    ? "Running both arms + full pipeline (alignment, flags, corrections)… first run loads the models, this can take a while…"
+    : "Running both arms (first run loads the models, this can take a while)…";
   $("ab-a-text").textContent = "";
   $("ab-b-text").textContent = "";
   $("ab-a-meta").textContent = "";
   $("ab-b-meta").textContent = "";
+  if ($("ab-a-pipeline")) $("ab-a-pipeline").innerHTML = "";
+  if ($("ab-b-pipeline")) $("ab-b-pipeline").innerHTML = "";
 
   const r = await fetch("/api/transcribe_ab", { method: "POST", body: form });
   if (!r.ok) {
@@ -440,12 +446,91 @@ function renderArm(prefix, arm) {
   // Stage 3 — final transcript (raw with the fixes applied).
   $(prefix + "-text").textContent = finalText || "(empty)";
 
+  // Stage 4+ — full downstream pipeline (only when requested).
+  renderArmPipeline(prefix, arm.pipeline);
+
   const bits = [];
   if (arm.elapsed_s != null) bits.push(`${arm.elapsed_s}s`);
   bits.push(
     `${fixes.length} drug fix${fixes.length === 1 ? "" : "es"}`
   );
+  if (arm.pipeline) {
+    const nFlags = (arm.pipeline.flags || []).length;
+    const nCorr = (arm.pipeline.auto_corrections || []).length;
+    bits.push(`${nFlags} flag${nFlags === 1 ? "" : "s"}`);
+    bits.push(`${nCorr} auto-correction${nCorr === 1 ? "" : "s"}`);
+  }
   $(prefix + "-meta").innerHTML = bits.join(" &nbsp;·&nbsp; ");
+}
+
+// Render the downstream pipeline (flags + auto-corrected transcript) for an
+// arm into its `<prefix>-pipeline` container. No-op when the pipeline wasn't
+// requested/returned.
+function renderArmPipeline(prefix, pipeline) {
+  const host = $(prefix + "-pipeline");
+  if (!host) return;
+  if (!pipeline) {
+    host.innerHTML = "";
+    return;
+  }
+
+  const flags = pipeline.flags || [];
+  const corrections = pipeline.auto_corrections || [];
+  const corrected = pipeline.corrected_transcript || "";
+
+  const parts = [];
+
+  // Flagged suspicious words with their top candidate and timestamps.
+  parts.push(`<div class="ab-stage-label">4 · Flagged words (${flags.length})</div>`);
+  if (flags.length) {
+    parts.push('<div class="ab-flags">');
+    for (const f of flags) {
+      const word = escapeHtml(f.word || "");
+      const cands = f.candidates || [];
+      const top = cands[0];
+      const topStr = top
+        ? `${escapeHtml(top.term)} (${Math.round((top.phonetic_similarity || 0) * 100)}%)`
+        : "—";
+      const llm = f.llm_likely_term
+        ? ` · llm: ${escapeHtml(f.llm_likely_term)} (${Math.round((f.llm_confidence || 0) * 100)}%)`
+        : "";
+      const ts =
+        f.start_s != null && f.end_s != null
+          ? ` · ${Number(f.start_s).toFixed(2)}–${Number(f.end_s).toFixed(2)}s`
+          : "";
+      parts.push(
+        `<div class="ab-flag"><span class="ab-flag-word">${word}</span>` +
+          `<span class="muted small">top: ${topStr}${llm}${ts}</span></div>`
+      );
+    }
+    parts.push("</div>");
+  } else {
+    parts.push('<div class="muted small">no suspicious words</div>');
+  }
+
+  // Auto-corrected transcript (high-confidence corrections applied).
+  parts.push(
+    `<div class="ab-stage-label" style="margin-top:8px">5 · Auto-corrected (${corrections.length})</div>`
+  );
+  if (corrections.length) {
+    parts.push('<div class="ab-fixes">');
+    for (const c of corrections) {
+      const from = escapeHtml(c.original || c.from || "");
+      const to = escapeHtml(c.corrected || c.correction || c.to || "");
+      const src = c.source ? ` <span class="muted small">[${escapeHtml(c.source)}]</span>` : "";
+      parts.push(
+        `<span class="ab-fix"><span class="ab-fix-from">${from}</span>` +
+          `<span class="ab-fix-arrow">→</span>` +
+          `<span class="ab-fix-to">${to}</span>${src}</span>`
+      );
+    }
+    parts.push("</div>");
+  } else {
+    parts.push('<div class="muted small">no auto-corrections applied</div>');
+  }
+  parts.push(`<pre class="ab-text ab-final" dir="auto">${escapeHtml(corrected || "(empty)")}</pre>`);
+
+  host.innerHTML = `<div class="ab-stage">${parts.join("")}</div>`;
 }
 
 function showABResult(data) {
