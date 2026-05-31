@@ -291,6 +291,34 @@ details[open] > summary::before { transform: rotate(90deg); }
   color: #1f6feb;
   font-weight: 600;
 }
+.ab-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+  margin: 4px 0 8px;
+  cursor: pointer;
+  user-select: none;
+}
+.ab-flags {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.ab-flag {
+  display: flex;
+  flex-wrap: wrap;
+  align-items: baseline;
+  gap: 8px;
+  padding: 4px 8px;
+  border-radius: 6px;
+  background: #fff7ed;
+  border: 1px solid #fed7aa;
+}
+.ab-flag-word {
+  font-weight: 600;
+  color: #b54708;
+}
 #ab-audio {
   width: 100%;
   margin: 8px 0;

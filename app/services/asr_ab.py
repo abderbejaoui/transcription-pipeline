@@ -161,17 +161,82 @@ def _lang_label(language: Optional[str]) -> Optional[str]:
     return None
 
 
+def _run_full_pipeline(
+    audio_path: str | Path,
+    transcript: str,
+    *,
+    use_llm_flag: bool = True,
+) -> Dict[str, Any]:
+    """Run the SAME downstream pipeline the Record button uses on one
+    transcript: CTC word alignment -> suspicious-word flagging -> stitch
+    timestamps -> auto-apply high-confidence corrections.
+
+    Imported lazily so the A/B view stays fast when the pipeline isn't
+    requested, and so a missing/broken stage degrades gracefully instead
+    of taking down the arm. Returns words/flags/corrected_transcript/
+    auto_corrections (each stage independently guarded)."""
+    from . import alignment_v2 as _alignment, flag as _flag
+
+    # 1) Word-level CTC forced alignment of the full transcript.
+    try:
+        words_aligned = _alignment.align_words(str(audio_path), transcript)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ab pipeline] alignment failed: {exc!r}")
+        words_aligned = []
+
+    # 2) Flag suspicious words (phonetic + optional LLM).
+    try:
+        flags = _flag.flag_suspicious(transcript, use_llm=use_llm_flag)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ab pipeline] flagging failed: {exc!r}")
+        flags = []
+
+    # 3) Stitch alignment into each flag so the UI can slice the audio.
+    for f in flags:
+        idx = f.get("index")
+        if isinstance(idx, int) and 0 <= idx < len(words_aligned):
+            f["start_s"] = words_aligned[idx].get("start_s")
+            f["end_s"] = words_aligned[idx].get("end_s")
+            f["alignment_confidence"] = words_aligned[idx].get("confidence", 0.0)
+        else:
+            f["start_s"] = None
+            f["end_s"] = None
+            f["alignment_confidence"] = 0.0
+
+    # 4) Auto-apply HIGH-confidence corrections (separate string for compare).
+    try:
+        corrected = _flag.apply_high_confidence_corrections(transcript, flags)
+    except Exception as exc:  # noqa: BLE001
+        print(f"[ab pipeline] auto-correct failed: {exc!r}")
+        corrected = {
+            "corrected_transcript": transcript,
+            "applied": [],
+            "threshold": 0.90,
+        }
+
+    return {
+        "words": words_aligned,
+        "flags": flags,
+        "corrected_transcript": corrected["corrected_transcript"],
+        "auto_corrections": corrected["applied"],
+        "correction_threshold": corrected["threshold"],
+    }
+
+
 def transcribe_one(
     arm: str,
     audio_path: str | Path,
     language: Optional[str] = None,
     context: Optional[str] = None,
+    run_pipeline: bool = False,
 ) -> Dict[str, Any]:
     """Transcribe a single clip with one arm. Errors are returned, not raised,
     so one failing arm doesn't break the other in the A/B view.
 
     `audio_path` should already be a clean 16k mono WAV (see transcribe_ab).
-    `context` is the medical-term bias string (same as services.asr)."""
+    `context` is the medical-term bias string (same as services.asr).
+    When `run_pipeline` is True, the full Record-button pipeline (alignment +
+    flagging + auto-correction) is run on this arm's normalized transcript."""
     cfg = ARMS.get(arm, {})
     try:
         wrapper = _load_arm(arm)
@@ -186,7 +251,7 @@ def transcribe_one(
         # doliprane, ...). The ASR hears them correctly but transliterates;
         # this is a deterministic, drug-only post-fix (see drug_normalize).
         text, drug_fixes = normalize_drugs(raw_text)
-        return {
+        out: Dict[str, Any] = {
             "arm": arm,
             "label": cfg.get("label", arm),
             "text": text,
@@ -194,6 +259,12 @@ def transcribe_one(
             "drug_corrections": drug_fixes,
             "elapsed_s": round(time.time() - t0, 2),
         }
+        if run_pipeline:
+            # The pipeline runs on the drug-normalized transcript — the same
+            # text shown as "Final transcript" — so flags/corrections line up.
+            out["pipeline"] = _run_full_pipeline(audio_path, text)
+            out["pipeline_elapsed_s"] = round(time.time() - t0, 2)
+        return out
     except Exception as exc:  # noqa: BLE001 — surface per-arm failures to the UI
         return {
             "arm": arm,
@@ -203,13 +274,21 @@ def transcribe_one(
         }
 
 
-def transcribe_ab(audio_path: str | Path, language: Optional[str] = None) -> Dict[str, Any]:
+def transcribe_ab(
+    audio_path: str | Path,
+    language: Optional[str] = None,
+    run_pipeline: bool = False,
+) -> Dict[str, Any]:
     """Run BOTH arms on the same clip. Returns {arm_a, arm_b}.
 
     Converts the (usually webm/opus) recording to a clean 16k mono WAV ONCE
     and loads the medical context, then feeds both arms identical input — the
     same path the production ASR uses, which avoids the decode-garbage
     hallucination we saw with raw webm.
+
+    When `run_pipeline` is True, each arm also runs the full Record-button
+    pipeline (alignment + flagging + auto-correction) so the A/B view shows
+    everything that happens to each model's output.
     """
     src = Path(audio_path)
     context = _load_medical_context()
@@ -220,8 +299,14 @@ def transcribe_ab(audio_path: str | Path, language: Optional[str] = None) -> Dic
             tmp_wav = wav_path
         wav_str = str(wav_path)
         return {
-            "arm_a": transcribe_one("A", wav_str, language=language, context=context),
-            "arm_b": transcribe_one("B", wav_str, language=language, context=context),
+            "arm_a": transcribe_one(
+                "A", wav_str, language=language, context=context,
+                run_pipeline=run_pipeline,
+            ),
+            "arm_b": transcribe_one(
+                "B", wav_str, language=language, context=context,
+                run_pipeline=run_pipeline,
+            ),
         }
     finally:
         if tmp_wav and tmp_wav.exists():
