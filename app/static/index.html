@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Medical Voice — Gulf Arabic</title>
-  <link rel="stylesheet" href="/static/styles.css?v=12" />
+  <link rel="stylesheet" href="/static/styles.css?v=13" />
 </head>
 <body>
   <main>
@@ -122,6 +122,10 @@
     <!-- A/B test panel (v2 medical LoRA arms) --------------------------- -->
     <section id="ab-card" class="card" hidden>
       <h3>A/B Test <span class="muted small">· v2 medical models</span></h3>
+      <label class="ab-toggle">
+        <input type="checkbox" id="ab-run-pipeline" />
+        Run full pipeline (alignment · flagging · auto-correction)
+      </label>
       <p class="muted small" id="ab-status"></p>
       <audio id="ab-audio" controls hidden></audio>
       <div class="ab-grid">
@@ -139,6 +143,7 @@
             <div class="ab-stage-label">3 · Final transcript</div>
             <pre id="ab-a-text" dir="auto" class="ab-text ab-final"></pre>
           </div>
+          <div id="ab-a-pipeline"></div>
           <span class="muted small" id="ab-a-meta"></span>
         </div>
         <div class="ab-col">
@@ -155,6 +160,7 @@
             <div class="ab-stage-label">3 · Final transcript</div>
             <pre id="ab-b-text" dir="auto" class="ab-text ab-final"></pre>
           </div>
+          <div id="ab-b-pipeline"></div>
           <span class="muted small" id="ab-b-meta"></span>
         </div>
       </div>
@@ -173,6 +179,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=12"></script>
+  <script src="/static/app.js?v=13"></script>
 </body>
 </html>

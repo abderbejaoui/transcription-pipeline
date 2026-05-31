@@ -685,22 +685,29 @@ async def transcribe_debug(
 async def transcribe_ab(
     audio: UploadFile = File(...),
     language: Optional[str] = Form(None),
+    run_pipeline: bool = Form(False),
 ) -> Dict[str, Any]:
-    """Transcribe one clip with both v2 medical LoRA arms (A and B)."""
+    """Transcribe one clip with both v2 medical LoRA arms (A and B).
+
+    When `run_pipeline` is set, each arm also runs the full downstream
+    pipeline (alignment + flagging + auto-correction), so the A/B view can
+    show exactly what happens to each model's transcript."""
     from .services import asr_ab
 
     session_id, session_path, size = _save_upload(audio)
     effective_lang = language or DEFAULT_LANGUAGE
     print(
         f"[transcribe_ab] session={session_id} type={audio.content_type!r} "
-        f"size={size}B lang={effective_lang}"
+        f"size={size}B lang={effective_lang} pipeline={run_pipeline}"
     )
     if size < 200:
         return JSONResponse(
             status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
         )
     try:
-        result = asr_ab.transcribe_ab(session_path, language=effective_lang)
+        result = asr_ab.transcribe_ab(
+            session_path, language=effective_lang, run_pipeline=run_pipeline
+        )
         result["session_id"] = session_id
         result["audio_url"] = f"/api/session_audio/{session_id}"
         return result
