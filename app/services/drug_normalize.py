@@ -112,21 +112,168 @@ def _lat_skeleton(name: str) -> str:
     return name
 
 
-def _levenshtein(a: str, b: str) -> int:
+# ---------------------------------------------------------------------------
+# Phonetic core: CEQ (consonant-equivalence classes) + Editex-style weighted
+# edit distance + Jaro-Winkler prefix bonus.
+#
+# The matcher above ("skeleton") already folds Arabic letters to a Latin-ish
+# alphabet and the canonical name to a similar one. The problem with plain
+# Levenshtein over those skeletons is that it is *orthographic*: it treats a
+# b<->p swap exactly like a b<->z swap, even though the former is phonetically
+# trivial and the latter is not.
+#
+# We fix that by mapping every skeleton character into a small set of phonetic
+# equivalence classes (one representative symbol per class). Substituting two
+# letters in the same class costs 0; two letters in *neighbouring* classes
+# (e.g. the sibilants s/z/sh) costs 0.5; anything else costs 1. This is the
+# Editex idea (Zobel & Dart 1996) adapted to the Arabic->Latin drug setting,
+# built by hand from Buckwalter/IPA equivalences so we stay dependency-free.
+# ---------------------------------------------------------------------------
+
+# Each phonetic class maps a set of skeleton chars to a single class symbol.
+# Skeleton chars come from _AR_FOLD / _lat_skeleton, so the alphabet is small.
+_CEQ_CLASSES: List[Tuple[str, str]] = [
+    ("B", "bp"),        # bilabial plosives  ب پ / b p
+    ("F", "fv"),        # labiodental fric.  ف ڤ / f v  (ph already -> f)
+    ("T", "td"),        # dentals/alveolars  ت ط د ض ة / t d
+    ("S", "sz"),        # sibilants          ث س ص ش ز ظ ذ / s z
+    ("K", "kg"),        # velars/uvulars     ك ق گ خ غ ج چ / k g j
+    ("J", "j"),         # affricate j        (kept distinct but near K)
+    ("R", "r"),
+    ("L", "l"),
+    ("M", "m"),
+    ("N", "n"),
+    ("H", "h"),
+    ("W", "w"),         # glide/round vowel  و ؤ / w  (and 'ou')
+    ("Y", "y"),         # glide/front vowel  ي ئ / y
+    ("A", "a"),         # vowel carrier      ا أ إ آ ى ع
+]
+
+# Build char -> class-symbol lookup.
+_CHAR2CLASS: Dict[str, str] = {}
+for _sym, _chars in _CEQ_CLASSES:
+    for _c in _chars:
+        # First class to claim a char wins; J is intentionally also reachable
+        # via the K bucket above, so map j to J explicitly afterwards.
+        _CHAR2CLASS.setdefault(_c, _sym)
+_CHAR2CLASS["j"] = "J"
+
+# Classes that are phonetically *adjacent*: a substitution between them is
+# cheap (0.5) rather than full cost (1.0). These are the confusions that Arabic
+# transliteration and ASR realistically produce.
+_NEAR_PAIRS = {
+    frozenset({"B", "F"}),   # b <-> f/v (voiced/voiceless labial)
+    frozenset({"T", "S"}),   # t/d <-> s/z (dental vs sibilant)
+    frozenset({"S", "J"}),   # s/sh <-> j (sibilant vs affricate)
+    frozenset({"K", "J"}),   # k/g <-> j
+    frozenset({"K", "H"}),   # kh <-> h
+    frozenset({"W", "A"}),   # round glide <-> vowel
+    frozenset({"Y", "A"}),   # front glide <-> vowel
+    frozenset({"N", "M"}),   # nasals
+    frozenset({"R", "L"}),   # liquids
+}
+
+
+def _to_classes(skeleton: str) -> str:
+    """Map a folded skeleton string to its CEQ class-symbol string."""
+    return "".join(_CHAR2CLASS.get(ch, ch.upper()) for ch in skeleton)
+
+
+def _sub_cost(a: str, b: str) -> float:
     if a == b:
-        return 0
+        return 0.0
+    if frozenset({a, b}) in _NEAR_PAIRS:
+        return 0.5
+    return 1.0
+
+
+def _editex(a: str, b: str) -> float:
+    """Editex-style weighted edit distance over CEQ class strings."""
+    if a == b:
+        return 0.0
     if not a:
-        return len(b)
+        return float(len(b))
     if not b:
-        return len(a)
-    prev = list(range(len(b) + 1))
+        return float(len(a))
+    prev = [float(j) for j in range(len(b) + 1)]
     for i, ca in enumerate(a, 1):
-        cur = [i]
+        cur = [float(i)]
         for j, cb in enumerate(b, 1):
-            cost = 0 if ca == cb else 1
-            cur.append(min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost))
+            cur.append(min(
+                prev[j] + 1.0,            # deletion
+                cur[j - 1] + 1.0,         # insertion
+                prev[j - 1] + _sub_cost(ca, cb),  # weighted substitution
+            ))
         prev = cur
     return prev[-1]
+
+
+def _jaro(a: str, b: str) -> float:
+    if a == b:
+        return 1.0
+    if not a or not b:
+        return 0.0
+    match_dist = max(len(a), len(b)) // 2 - 1
+    if match_dist < 0:
+        match_dist = 0
+    a_match = [False] * len(a)
+    b_match = [False] * len(b)
+    matches = 0
+    for i, ca in enumerate(a):
+        lo = max(0, i - match_dist)
+        hi = min(i + match_dist + 1, len(b))
+        for j in range(lo, hi):
+            if b_match[j] or b[j] != ca:
+                continue
+            a_match[i] = b_match[j] = True
+            matches += 1
+            break
+    if matches == 0:
+        return 0.0
+    transpositions = 0
+    k = 0
+    for i in range(len(a)):
+        if not a_match[i]:
+            continue
+        while not b_match[k]:
+            k += 1
+        if a[i] != b[k]:
+            transpositions += 1
+        k += 1
+    transpositions //= 2
+    return (
+        matches / len(a)
+        + matches / len(b)
+        + (matches - transpositions) / matches
+    ) / 3.0
+
+
+def _jaro_winkler(a: str, b: str, p: float = 0.1) -> float:
+    j = _jaro(a, b)
+    prefix = 0
+    for ca, cb in zip(a, b):
+        if ca == cb and prefix < 4:
+            prefix += 1
+        else:
+            break
+    return j + prefix * p * (1.0 - j)
+
+
+def _phonetic_similarity(sk_a: str, sk_b: str) -> float:
+    """Combined phonetic similarity in [0, 1] for two folded skeletons.
+
+    Blends a length-normalised Editex distance (substance) with a Jaro-Winkler
+    score over the CEQ class strings (order + shared prefix, which brand names
+    rely on heavily).
+    """
+    ca = _to_classes(sk_a)
+    cb = _to_classes(sk_b)
+    if not ca or not cb:
+        return 0.0
+    ed = _editex(ca, cb)
+    ed_sim = 1.0 - ed / max(len(ca), len(cb))
+    jw = _jaro_winkler(ca, cb)
+    return 0.6 * ed_sim + 0.4 * jw
 
 
 # Pre-compute skeletons for every known variant + the canonical name itself.
@@ -145,24 +292,29 @@ _INDEX = _build_index()
 # normal English text the model already got right).
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
 
+# Replacement threshold on the combined phonetic similarity. Tuned so that
+# real (even unseen) drug mangles clear it while ordinary Arabic that merely
+# shares a few consonants does not. Validated by tests/eval_drug_normalize.py.
+_SIM_THRESHOLD = 0.82
 
-def _best_match(token: str) -> Tuple[str, int, int] | None:
-    """Return (canonical_latin, distance, cand_len) for the closest known drug.
+
+def _best_match(token: str) -> Tuple[str, float, int] | None:
+    """Return (canonical_latin, similarity, cand_len) for the closest drug.
 
     Length-guarded: a candidate is only considered if its skeleton length is
-    within 2 of the token's skeleton length. This stops a short ordinary word
-    (e.g. a 4-char verb) from matching a long 9-char drug skeleton.
+    within 2 of the token's skeleton length, which stops a short ordinary word
+    from matching a long drug skeleton.
     """
     sk = _ar_skeleton(token)
     if len(sk) < 3:
         return None
-    best: Tuple[str, int, int] | None = None
+    best: Tuple[str, float, int] | None = None
     for cand_sk, canonical in _INDEX:
         if abs(len(cand_sk) - len(sk)) > 2:
             continue
-        d = _levenshtein(sk, cand_sk)
-        if best is None or d < best[1]:
-            best = (canonical, d, len(cand_sk))
+        sim = _phonetic_similarity(sk, cand_sk)
+        if best is None or sim > best[1]:
+            best = (canonical, sim, len(cand_sk))
     return best
 
 
@@ -170,9 +322,10 @@ def normalize_drugs(text: str) -> Tuple[str, List[Dict[str, str]]]:
     """Replace Arabic-script drug tokens with their canonical Latin names.
 
     Returns (normalized_text, replacements) where each replacement is
-    {"from": original_token, "to": canonical}. Tokens are only replaced when
-    their phonetic skeleton is within a tight edit-distance of a known drug,
-    so ordinary Arabic words are left untouched.
+    {"from": original_token, "to": canonical}. A token is only replaced when
+    its phonetic similarity (CEQ + Editex + Jaro-Winkler) to a known drug
+    clears a tight, length-aware threshold, so ordinary Arabic words are left
+    untouched.
     """
     if not text:
         return text, []
@@ -186,17 +339,16 @@ def normalize_drugs(text: str) -> Tuple[str, List[Dict[str, str]]]:
         best = _best_match(token)
         if best is None:
             return token
-        canonical, dist, cand_len = best
+        canonical, sim, cand_len = best
         tok_len = len(_ar_skeleton(token))
         # Short Arabic tokens are too ambiguous (e.g. "ودول" = "and states"),
-        # so they only resolve on an EXACT variant match (distance 0). Longer
-        # tokens get a small, length-scaled fuzzy budget.
+        # so they need a near-perfect phonetic match. Longer, more distinctive
+        # tokens may resolve at the standard threshold.
         if tok_len <= 4 or cand_len <= 4:
-            budget = 0
+            threshold = 0.97
         else:
-            budget = 1 if cand_len <= 6 else 2 if cand_len <= 8 else 3
-            budget = min(budget, max(1, cand_len // 3))
-        if dist <= budget:
+            threshold = _SIM_THRESHOLD
+        if sim >= threshold:
             replacements.append({"from": token, "to": canonical})
             return canonical
         return token
