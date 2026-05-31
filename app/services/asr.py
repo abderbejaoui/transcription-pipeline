@@ -14,6 +14,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .drug_normalize import normalize_drugs
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _MODEL = None
@@ -184,9 +186,14 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
             print(f"[asr] using context bias: {len(context)} chars, "
                   f"{context.count(',') + 1} terms")
         results = model.transcribe(**kwargs)
-        text = getattr(results[0], "text", "").strip() if results else ""
+        raw_text = getattr(results[0], "text", "").strip() if results else ""
+        # Phonetic drug-name canonicalization: map Arabic-script brand names
+        # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
+        text, drug_fixes = normalize_drugs(raw_text)
         return {
             "text": text,
+            "raw_text": raw_text,
+            "drug_corrections": drug_fixes,
             "language": language or "ar",
             "language_probability": 1.0,
             "duration": duration,
@@ -213,10 +220,15 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     with torch.inference_mode():
         out_ids = model.generate(**inputs, max_new_tokens=1024, do_sample=False)
     input_len = inputs["input_ids"].shape[1]
-    text = processor.batch_decode(out_ids[:, input_len:], skip_special_tokens=True)[0].strip()
+    raw_text = processor.batch_decode(out_ids[:, input_len:], skip_special_tokens=True)[0].strip()
+    # Phonetic drug-name canonicalization: map Arabic-script brand names
+    # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
+    text, drug_fixes = normalize_drugs(raw_text)
 
     return {
         "text": text,
+        "raw_text": raw_text,
+        "drug_corrections": drug_fixes,
         "language": language or "ar",
         "language_probability": 1.0,
         "duration": duration,
