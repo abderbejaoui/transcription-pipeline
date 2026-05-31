@@ -24,6 +24,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .drug_normalize import normalize_drugs
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 # Arm definitions. Override via env if the checkpoint dirs ever move.
@@ -179,11 +181,17 @@ def transcribe_one(
             kwargs["context"] = context
         t0 = time.time()
         results = wrapper.transcribe(**kwargs)
-        text = getattr(results[0], "text", "").strip() if results else ""
+        raw_text = getattr(results[0], "text", "").strip() if results else ""
+        # Map Arabic-script drug names back to canonical Latin (panadol,
+        # doliprane, ...). The ASR hears them correctly but transliterates;
+        # this is a deterministic, drug-only post-fix (see drug_normalize).
+        text, drug_fixes = normalize_drugs(raw_text)
         return {
             "arm": arm,
             "label": cfg.get("label", arm),
             "text": text,
+            "raw_text": raw_text,
+            "drug_corrections": drug_fixes,
             "elapsed_s": round(time.time() - t0, 2),
         }
     except Exception as exc:  # noqa: BLE001 — surface per-arm failures to the UI
