@@ -527,13 +527,22 @@ def _run_eval(
         lines = rng.sample(lines, max_samples)
 
     refs, hyps = [], []
+    n_skipped = 0
     for line in lines:
         rec = json.loads(line)
         ap = rec.get("audio_path") or rec.get("path") or rec.get("audio")
         if not ap:
             continue
         ap = _resolve_audio_path(ap, manifest_path)
-        arr, sr = sf.read(ap, dtype="float32", always_2d=False)
+        # Robustly load audio: a single missing/corrupt file must NOT abort
+        # the whole eval (that bug left us training blind for 2 full epochs
+        # when one worldspeech clip was missing). Skip the bad sample and
+        # keep going; report the skip count at the end.
+        try:
+            arr, sr = sf.read(ap, dtype="float32", always_2d=False)
+        except Exception:
+            n_skipped += 1
+            continue
         if arr.ndim > 1:
             arr = arr.mean(axis=1)
         if sr != 16_000:
@@ -565,11 +574,17 @@ def _run_eval(
             for k, v in list(inputs.items()):
                 if torch.is_tensor(v) and v.is_floating_point():
                     inputs[k] = v.to(dtype=model_dtype)
-        with torch.no_grad():
-            gen = model.generate(
-                **inputs, max_new_tokens=448,
-                do_sample=False, num_beams=1,
-            )
+        # A single failed generate (e.g. transient OOM) must not abort the
+        # whole eval round. Skip and continue.
+        try:
+            with torch.no_grad():
+                gen = model.generate(
+                    **inputs, max_new_tokens=448,
+                    do_sample=False, num_beams=1,
+                )
+        except Exception:
+            n_skipped += 1
+            continue
         # Strip prompt tokens then decode.
         out = gen[:, inputs["input_ids"].shape[1]:]
         hyp = processor.batch_decode(out, skip_special_tokens=True)[0]
@@ -581,6 +596,9 @@ def _run_eval(
             ref = ref.split("<asr_text>", 1)[1]
         refs.append(normalize_arabic_text(ref))
         hyps.append(normalize_arabic_text(hyp))
+    if n_skipped:
+        print(f"[eval] {manifest_path.name}: skipped {n_skipped} "
+              f"unreadable/failed sample(s)", flush=True)
     if not refs:
         return float("nan"), float("nan"), 0
     return jiwer.wer(refs, hyps), jiwer.cer(refs, hyps), len(refs)
