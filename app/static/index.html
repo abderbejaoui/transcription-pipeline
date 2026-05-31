@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Medical Voice — Gulf Arabic</title>
-  <link rel="stylesheet" href="/static/styles.css?v=8" />
+  <link rel="stylesheet" href="/static/styles.css?v=9" />
 </head>
 <body>
   <main>
@@ -23,6 +23,14 @@
         <button id="btn-stop" class="ghost big" hidden>
           <span class="square"></span>
           <span class="label">Stop</span>
+        </button>
+        <button id="btn-record-ab" class="ghost big" title="Record and compare the two fine-tuned v2 medical models (Arm A vs Arm B)">
+          <span class="dot"></span>
+          <span class="label">A/B Test</span>
+        </button>
+        <button id="btn-stop-ab" class="ghost big" hidden>
+          <span class="square"></span>
+          <span class="label">Stop A/B</span>
         </button>
         <div class="record-meta">
           <span id="record-status" class="muted small"></span>
@@ -111,6 +119,25 @@
       </div>
     </section>
 
+    <!-- A/B test panel (v2 medical LoRA arms) --------------------------- -->
+    <section id="ab-card" class="card" hidden>
+      <h3>A/B Test <span class="muted small">· v2 medical models</span></h3>
+      <p class="muted small" id="ab-status"></p>
+      <audio id="ab-audio" controls hidden></audio>
+      <div class="ab-grid">
+        <div class="ab-col">
+          <div class="ab-head" id="ab-a-label">Arm A · stock base + medical LoRA</div>
+          <pre id="ab-a-text" dir="auto" class="ab-text"></pre>
+          <span class="muted small" id="ab-a-meta"></span>
+        </div>
+        <div class="ab-col">
+          <div class="ab-head" id="ab-b-label">Arm B · Gulf-merged base + medical LoRA</div>
+          <pre id="ab-b-text" dir="auto" class="ab-text"></pre>
+          <span class="muted small" id="ab-b-meta"></span>
+        </div>
+      </div>
+    </section>
+
     <!-- Vocabulary card ------------------------------------------------- -->
     <section class="card">
       <details>
@@ -124,6 +151,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=8"></script>
+  <script src="/static/app.js?v=9"></script>
 </body>
 </html>
