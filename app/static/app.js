@@ -252,6 +252,9 @@ function fmtTime(ms) {
 }
 
 async function startRecording(mode = "debug") {
+  // Guard: ignore clicks while a recording is already in progress so the
+  // buttons can't kick off a second overlapping recorder.
+  if (mediaRecorder && mediaRecorder.state === "recording") return;
   recordMode = mode === "ab" ? "ab" : "debug";
   $("record-status").textContent = "";
 
@@ -535,24 +538,27 @@ function traceSummary(stage, payload) {
 // ---------------------------------------------------------------------------
 // Button wiring
 // ---------------------------------------------------------------------------
-$("btn-record").addEventListener("click", () => startRecording("debug"));
-$("btn-stop").addEventListener("click", stopRecording);
-$("btn-record-ab").addEventListener("click", () => startRecording("ab"));
-$("btn-stop-ab").addEventListener("click", stopRecording);
+$("btn-record").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); startRecording("debug"); });
+$("btn-stop").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); stopRecording(); });
+$("btn-record-ab").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); startRecording("ab"); });
+$("btn-stop-ab").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); stopRecording(); });
 
 document.addEventListener("keydown", (e) => {
   if (e.code !== "Space" || e.repeat) return;
   const tgt = e.target;
-  if (tgt && /INPUT|TEXTAREA|SELECT/.test(tgt.tagName)) return;
+  // Ignore when typing in a field, or when a button is focused (the button's
+  // own Space-to-click already handles it — avoids a double trigger).
+  if (tgt && /INPUT|TEXTAREA|SELECT|BUTTON/.test(tgt.tagName)) return;
   e.preventDefault();
   if (mediaRecorder?.state === "recording") return;
-  startRecording();
+  startRecording("debug");
 });
 document.addEventListener("keyup", (e) => {
   if (e.code !== "Space") return;
   const tgt = e.target;
-  if (tgt && /INPUT|TEXTAREA|SELECT/.test(tgt.tagName)) return;
-  if (mediaRecorder?.state === "recording") stopRecording();
+  if (tgt && /INPUT|TEXTAREA|SELECT|BUTTON/.test(tgt.tagName)) return;
+  // Only the spacebar push-to-talk (debug mode) auto-stops on key release.
+  if (mediaRecorder?.state === "recording" && recordMode === "debug") stopRecording();
 });
 
 $("btn-correct").addEventListener("click", async () => {
