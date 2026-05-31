@@ -408,30 +408,43 @@ function renderArm(prefix, arm) {
   if (!arm) return;
   if (arm.label) $(prefix + "-label").textContent = arm.label;
   if (arm.error) {
+    $(prefix + "-raw").textContent = "";
+    $(prefix + "-fixes").innerHTML = "";
     $(prefix + "-text").textContent = "";
     $(prefix + "-meta").innerHTML = `<span style="color:#c0392b">❌ ${escapeHtml(arm.error)}</span>`;
     return;
   }
 
-  // `text` is already drug-normalized (Arabic brand names -> Latin).
-  $(prefix + "-text").textContent = arm.text || "(empty)";
+  const raw = arm.raw_text || "";
+  const finalText = arm.text || "";
+  const fixes = arm.drug_corrections || [];
+
+  // Stage 1 — raw ASR output (what the model literally produced).
+  $(prefix + "-raw").textContent = raw || "(empty)";
+
+  // Stage 2 — what the drug normalizer changed, token by token.
+  const fixesEl = $(prefix + "-fixes");
+  if (fixes.length) {
+    fixesEl.innerHTML = fixes
+      .map(
+        (f) =>
+          `<span class="ab-fix"><span class="ab-fix-from">${escapeHtml(f.from)}</span>` +
+          `<span class="ab-fix-arrow">→</span>` +
+          `<span class="ab-fix-to">${escapeHtml(f.to)}</span></span>`
+      )
+      .join("");
+  } else {
+    fixesEl.innerHTML = `<span class="muted small">no drug changes</span>`;
+  }
+
+  // Stage 3 — final transcript (raw with the fixes applied).
+  $(prefix + "-text").textContent = finalText || "(empty)";
 
   const bits = [];
   if (arm.elapsed_s != null) bits.push(`${arm.elapsed_s}s`);
-
-  const fixes = arm.drug_corrections || [];
-  if (fixes.length) {
-    const summary = fixes
-      .map((f) => `${escapeHtml(f.from)} → ${escapeHtml(f.to)}`)
-      .join(", ");
-    bits.push(
-      `<span class="muted">${fixes.length} drug fix${fixes.length === 1 ? "" : "es"}:</span> ${summary}`
-    );
-  }
-  // Show the raw ASR output (pre-normalization) only when it differed.
-  if (arm.raw_text && arm.raw_text !== arm.text) {
-    bits.push(`<span class="muted">raw:</span> ${escapeHtml(arm.raw_text)}`);
-  }
+  bits.push(
+    `${fixes.length} drug fix${fixes.length === 1 ? "" : "es"}`
+  );
   $(prefix + "-meta").innerHTML = bits.join(" &nbsp;·&nbsp; ");
 }
 

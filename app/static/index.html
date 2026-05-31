@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Medical Voice — Gulf Arabic</title>
-  <link rel="stylesheet" href="/static/styles.css?v=11" />
+  <link rel="stylesheet" href="/static/styles.css?v=12" />
 </head>
 <body>
   <main>
@@ -127,12 +127,34 @@
       <div class="ab-grid">
         <div class="ab-col">
           <div class="ab-head" id="ab-a-label">Arm A · stock base + medical LoRA</div>
-          <pre id="ab-a-text" dir="auto" class="ab-text"></pre>
+          <div class="ab-stage">
+            <div class="ab-stage-label">1 · Raw ASR</div>
+            <pre id="ab-a-raw" dir="auto" class="ab-text ab-raw"></pre>
+          </div>
+          <div class="ab-stage">
+            <div class="ab-stage-label">2 · Drug normalizer</div>
+            <div id="ab-a-fixes" class="ab-fixes"></div>
+          </div>
+          <div class="ab-stage">
+            <div class="ab-stage-label">3 · Final transcript</div>
+            <pre id="ab-a-text" dir="auto" class="ab-text ab-final"></pre>
+          </div>
           <span class="muted small" id="ab-a-meta"></span>
         </div>
         <div class="ab-col">
           <div class="ab-head" id="ab-b-label">Arm B · Gulf-merged base + medical LoRA</div>
-          <pre id="ab-b-text" dir="auto" class="ab-text"></pre>
+          <div class="ab-stage">
+            <div class="ab-stage-label">1 · Raw ASR</div>
+            <pre id="ab-b-raw" dir="auto" class="ab-text ab-raw"></pre>
+          </div>
+          <div class="ab-stage">
+            <div class="ab-stage-label">2 · Drug normalizer</div>
+            <div id="ab-b-fixes" class="ab-fixes"></div>
+          </div>
+          <div class="ab-stage">
+            <div class="ab-stage-label">3 · Final transcript</div>
+            <pre id="ab-b-text" dir="auto" class="ab-text ab-final"></pre>
+          </div>
           <span class="muted small" id="ab-b-meta"></span>
         </div>
       </div>
@@ -151,6 +173,6 @@
     </section>
   </main>
 
-  <script src="/static/app.js?v=11"></script>
+  <script src="/static/app.js?v=12"></script>
 </body>
 </html>
