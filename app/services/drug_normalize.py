@@ -288,14 +288,64 @@ def _build_index() -> List[Tuple[str, str]]:
 
 _INDEX = _build_index()
 
+# Latin-only index: the canonical drug names' Latin skeletons. Used to catch
+# the case where the ASR already transliterated the brand into Latin but got
+# it slightly wrong (e.g. "augmenta" for "augmentin"). Matching is done with
+# _lat_skeleton on BOTH sides and a tight threshold so we only ever rewrite a
+# near-miss of an actual drug name, never an ordinary Latin/English word.
+def _build_latin_index() -> List[Tuple[str, str]]:
+    return [(_lat_skeleton(c), c) for c in _DRUG_VARIANTS]
+
+
+_LATIN_INDEX = _build_latin_index()
+_CANONICAL_LOWER = {c.lower() for c in _DRUG_VARIANTS}
+
 # Only Arabic-script tokens are eligible for replacement (so we never touch
 # normal English text the model already got right).
 _ARABIC_RE = re.compile(r"[\u0600-\u06FF]")
+
+# A Latin token must be all ASCII letters to be considered for the Latin path.
+_LATIN_RE = re.compile(r"^[A-Za-z]+$")
 
 # Replacement threshold on the combined phonetic similarity. Tuned so that
 # real (even unseen) drug mangles clear it while ordinary Arabic that merely
 # shares a few consonants does not. Validated by tests/eval_drug_normalize.py.
 _SIM_THRESHOLD = 0.82
+
+# Latin near-miss tuning. The discriminating signal between a real mangle
+# ("augmenta" -> "augmentin") and an ordinary English word that merely shares
+# a drug's prefix ("augment") is NOT raw phonetic similarity -- those collide
+# (0.839 vs 0.849). It is two structural facts:
+#   1. shared-prefix ratio: a mangle tracks the drug name closely from the
+#      start, so it shares a long prefix relative to the longer skeleton.
+#   2. strict-prefix rejection: an ordinary word that is simply a truncation
+#      of the drug ("augment" is a clean prefix of "augmentin") is almost
+#      always a real word, never a mis-transliteration. A genuine mangle
+#      diverges in its tail ("augment-a", "panad-l") instead of truncating.
+_LATIN_SIM_THRESHOLD = 0.80
+# Token must share at least this fraction of the longer skeleton as a common
+# prefix to be considered a mangle of that drug.
+_LATIN_PREFIX_RATIO = 0.70
+
+# Common English inflectional/derivational suffixes. If the part of the token
+# that DIVERGES from the drug name is itself a real English ending (e.g.
+# "augment-ed", "augment-ing"), the token is an ordinary inflected word, not a
+# mis-transliteration, so it must not be rewritten. Ordered longest-first.
+_ENGLISH_SUFFIXES = (
+    "ization", "ication", "fulness", "lessness",
+    "ation", "ition", "ments", "ness", "ling", "ting",
+    "ing", "ers", "est", "ies", "ment", "ous", "ive", "ial", "ant", "ent",
+    "ed", "er", "ly", "es", "al", "ic",
+)
+
+
+def _common_prefix_len(a: str, b: str) -> int:
+    n = 0
+    for x, y in zip(a, b):
+        if x != y:
+            break
+        n += 1
+    return n
 
 
 def _best_match(token: str) -> Tuple[str, float, int] | None:
@@ -318,13 +368,89 @@ def _best_match(token: str) -> Tuple[str, float, int] | None:
     return best
 
 
+def _best_latin_match(token: str) -> Tuple[str, float, int] | None:
+    """Closest drug for a Latin token, using _lat_skeleton on both sides.
+
+    Handles the case where the ASR already wrote the brand in Latin but got
+    it slightly wrong ("augmenta" -> "augmentin"). Length-guarded like the
+    Arabic path so unrelated words can't reach a long drug name.
+    """
+    sk = _lat_skeleton(token)
+    if len(sk) < 4:
+        return None
+    best: Tuple[str, float, int] | None = None
+    for cand_sk, canonical in _LATIN_INDEX:
+        if abs(len(cand_sk) - len(sk)) > 2:
+            continue
+        sim = _phonetic_similarity(sk, cand_sk)
+        if best is None or sim > best[1]:
+            best = (canonical, sim, len(cand_sk))
+    return best
+
+
+def _sub_arabic(token: str, replacements: List[Dict[str, str]]) -> str:
+    """Resolve one Arabic-script token to a canonical drug name (or keep it)."""
+    best = _best_match(token)
+    if best is None:
+        return token
+    canonical, sim, cand_len = best
+    tok_len = len(_ar_skeleton(token))
+    # Short Arabic tokens are too ambiguous (e.g. "ودول" = "and states"), so
+    # they need a near-perfect phonetic match. Longer, more distinctive tokens
+    # may resolve at the standard threshold.
+    if tok_len <= 4 or cand_len <= 4:
+        threshold = 0.97
+    else:
+        threshold = _SIM_THRESHOLD
+    if sim >= threshold:
+        replacements.append({"from": token, "to": canonical})
+        return canonical
+    return token
+
+
+def _sub_latin(token: str, replacements: List[Dict[str, str]]) -> str:
+    """Resolve one Latin token to a canonical drug name (or keep it).
+
+    Fires only on a structural near-miss of a real drug name: it must clear
+    the phonetic threshold, share a long common prefix with the canonical, and
+    NOT be a strict truncation of it (truncations are ordinary words like
+    "augment" for "augmentin"). This keeps ordinary English/Latin text safe.
+    """
+    best = _best_latin_match(token)
+    if best is None:
+        return token
+    canonical, sim, cand_len = best
+    if sim < _LATIN_SIM_THRESHOLD or canonical.lower() == token.lower():
+        return token
+    tok_sk = _lat_skeleton(token)
+    can_sk = _lat_skeleton(canonical)
+    # An ordinary word that is just a clean prefix of the drug name (e.g.
+    # "augment" -> "augmentin") is a real word, not a mangle: reject it.
+    if can_sk.startswith(tok_sk) or tok_sk.startswith(can_sk):
+        return token
+    # A real mangle tracks the drug name from the start: require a long shared
+    # prefix relative to the longer skeleton.
+    cp = _common_prefix_len(tok_sk, can_sk)
+    if cp / max(len(tok_sk), len(can_sk)) < _LATIN_PREFIX_RATIO:
+        return token
+    # If the token's divergent tail is a real English ending ("augment-ed",
+    # "augment-ing"), it is an ordinary inflected word, not a mangle. Check on
+    # the ORIGINAL token (skeleton folding would distort the suffix).
+    low = token.lower()
+    if any(low.endswith(suf) and len(low) - len(suf) >= 4 for suf in _ENGLISH_SUFFIXES):
+        return token
+    replacements.append({"from": token, "to": canonical})
+    return canonical
+
+
 def normalize_drugs(text: str) -> Tuple[str, List[Dict[str, str]]]:
-    """Replace Arabic-script drug tokens with their canonical Latin names.
+    """Replace Arabic-script (and near-miss Latin) drug tokens with their
+    canonical Latin names.
 
     Returns (normalized_text, replacements) where each replacement is
     {"from": original_token, "to": canonical}. A token is only replaced when
     its phonetic similarity (CEQ + Editex + Jaro-Winkler) to a known drug
-    clears a tight, length-aware threshold, so ordinary Arabic words are left
+    clears a tight, length-aware threshold, so ordinary words are left
     untouched.
     """
     if not text:
@@ -334,23 +460,13 @@ def normalize_drugs(text: str) -> Tuple[str, List[Dict[str, str]]]:
 
     def _sub(match: re.Match) -> str:
         token = match.group(0)
-        if not _ARABIC_RE.search(token):
-            return token
-        best = _best_match(token)
-        if best is None:
-            return token
-        canonical, sim, cand_len = best
-        tok_len = len(_ar_skeleton(token))
-        # Short Arabic tokens are too ambiguous (e.g. "ودول" = "and states"),
-        # so they need a near-perfect phonetic match. Longer, more distinctive
-        # tokens may resolve at the standard threshold.
-        if tok_len <= 4 or cand_len <= 4:
-            threshold = 0.97
-        else:
-            threshold = _SIM_THRESHOLD
-        if sim >= threshold:
-            replacements.append({"from": token, "to": canonical})
-            return canonical
+        if _ARABIC_RE.search(token):
+            return _sub_arabic(token, replacements)
+        # Latin tokens: only attempt a fix when the ASR transliterated a brand
+        # into Latin but got it slightly wrong (e.g. "augmenta"). An exact
+        # canonical name is left as-is (no spurious self-replacement).
+        if _LATIN_RE.match(token) and token.lower() not in _CANONICAL_LOWER:
+            return _sub_latin(token, replacements)
         return token
 
     # Split on whitespace but keep separators so spacing is preserved.
