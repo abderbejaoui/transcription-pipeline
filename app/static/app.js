@@ -410,11 +410,29 @@ function renderArm(prefix, arm) {
   if (arm.error) {
     $(prefix + "-text").textContent = "";
     $(prefix + "-meta").innerHTML = `<span style="color:#c0392b">❌ ${escapeHtml(arm.error)}</span>`;
-  } else {
-    $(prefix + "-text").textContent = arm.text || "(empty)";
-    $(prefix + "-meta").textContent =
-      arm.elapsed_s != null ? `${arm.elapsed_s}s` : "";
+    return;
   }
+
+  // `text` is already drug-normalized (Arabic brand names -> Latin).
+  $(prefix + "-text").textContent = arm.text || "(empty)";
+
+  const bits = [];
+  if (arm.elapsed_s != null) bits.push(`${arm.elapsed_s}s`);
+
+  const fixes = arm.drug_corrections || [];
+  if (fixes.length) {
+    const summary = fixes
+      .map((f) => `${escapeHtml(f.from)} → ${escapeHtml(f.to)}`)
+      .join(", ");
+    bits.push(
+      `<span class="muted">${fixes.length} drug fix${fixes.length === 1 ? "" : "es"}:</span> ${summary}`
+    );
+  }
+  // Show the raw ASR output (pre-normalization) only when it differed.
+  if (arm.raw_text && arm.raw_text !== arm.text) {
+    bits.push(`<span class="muted">raw:</span> ${escapeHtml(arm.raw_text)}`);
+  }
+  $(prefix + "-meta").innerHTML = bits.join(" &nbsp;·&nbsp; ");
 }
 
 function showABResult(data) {
