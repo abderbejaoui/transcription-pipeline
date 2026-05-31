@@ -212,6 +212,9 @@ let recordedBlob = null;
 let recordedMime = "audio/webm";
 let recordTimer = null;
 let recordStart = 0;
+// Which pipeline the current recording should feed once stopped.
+// "debug" = default correction pipeline, "ab" = v2 A/B model test.
+let recordMode = "debug";
 
 const PREFERRED_MIMES = [
   "audio/webm;codecs=opus",
@@ -230,9 +233,17 @@ function pickMime() {
 }
 
 function setRecordingUI(isRecording) {
+  const ab = recordMode === "ab";
+  // While recording, only the active mode's Stop button shows; the other
+  // mode's Record button is hidden. When idle, BOTH Record buttons show.
+  // Default pipeline buttons
   $("btn-record").hidden = isRecording;
-  $("btn-stop").hidden = !isRecording;
-  $("btn-record").classList.toggle("recording", isRecording);
+  $("btn-stop").hidden = !(isRecording && !ab);
+  $("btn-record").classList.toggle("recording", isRecording && !ab);
+  // A/B pipeline buttons
+  $("btn-record-ab").hidden = isRecording;
+  $("btn-stop-ab").hidden = !(isRecording && ab);
+  $("btn-record-ab").classList.toggle("recording", isRecording && ab);
 }
 
 function fmtTime(ms) {
@@ -240,7 +251,8 @@ function fmtTime(ms) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-async function startRecording() {
+async function startRecording(mode = "debug") {
+  recordMode = mode === "ab" ? "ab" : "debug";
   $("record-status").textContent = "";
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -304,7 +316,11 @@ async function startRecording() {
     $("record-status").textContent =
       `Processing ${(recordedBlob.size / 1024).toFixed(0)} KB…`;
     try {
-      await transcribeDebug(recordedBlob);
+      if (recordMode === "ab") {
+        await transcribeAB(recordedBlob);
+      } else {
+        await transcribeDebug(recordedBlob);
+      }
       $("record-status").textContent = "Done.";
     } catch (err) {
       $("record-status").textContent = "❌ " + err.message;
@@ -356,6 +372,59 @@ async function transcribeDebug(blob) {
   }
   const data = await r.json();
   showDebugResult(data);
+}
+
+// ---------------------------------------------------------------------------
+// A/B pipeline — calls /api/transcribe_ab and shows both v2 arms' output.
+// ---------------------------------------------------------------------------
+async function transcribeAB(blob) {
+  const form = new FormData();
+  const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
+  form.append("audio", blob, `recording.${ext}`);
+  const lang = $("lang").value;
+  if (lang) form.append("language", lang);
+
+  $("ab-card").hidden = false;
+  $("ab-status").textContent = "Running both arms (first run loads the models, this can take a while)…";
+  $("ab-a-text").textContent = "";
+  $("ab-b-text").textContent = "";
+  $("ab-a-meta").textContent = "";
+  $("ab-b-meta").textContent = "";
+
+  const r = await fetch("/api/transcribe_ab", { method: "POST", body: form });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { msg = (await r.json()).error || msg; } catch (_) { msg = await r.text(); }
+    $("ab-status").textContent = "❌ " + msg;
+    throw new Error(msg);
+  }
+  showABResult(await r.json());
+}
+
+function renderArm(prefix, arm) {
+  if (!arm) return;
+  if (arm.label) $(prefix + "-label").textContent = arm.label;
+  if (arm.error) {
+    $(prefix + "-text").textContent = "";
+    $(prefix + "-meta").innerHTML = `<span style="color:#c0392b">❌ ${escapeHtml(arm.error)}</span>`;
+  } else {
+    $(prefix + "-text").textContent = arm.text || "(empty)";
+    $(prefix + "-meta").textContent =
+      arm.elapsed_s != null ? `${arm.elapsed_s}s` : "";
+  }
+}
+
+function showABResult(data) {
+  $("ab-card").hidden = false;
+  $("ab-status").textContent = "Compare the two models below.";
+  renderArm("ab-a", data.arm_a);
+  renderArm("ab-b", data.arm_b);
+  if (data.audio_url) {
+    const a = $("ab-audio");
+    a.src = data.audio_url;
+    a.hidden = false;
+  }
+  $("ab-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // ---------------------------------------------------------------------------
@@ -466,8 +535,10 @@ function traceSummary(stage, payload) {
 // ---------------------------------------------------------------------------
 // Button wiring
 // ---------------------------------------------------------------------------
-$("btn-record").addEventListener("click", startRecording);
+$("btn-record").addEventListener("click", () => startRecording("debug"));
 $("btn-stop").addEventListener("click", stopRecording);
+$("btn-record-ab").addEventListener("click", () => startRecording("ab"));
+$("btn-stop-ab").addEventListener("click", stopRecording);
 
 document.addEventListener("keydown", (e) => {
   if (e.code !== "Space" || e.repeat) return;

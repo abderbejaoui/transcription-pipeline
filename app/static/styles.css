@@ -214,6 +214,40 @@ details[open] > summary::before { transform: rotate(90deg); }
   min-height: 18px;
 }
 
+/* A/B test panel ---------------------------------------------------------- */
+.ab-grid {
+  display: grid;
+  grid-template-columns: 1fr 1fr;
+  gap: 16px;
+  margin-top: 12px;
+}
+@media (max-width: 720px) {
+  .ab-grid { grid-template-columns: 1fr; }
+}
+.ab-col {
+  border: 1px solid var(--border, #e2e2e2);
+  border-radius: 8px;
+  padding: 12px;
+  background: var(--panel, #fafafa);
+}
+.ab-head {
+  font-weight: 600;
+  margin-bottom: 8px;
+  font-size: 14px;
+}
+.ab-text {
+  white-space: pre-wrap;
+  word-break: break-word;
+  min-height: 48px;
+  margin: 0 0 6px;
+  font-size: 15px;
+  line-height: 1.5;
+}
+#ab-audio {
+  width: 100%;
+  margin: 8px 0;
+}
+
 button.big {
   padding: 14px 22px;
   font-size: 16px;
