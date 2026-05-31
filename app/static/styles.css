@@ -238,10 +238,58 @@ details[open] > summary::before { transform: rotate(90deg); }
 .ab-text {
   white-space: pre-wrap;
   word-break: break-word;
-  min-height: 48px;
-  margin: 0 0 6px;
+  min-height: 24px;
+  margin: 0;
   font-size: 15px;
   line-height: 1.5;
+}
+.ab-stage {
+  margin: 8px 0;
+  padding: 8px 10px;
+  border-radius: 6px;
+  background: rgba(0, 0, 0, 0.025);
+  border: 1px solid var(--border, #e8e8e8);
+}
+.ab-stage-label {
+  font-size: 11px;
+  text-transform: uppercase;
+  letter-spacing: 0.04em;
+  color: var(--muted, #888);
+  margin-bottom: 4px;
+}
+.ab-raw {
+  color: #555;
+}
+.ab-final {
+  font-weight: 600;
+}
+.ab-fixes {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  min-height: 20px;
+}
+.ab-fix {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: #eef6ff;
+  border: 1px solid #cfe4ff;
+  font-size: 13px;
+}
+.ab-fix-from {
+  color: #b54708;
+  text-decoration: line-through;
+  opacity: 0.8;
+}
+.ab-fix-arrow {
+  color: #888;
+}
+.ab-fix-to {
+  color: #1f6feb;
+  font-weight: 600;
 }
 #ab-audio {
   width: 100%;
