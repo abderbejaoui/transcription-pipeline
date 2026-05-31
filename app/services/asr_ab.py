@@ -55,6 +55,46 @@ def _abs(path: str) -> Path:
     return p if p.is_absolute() else (PROJECT_ROOT / p).resolve()
 
 
+def _to_wav(audio_path: Path) -> Path:
+    """Convert any audio (webm/opus/mp3/...) to 16kHz mono WAV via ffmpeg.
+
+    Mirrors services.asr._to_wav. The browser records webm/opus, which the
+    qwen_asr wrapper decodes unreliably (librosa falls back to audioread and
+    can produce garbled samples -> hallucinated transcripts). Feeding a clean
+    16k mono WAV fixes this. Returns a temp path the caller must delete; if the
+    input is already a .wav it is returned unchanged.
+    """
+    if audio_path.suffix.lower() == ".wav":
+        return audio_path
+    import subprocess
+    import tempfile
+
+    tmp = Path(tempfile.mktemp(suffix=".wav"))
+    subprocess.run(
+        ["ffmpeg", "-y", "-i", str(audio_path), "-ar", "16000", "-ac", "1", "-f", "wav", str(tmp)],
+        check=True,
+        capture_output=True,
+    )
+    return tmp
+
+
+def _load_medical_context() -> str:
+    """Comma-separated medical terms for Qwen3-ASR context biasing.
+
+    Same source as services.asr — medical_terms.txt at the project root,
+    capped at ~500 terms. This is what biases the model toward drug/brand
+    names (doliprane, novadol, ...) instead of inventing plausible Arabic.
+    """
+    terms: list[str] = []
+    medical_file = PROJECT_ROOT / "medical_terms.txt"
+    if medical_file.exists():
+        for line in medical_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                terms.append(line)
+    return ", ".join(terms[:500])
+
+
 def _device_dtype():
     global _DEVICE, _DTYPE
     if _DEVICE is not None:
@@ -119,15 +159,26 @@ def _lang_label(language: Optional[str]) -> Optional[str]:
     return None
 
 
-def transcribe_one(arm: str, audio_path: str | Path, language: Optional[str] = None) -> Dict[str, Any]:
+def transcribe_one(
+    arm: str,
+    audio_path: str | Path,
+    language: Optional[str] = None,
+    context: Optional[str] = None,
+) -> Dict[str, Any]:
     """Transcribe a single clip with one arm. Errors are returned, not raised,
-    so one failing arm doesn't break the other in the A/B view."""
+    so one failing arm doesn't break the other in the A/B view.
+
+    `audio_path` should already be a clean 16k mono WAV (see transcribe_ab).
+    `context` is the medical-term bias string (same as services.asr)."""
     cfg = ARMS.get(arm, {})
     try:
         wrapper = _load_arm(arm)
         lang_label = _lang_label(language)
+        kwargs: Dict[str, Any] = {"audio": str(audio_path), "language": lang_label}
+        if context:
+            kwargs["context"] = context
         t0 = time.time()
-        results = wrapper.transcribe(audio=str(audio_path), language=lang_label)
+        results = wrapper.transcribe(**kwargs)
         text = getattr(results[0], "text", "").strip() if results else ""
         return {
             "arm": arm,
@@ -145,8 +196,25 @@ def transcribe_one(arm: str, audio_path: str | Path, language: Optional[str] = N
 
 
 def transcribe_ab(audio_path: str | Path, language: Optional[str] = None) -> Dict[str, Any]:
-    """Run BOTH arms on the same clip. Returns {arm_a, arm_b}."""
-    return {
-        "arm_a": transcribe_one("A", audio_path, language=language),
-        "arm_b": transcribe_one("B", audio_path, language=language),
-    }
+    """Run BOTH arms on the same clip. Returns {arm_a, arm_b}.
+
+    Converts the (usually webm/opus) recording to a clean 16k mono WAV ONCE
+    and loads the medical context, then feeds both arms identical input — the
+    same path the production ASR uses, which avoids the decode-garbage
+    hallucination we saw with raw webm.
+    """
+    src = Path(audio_path)
+    context = _load_medical_context()
+    tmp_wav: Optional[Path] = None
+    try:
+        wav_path = _to_wav(src)
+        if wav_path != src:
+            tmp_wav = wav_path
+        wav_str = str(wav_path)
+        return {
+            "arm_a": transcribe_one("A", wav_str, language=language, context=context),
+            "arm_b": transcribe_one("B", wav_str, language=language, context=context),
+        }
+    finally:
+        if tmp_wav and tmp_wav.exists():
+            tmp_wav.unlink(missing_ok=True)
