@@ -68,6 +68,10 @@ USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 # When 1, transcription runs the dual-ASR (Gulf LoRA + base Qwen3) with an
 # LLM judge merging the two outputs. Costs 2x GPU memory + one extra LLM call.
 USE_DUAL_ASR = os.environ.get("USE_DUAL_ASR", "0") == "1"
+# When 1, skip word-level forced alignment in /api/transcribe_debug. Alignment
+# only produces per-word TIMESTAMPS (it does not change the transcript text),
+# so disabling it avoids loading the MMS aligner / whisper-small timing model.
+DISABLE_ALIGNMENT = os.environ.get("DISABLE_ALIGNMENT", "0") == "1"
 
 # Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
 # scale (normalized Levenshtein over greedy wav2vec2-base-960h transcripts).
@@ -623,11 +627,18 @@ async def transcribe_debug(
         duration_s = float(asr_result.get("duration", 0.0))
 
         # 2) Word-level CTC forced alignment of the full transcript.
-        try:
-            words_aligned = _alignment.align_words(session_path, transcript)
-        except Exception as exc:
-            print(f"[transcribe_debug] alignment failed: {exc!r}")
+        # Set DISABLE_ALIGNMENT=1 to skip this entirely — it ONLY produces
+        # per-word timestamps (it does NOT affect the transcript text). When
+        # disabled, neither the MMS aligner nor the whisper-small timing
+        # fallback is ever loaded, which is faster and removes those logs.
+        if DISABLE_ALIGNMENT:
             words_aligned = []
+        else:
+            try:
+                words_aligned = _alignment.align_words(session_path, transcript)
+            except Exception as exc:
+                print(f"[transcribe_debug] alignment failed: {exc!r}")
+                words_aligned = []
 
         # 3) Flag suspicious words (phonetic + optional LLM).
         try:
