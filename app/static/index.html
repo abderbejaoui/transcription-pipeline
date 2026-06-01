@@ -67,6 +67,7 @@
     <section id="result-card" class="card" hidden>
       <div class="result-tabs">
         <button class="tab active" data-tab="corrected">Corrected</button>
+        <button class="tab" data-tab="phonetic">Phonetic</button>
         <button class="tab" data-tab="raw">Raw</button>
         <button class="tab" data-tab="flags">Flags <span id="flag-badge" class="badge" hidden></span></button>
         <button class="tab" data-tab="trace">Pipeline</button>
@@ -90,6 +91,20 @@
         <audio id="debug-audio" controls></audio>
       </div>
 
+      <!-- Phonetic tab: top-5 candidate finder -->
+      <div class="tab-panel" id="tab-phonetic">
+        <p class="muted small">Type a medicine name (can be multiple words) to get top-5 phonetic candidates.</p>
+        <div class="row">
+          <input id="phonetic-input" dir="auto" placeholder="e.g., Askoril LS" />
+          <button id="btn-phonetic" class="ghost">Find candidates</button>
+        </div>
+        <div class="phonetic-output">
+          <span class="muted small">Best match</span>
+          <div id="phonetic-best" class="phonetic-best">—</div>
+        </div>
+        <div id="phonetic-list" class="stack"></div>
+      </div>
+
       <!-- Flags tab — the main attraction -->
       <div class="tab-panel" id="tab-flags">
         <p class="muted small" id="flag-summary"></p>
@@ -107,6 +122,7 @@
       <!-- Pipeline tab -->
       <div class="tab-panel" id="tab-trace">
         <p class="muted small" id="trace-status"></p>
+        <div id="pipeline-steps" class="pipeline-steps"></div>
         <div id="trace-events" class="trace-events"></div>
       </div>
     </section>

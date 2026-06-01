@@ -50,6 +50,8 @@ _SYSTEM = (
     "Your job: identify the WORD INDEX ranges of spans that are likely "
     "such mishearings — words that LOOK or SOUND like a medical term but "
     "are not standard medical spellings. "
+    "IMPORTANT: a medicament name may be split across two or three words; "
+    "you MUST return a single span that covers the full split when that happens. "
     "Strict rules: "
     "1. Output strict JSON only. No prose. "
     "2. Index ranges are zero-based, half-open: [start, end). "

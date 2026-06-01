@@ -108,7 +108,67 @@ function showDebugResult(data) {
     badge.hidden = true;
   }
 
+  renderPipelineSteps(data.pipeline_steps || []);
+
   activateTab("corrected");
+}
+
+function renderPipelineSteps(steps) {
+  const wrap = $("pipeline-steps");
+  if (!wrap) return;
+  wrap.innerHTML = "";
+  if (!steps.length) {
+    wrap.innerHTML = "<div class=\"muted small\">No pipeline steps captured.</div>";
+    return;
+  }
+  steps.forEach((s, i) => {
+    const block = document.createElement("div");
+    block.className = "pipeline-step";
+    const title = escapeHtml(s.step || `step_${i + 1}`);
+    const output = escapeHtml(s.output || "");
+    block.innerHTML = `
+      <div class=\"head\">
+        <span class=\"idx\">${i + 1}</span>
+        <span class=\"label\">${title}</span>
+      </div>
+      <pre>${output}</pre>
+    `;
+    wrap.appendChild(block);
+  });
+  $("trace-status").textContent = "Pipeline steps";
+}
+
+function showPhoneticCandidates(data) {
+  $("result-card").hidden = false;
+  $("phonetic-input").value = data.query || "";
+  $("phonetic-best").textContent = data.best || "—";
+
+  const list = $("phonetic-list");
+  list.innerHTML = "";
+  const cands = data.candidates || [];
+  if (!cands.length) {
+    const empty = document.createElement("div");
+    empty.className = "muted small";
+    empty.textContent = "No candidates found.";
+    list.appendChild(empty);
+  } else {
+    cands.forEach((c, idx) => {
+      const row = document.createElement("div");
+      row.className = "phonetic-row";
+      const uses = c.uses ? `<div class=\"muted small\">${escapeHtml(c.uses)}</div>` : "";
+      row.innerHTML = `
+        <div class=\"phonetic-term\">
+          <span class=\"rank\">#${idx + 1}</span>
+          <span class=\"name\">${escapeHtml(c.term || "")}</span>
+          <span class=\"score\">${(c.score ?? c.phonetic_similarity ?? 0).toFixed(3)}</span>
+        </div>
+        ${uses}
+      `;
+      list.appendChild(row);
+    });
+  }
+
+  activateTab("phonetic");
 }
 
 function renderFlags(data) {
@@ -142,7 +202,9 @@ function renderFlags(data) {
       .slice(0, 3)
       .map((c, idx) => {
         const cls = idx === 0 ? "candidate-chip top" : "candidate-chip";
-        return `<span class="${cls}">${escapeHtml(c.term)} <span class="muted">${(c.phonetic_similarity || 0).toFixed(2)}</span></span>`;
+        const uses = c.uses || (c.meta && c.meta.uses) || "";
+        const title = uses ? `title="${escapeHtml(uses)}"` : "";
+        return `<span class="${cls}" ${title}>${escapeHtml(c.term)} <span class="muted">${(c.phonetic_similarity || 0).toFixed(2)}</span></span>`;
       })
       .join("");
 
@@ -156,6 +218,14 @@ function renderFlags(data) {
     const llmInfo = conf != null
       ? `LLM: <code>${escapeHtml(llm || "—")}</code> ${(conf * 100).toFixed(0)}%`
       : (llm ? `LLM: <code>${escapeHtml(llm)}</code>` : "");
+
+    const prompt = f.llm_prompt;
+    const promptBlock = prompt
+      ? `<details class="prompt">
+          <summary class="muted small">LLM prompt</summary>
+          <pre>${escapeHtml(`SYSTEM:\n${prompt.system}\n\nUSER:\n${prompt.user}`)}</pre>
+        </details>`
+      : "";
 
     div.innerHTML = `
       <div class="flag-header">
@@ -172,6 +242,7 @@ function renderFlags(data) {
         ${llmInfo ? `<span>${llmInfo}</span>` : ""}
       </div>
       <div class="flag-candidates">${cands}</div>
+      ${promptBlock}
     `;
     flagsEl.appendChild(div);
   }
@@ -425,6 +496,7 @@ async function streamTranscribe(form) {
 
 function resetTrace() {
   $("trace-events").innerHTML = "";
+  $("pipeline-steps").innerHTML = "";
 }
 
 function appendTraceEvent(event) {
@@ -488,17 +560,9 @@ $("btn-correct").addEventListener("click", async () => {
   const text = $("raw-input").value.trim();
   if (!text) return;
   try {
-    const data = await postJson("/api/correct", { text });
-    // Adapt to showDebugResult shape.
-    showDebugResult({
-      session_id: data.session_id,
-      transcript: data.raw_text || text,
-      corrected_transcript: data.corrected_text || text,
-      auto_corrections: [],
-      flags: [],
-      words: [],
-      audio_url: null,
-    });
+    const data = await postJson("/api/phonetic_correct", { text });
+    showDebugResult(data);
+    activateTab("trace");
   } catch (e) {
     alert(e.message);
   }
@@ -507,6 +571,17 @@ $("btn-correct").addEventListener("click", async () => {
 $("btn-example").addEventListener("click", () => {
   $("raw-input").value =
     "Patient with myokardial infarction. Start metoprol and atorvasta and clopidogr.";
+});
+
+$("btn-phonetic").addEventListener("click", async () => {
+  const text = $("phonetic-input").value.trim();
+  if (!text) return;
+  try {
+    const data = await postJson("/api/phonetic_candidates", { text });
+    showPhoneticCandidates(data);
+  } catch (e) {
+    alert(e.message);
+  }
 });
 
 $("btn-upload").addEventListener("click", async () => {

@@ -31,6 +31,7 @@ from .llm_config import (
     get_llm_url,
     parse_chat_content,
 )
+from .accent_levenshtein import accent_mapped_levenshtein, normalize_latin_word
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -151,21 +152,14 @@ def load_medical_lexicon() -> List[str]:
 
 
 def _lev_sim(a: str, b: str) -> float:
-    if not a and not b:
+    a_norm = normalize_latin_word(a)
+    b_norm = normalize_latin_word(b)
+    if not a_norm and not b_norm:
         return 1.0
-    if not a or not b:
+    if not a_norm or not b_norm:
         return 0.0
-    n, m = len(a), len(b)
-    prev = list(range(m + 1))
-    cur = [0] * (m + 1)
-    for i in range(1, n + 1):
-        cur[0] = i
-        ai = a[i - 1]
-        for j in range(1, m + 1):
-            cost = 0 if ai == b[j - 1] else 1
-            cur[j] = min(prev[j] + 1, cur[j - 1] + 1, prev[j - 1] + cost)
-        prev, cur = cur, prev
-    return 1.0 - prev[m] / max(n, m)
+    dist = accent_mapped_levenshtein(a_norm, b_norm)
+    return max(0.0, 1.0 - dist / max(len(a_norm), len(b_norm)))
 
 
 # ---------------------------------------------------------------------------

@@ -345,6 +345,58 @@ button.recording .dot {
   margin-top: 2px;
 }
 
+.flag-row details.prompt {
+  margin-top: 4px;
+}
+
+.flag-row details.prompt pre {
+  margin-top: 6px;
+}
+
+/* ----- Phonetic tab ------------------------------------------------- */
+
+.phonetic-output {
+  margin-top: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+
+.phonetic-best {
+  font-size: 18px;
+  font-weight: 600;
+  color: var(--good);
+}
+
+.phonetic-row {
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 10px 12px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.phonetic-term {
+  display: flex;
+  gap: 10px;
+  align-items: baseline;
+}
+
+.phonetic-term .rank {
+  color: var(--muted);
+  font-size: 12px;
+}
+
+.phonetic-term .name {
+  font-weight: 600;
+}
+
+.phonetic-term .score {
+  margin-left: auto;
+  color: var(--muted);
+  font-family: ui-monospace, "SF Mono", Menlo, monospace;
+  font-size: 12px;
+}
+
 .candidate-chip {
   background: rgba(255, 255, 255, 0.05);
   border: 1px solid var(--border);
@@ -385,6 +437,39 @@ button.recording .dot {
   margin-top: 8px;
   font-family: ui-monospace, "SF Mono", Menlo, monospace;
   font-size: 12px;
+}
+
+.pipeline-steps {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.pipeline-step {
+  border: 1px solid var(--border, #2a2a2a);
+  border-radius: 8px;
+  padding: 8px 10px;
+  background: rgba(255, 255, 255, 0.02);
+}
+
+.pipeline-step .head {
+  display: flex;
+  gap: 8px;
+  align-items: center;
+  margin-bottom: 6px;
+}
+
+.pipeline-step .idx {
+  color: var(--muted);
+  font-size: 11px;
+  border: 1px solid var(--border);
+  border-radius: 10px;
+  padding: 1px 6px;
+}
+
+.pipeline-step .label {
+  font-weight: 600;
 }
 
 .trace-event {

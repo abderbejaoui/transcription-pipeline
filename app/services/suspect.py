@@ -6,10 +6,9 @@ the LLM here. Three signals:
 
   1. Whisper word confidence is low.
   2. The word is not a common English word AND not already a known medical
-     term (term + alias text matches across the lexicon).
-  3. The word has high fuzzy/phonetic similarity to a medical term but is
-     not exactly that term — i.e. it looks like an ASR mishearing of
-     something medical.
+      term (term + alias text matches across the lexicon).
+  3. The word is within the Accent-Mapped Levenshtein distance of a
+      medical term, indicating a likely Arabic-accented misspelling.
 
 Public API
 ----------
@@ -19,10 +18,14 @@ detect(words, lexicon_terms) -> List[dict]
 from __future__ import annotations
 
 import re
-from typing import Any, Dict, Iterable, List, Optional, Sequence, Set
+from typing import Any, Dict, List, Sequence, Set
 
-import jellyfish
-from rapidfuzz import fuzz
+from .accent_levenshtein import (
+    get_phonetic_candidates_prepared,
+    is_latin_word,
+    normalize_latin_word,
+    prepare_dictionary,
+)
 
 
 # Tiny English word list — common function/glue/everyday words. We only need
@@ -79,11 +82,7 @@ COMMON_ENGLISH: Set[str] = {
 }
 
 
-_TOKEN_PATTERN = re.compile(r"[A-Za-z][A-Za-z'\-]*|\d+(?:\.\d+)?")
-
-
-def _norm(s: str) -> str:
-    return s.lower().strip()
+_STRIP_WORD_RE = re.compile(r"^[^A-Za-z]+|[^A-Za-z]+$")
 
 
 def _word_only(s: str) -> bool:
@@ -95,9 +94,8 @@ def detect(
     lexicon_terms: Sequence[str],
     *,
     confidence_threshold: float = 0.6,
-    high_confidence_threshold: float = 0.85,
-    fuzzy_floor: int = 78,
-    phonetic_floor: int = 82,
+    max_distance: float = 2.0,
+    top_k: int = 3,
     min_chars: int = 4,
 ) -> List[Dict[str, Any]]:
     """Decide which words are worth correcting.
@@ -115,19 +113,11 @@ def detect(
         index    -> position in `words`
         text     -> raw word string
         start, end, probability   -> from input
-        reason   -> "low_confidence" | "oov" | "near_medical"
+        reason   -> "low_confidence_english"
     """
-    # Pre-process lexicon for fuzzy/phonetic comparisons.
-    known_norms: Set[str] = set()
-    metaphones: Set[str] = set()
-    for term in lexicon_terms:
-        for tok in _TOKEN_PATTERN.findall(term):
-            n = _norm(tok)
-            if n:
-                known_norms.add(n)
-                meta = jellyfish.metaphone(n)
-                if meta:
-                    metaphones.add(meta)
+    # Pre-process lexicon for quick exact checks + candidate scoring.
+    prepared = prepare_dictionary(lexicon_terms)
+    known_norms: Set[str] = {norm for _, norm in prepared}
 
     def _is_known(word_norm: str) -> bool:
         if word_norm in COMMON_ENGLISH:
@@ -142,51 +132,30 @@ def detect(
         if not text or not _word_only(text):
             continue
         # ASR token text often has leading whitespace/punctuation; clean it.
-        clean = re.sub(r"^[\s\W_]+|[\s\W_]+$", "", text)
+        clean = _STRIP_WORD_RE.sub("", text)
         if not clean or len(clean) < min_chars:
             continue
-        norm = _norm(clean)
+        if not is_latin_word(clean):
+            continue
+        norm = normalize_latin_word(clean)
+        if not norm or len(norm) < min_chars:
+            continue
 
         prob = w.get("probability")
         prob_val = float(prob) if isinstance(prob, (int, float)) else 1.0
-# Common English / known medical / number-only words: never flag.
+        # Common English / known medical words: never flag.
         if _is_known(norm):
             continue
+        if prob_val >= confidence_threshold:
+            continue
 
-        # Score similarity to medical terms once.
-        best_fuzzy = 0
-        best_phon = 0
-        meta = jellyfish.metaphone(norm) or ""
-        for kn in known_norms:
-            f = fuzz.ratio(norm, kn)
-            if f > best_fuzzy:
-                best_fuzzy = f
-            if meta:
-                km = jellyfish.metaphone(kn) or ""
-                if km:
-                    p = fuzz.ratio(meta, km)
-                    if p > best_phon:
-                        best_phon = p
-
-        looks_medical = best_fuzzy >= fuzzy_floor or best_phon >= phonetic_floor
-
-        reason: Optional[str] = None
-
-        if prob_val >= high_confidence_threshold:
-            # Whisper is confident. Only flag if the word ALSO has strong
-            # similarity to a medical term — otherwise it's a normal
-            # English word we don't know.
-            if looks_medical:
-                reason = "near_medical"
-        elif prob_val < confidence_threshold:
-            # Low confidence: flag whether or not it looks medical.
-            reason = "low_confidence"
-        else:
-            # Mid confidence: only flag if it looks medical.
-            if looks_medical:
-                reason = "near_medical"
-
-        if reason is None:
+        candidates = get_phonetic_candidates_prepared(
+            norm,
+            prepared,
+            max_distance=max_distance,
+            top_k=top_k,
+        )
+        if not candidates:
             continue
 
         out.append(
@@ -196,7 +165,8 @@ def detect(
                 "start": float(w.get("start") or 0.0),
                 "end": float(w.get("end") or 0.0),
                 "probability": prob_val,
-                "reason": reason,
+                "reason": "low_confidence_english",
+                "candidates": candidates,
             }
         )
     return out

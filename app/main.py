@@ -34,12 +34,17 @@ POST /api/voices/reset       wipe voice index (testing)
 
 from __future__ import annotations
 
+import csv
 import difflib
+import json
+import math
 import os
 import re
 import shutil
 import threading
+import urllib.request
 import uuid
+from functools import lru_cache
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
@@ -50,7 +55,14 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, asr_dual, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_dual, asr_correction_pipeline, descriptions, lexicon, llm_decide, llm_detect, suspect, tracing, voice_match
+from .services.llm_config import (
+    get_llm_headers,
+    get_llm_model,
+    get_llm_provider,
+    get_llm_url,
+    parse_chat_content,
+)
 
 
 # ---------------------------------------------------------------------------
@@ -79,6 +91,223 @@ AUDIO_RETRIEVE_THRESHOLD_SEED = 0.45
 AUDIO_AUTOFIX_THRESHOLD = 0.85  # short-circuit when very strong USER match
 
 _LEARN_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9'-]+")
+
+
+@lru_cache(maxsize=1)
+def _load_medical_dictionary() -> List[str]:
+    """Load canonical medical terms + aliases (deduped, case-insensitive)."""
+    terms: List[str] = []
+    medical_file = PROJECT_ROOT / "medical_terms.txt"
+    if medical_file.exists():
+        for line in medical_file.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#"):
+                terms.append(line)
+    for entry in lexicon.list_terms():
+        term = entry.get("term")
+        if term:
+            terms.append(term)
+        for alias in entry.get("aliases", []) or []:
+            if alias:
+                terms.append(str(alias))
+
+    deduped: List[str] = []
+    seen: set[str] = set()
+    for term in terms:
+        key = term.lower()
+        if key in seen:
+            continue
+        seen.add(key)
+        deduped.append(term)
+    return deduped
+
+
+def _suspects_to_spans(suspects: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Convert suspect.detect output into span dicts used by the pipeline."""
+    spans: List[Dict[str, Any]] = []
+    for s in suspects:
+        idx = s.get("index")
+        if not isinstance(idx, int):
+            continue
+        prob = s.get("probability")
+        prob_val = float(prob) if isinstance(prob, (int, float)) else 1.0
+        spans.append(
+            {
+                "index_start": idx,
+                "index_end": idx + 1,
+                "text": s.get("text", ""),
+                "start_s": float(s.get("start") or 0.0),
+                "end_s": float(s.get("end") or 0.0),
+                "probability_min": prob_val,
+                "reason": s.get("reason", "low_confidence_english"),
+                "candidates": s.get("candidates", []),
+            }
+        )
+    return spans
+
+
+@lru_cache(maxsize=1)
+def _load_drug_dictionary_manager() -> asr_correction_pipeline.MedicalDictionaryManager:
+    """Load drug names from cleaned JSON and uses from the CSV file."""
+    names: List[str] = []
+    meta: Dict[str, Dict[str, Any]] = {}
+    line_map: Dict[str, int] = {}
+
+    json_path = PROJECT_ROOT / "data" / "medicine_details_cleaned.json"
+    if json_path.exists():
+        try:
+            payload = json.loads(json_path.read_text(encoding="utf-8"))
+            if isinstance(payload, list):
+                seen: set[str] = set()
+                for item in payload:
+                    line_no = None
+                    if isinstance(item, str):
+                        name = item
+                    elif isinstance(item, dict):
+                        name = (
+                            item.get("name")
+                            or item.get("Medicine Name")
+                            or item.get("medicine_name")
+                            or item.get("drug")
+                            or ""
+                        )
+                        line_no = item.get("line") or item.get("row")
+                    else:
+                        continue
+
+                    name = str(name).strip()
+                    if not name:
+                        continue
+                    clean = asr_correction_pipeline.sanitize_name(name)
+                    if not clean or clean in seen:
+                        continue
+                    seen.add(clean)
+                    names.append(name)
+                    if line_no is not None:
+                        try:
+                            line_map[clean] = int(line_no)
+                        except (TypeError, ValueError):
+                            pass
+        except Exception as exc:
+            print(f"[phonetic] failed to read cleaned JSON: {exc!r}")
+
+    csv_path = PROJECT_ROOT / "data" / "Medicine_Details.csv"
+    if csv_path.exists():
+        try:
+            uses_by_line: Dict[int, str] = {}
+            with csv_path.open("r", encoding="utf-8", newline="") as handle:
+                reader = csv.DictReader(handle)
+                for line_no, row in enumerate(reader, start=1):
+                    uses = (row.get("Uses") or "").strip()
+                    if uses:
+                        uses_by_line[line_no] = uses
+
+            if line_map:
+                for clean, line_no in line_map.items():
+                    uses = uses_by_line.get(line_no)
+                    if uses:
+                        meta.setdefault(clean, {})["uses"] = uses
+
+            csv_names, csv_meta = asr_correction_pipeline.load_medicine_details_csv(csv_path)
+            for clean, data in csv_meta.items():
+                meta.setdefault(clean, data)
+            if not names:
+                names = csv_names
+        except Exception as exc:
+            print(f"[phonetic] failed to read CSV: {exc!r}")
+
+    if not names:
+        raise RuntimeError("No medical dictionary entries found")
+    return asr_correction_pipeline.MedicalDictionaryManager(names, metadata=meta)
+
+
+def _replace_first(text: str, old: str, new: str) -> str:
+    idx = text.find(old)
+    if idx < 0:
+        return text
+    return text[:idx] + new + text[idx + len(old):]
+
+
+def _match_candidate(raw: str, candidates: Sequence[str]) -> Optional[str]:
+    text = raw.strip()
+    if not text:
+        return None
+    if text.startswith("{") and text.endswith("}"):
+        try:
+            obj = json.loads(text)
+            choice = obj.get("choice") or obj.get("term")
+            if isinstance(choice, str):
+                text = choice.strip()
+        except Exception:
+            pass
+
+    text = text.splitlines()[0].strip()
+    if len(text) >= 2 and text[0] in "'\"`" and text[-1] == text[0]:
+        text = text[1:-1].strip()
+    text = text.strip(" \t\n\r.,;:!؟")
+
+    for c in candidates:
+        if c == text:
+            return c
+    for c in candidates:
+        if c.lower() == text.lower():
+            return c
+    return None
+
+
+def _llm_choose_term(system: str, user: str, candidates: Sequence[str], timeout: float = 60.0) -> Optional[str]:
+    provider = get_llm_provider()
+    payload = {
+        "model": get_llm_model(provider),
+        "stream": False,
+        "options": {"temperature": 0.0},
+        "messages": [
+            {"role": "system", "content": system},
+            {"role": "user", "content": user},
+        ],
+    }
+    try:
+        req = urllib.request.Request(
+            get_llm_url(provider),
+            data=json.dumps(payload).encode("utf-8"),
+            headers=get_llm_headers(provider),
+        )
+        with urllib.request.urlopen(req, timeout=timeout) as resp:
+            data = json.loads(resp.read().decode("utf-8"))
+        content = parse_chat_content(data, provider)
+        return _match_candidate(content, candidates)
+    except Exception as exc:
+        print(f"[phonetic] LLM call failed: {exc!r}")
+        return None
+
+
+def _apply_span_replacements(
+    tokens: Sequence[str],
+    spans: Sequence[Dict[str, Any]],
+) -> Tuple[str, List[Dict[str, Any]]]:
+    """Replace tokens within spans and return corrected text + applied list."""
+    out_tokens = list(tokens)
+    applied: List[Dict[str, Any]] = []
+    for s in spans:
+        chosen = s.get("chosen")
+        if not chosen:
+            continue
+        i0 = s.get("index_start")
+        i1 = s.get("index_end")
+        if not isinstance(i0, int) or not isinstance(i1, int):
+            continue
+        if i0 < 0 or i1 <= i0 or i1 > len(out_tokens):
+            continue
+        original = " ".join(t for t in out_tokens[i0:i1] if t).strip()
+        out_tokens[i0] = chosen
+        for j in range(i0 + 1, i1):
+            out_tokens[j] = ""
+        applied.append(
+            {"index_start": i0, "index_end": i1, "original": original, "corrected": chosen, "source": "llm"}
+        )
+
+    corrected = " ".join(t for t in out_tokens if t).strip()
+    return corrected, applied
 
 
 # ---------------------------------------------------------------------------
@@ -186,11 +415,14 @@ def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
         raise HTTPException(status_code=400, detail="text must not be empty")
     fake_words = []
     for tok in req.text.split():
-        fake_words.append({"word": " " + tok, "start": 0.0, "end": 0.0, "probability": 1.0})
+        fake_words.append({"word": " " + tok, "start": 0.0, "end": 0.0, "probability": 0.0})
     spans = []
-    if USE_LLM and fake_words:
+    if fake_words:
         try:
-            spans = llm_detect.detect(fake_words)
+            # Text-only mode: treat all tokens as low-confidence to surface candidates.
+            dictionary = _load_medical_dictionary()
+            suspects = suspect.detect(fake_words, dictionary)
+            spans = _suspects_to_spans(suspects)
         except Exception as exc:
             print(f"[correct] DETECT failed: {exc!r}")
     return {
@@ -198,6 +430,166 @@ def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
         "corrected_text": req.text,
         "suspicious": spans,
         "note": "text-only mode: voice retrieval is disabled without audio",
+    }
+
+
+class PhoneticCorrectRequest(BaseModel):
+    text: str = Field(..., description="Raw mixed Arabic/English text.")
+    confidence_threshold: float = Field(0.80, ge=0.0, le=1.0)
+    top_k: int = Field(5, ge=1, le=10)
+
+
+@app.post("/api/phonetic_correct")
+def phonetic_correct(req: PhoneticCorrectRequest) -> Dict[str, Any]:
+    """Run the phonetic+semantic post-ASR correction on typed text."""
+    text = req.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text must not be empty")
+
+    tokens = [t for t in re.split(r"\s+", text) if t]
+    words = [
+        {"word": tok, "start": float(i), "end": float(i + 1), "probability": 1.0}
+        for i, tok in enumerate(tokens)
+    ]
+
+    pipeline_steps: List[Dict[str, Any]] = [
+        {"step": "Text input", "output": f"tokens={len(tokens)}"},
+    ]
+
+    try:
+        manager = _load_drug_dictionary_manager()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"dictionary load failed: {exc}")
+
+    try:
+        detect_spans = llm_detect.detect(words)
+    except Exception as exc:
+        print(f"[phonetic_correct] LLM detect failed: {exc!r}")
+        detect_spans = []
+
+    detect_list = "; ".join(s.get("text", "") for s in detect_spans) if detect_spans else "none"
+    pipeline_steps.append({
+        "step": "LLM detect",
+        "output": f"spans={len(detect_spans)} | {detect_list}",
+    })
+
+    corrected = text
+    auto_corrections: List[Dict[str, Any]] = []
+    flags: List[Dict[str, Any]] = []
+    choose_lines: List[str] = []
+    for s in detect_spans:
+        raw_text = s.get("text", "")
+        raw_candidates = asr_correction_pipeline.find_top_k_candidates(
+            raw_text, manager, top_k=req.top_k
+        )
+        candidate_terms = [str(c.get("term")) for c in raw_candidates if c.get("term")]
+
+        candidates = []
+        for c in raw_candidates:
+            uses = None
+            meta = c.get("meta")
+            if isinstance(meta, dict):
+                uses = meta.get("uses")
+            candidates.append(
+                {
+                    "term": c.get("term"),
+                    "phonetic_similarity": float(c.get("score") or 0.0),
+                    "uses": uses,
+                    "score": float(c.get("score") or 0.0),
+                }
+            )
+
+        prompt = asr_correction_pipeline.build_llm_correction_prompt(
+            text, raw_text, raw_candidates
+        )
+        chosen = _llm_choose_term(prompt["system"], prompt["user"], candidate_terms)
+        s["chosen"] = chosen
+        choose_lines.append(
+            f"{raw_text} -> [{', '.join(candidate_terms)}] | chosen={chosen or 'NO_CHANGE'}"
+        )
+
+        flags.append(
+            {
+                "index": int(s.get("index_start", 0)),
+                "word": raw_text,
+                "reason": "near_medical",
+                "candidates": candidates,
+                "llm_prompt": prompt,
+                "llm_likely_term": chosen or "",
+                "llm_confidence": 1.0 if chosen else 0.0,
+                "index_start": s.get("index_start"),
+                "index_end": s.get("index_end"),
+                "chosen": chosen,
+            }
+        )
+
+    pipeline_steps.append({
+        "step": "Phonetic candidates + LLM choose",
+        "output": " ; ".join(choose_lines) if choose_lines else "no spans",
+    })
+
+    corrected_text, applied = _apply_span_replacements(tokens, flags)
+    corrected = corrected_text or text
+    for item in applied:
+        auto_corrections.append(
+            {"original": item["original"], "corrected": item["corrected"], "source": "llm"}
+        )
+
+    pipeline_steps.append({
+        "step": "Corrected output",
+        "output": corrected,
+    })
+
+    return {
+        "session_id": None,
+        "transcript": text,
+        "corrected_transcript": corrected,
+        "auto_corrections": auto_corrections,
+        "flags": flags,
+        "words": [],
+        "audio_url": None,
+        "pipeline_steps": pipeline_steps,
+    }
+
+
+class PhoneticCandidatesRequest(BaseModel):
+    text: str = Field(..., description="Medicine name to correct.")
+    top_k: int = Field(5, ge=1, le=10)
+
+
+@app.post("/api/phonetic_candidates")
+def phonetic_candidates(req: PhoneticCandidatesRequest) -> Dict[str, Any]:
+    text = req.text.strip()
+    if not text:
+        raise HTTPException(status_code=400, detail="text must not be empty")
+
+    try:
+        manager = _load_drug_dictionary_manager()
+    except Exception as exc:
+        raise HTTPException(status_code=500, detail=f"dictionary load failed: {exc}")
+
+    raw_candidates = asr_correction_pipeline.find_top_k_candidates(
+        text, manager, top_k=req.top_k
+    )
+
+    candidates = []
+    for c in raw_candidates:
+        uses = None
+        meta = c.get("meta")
+        if isinstance(meta, dict):
+            uses = meta.get("uses")
+        candidates.append(
+            {
+                "term": c.get("term"),
+                "score": float(c.get("score") or 0.0),
+                "uses": uses,
+            }
+        )
+
+    return {
+        "query": text,
+        "best": candidates[0]["term"] if candidates else "",
+        "candidates": candidates,
     }
 
 
@@ -276,9 +668,11 @@ def _run_transcribe_pipeline(
 
     # 2b) DETECT — LLM call #1.
     detect_spans: List[Dict[str, Any]] = []
-    if USE_LLM and words:
+    if words:
         try:
-            detect_spans = llm_detect.detect(words)
+            dictionary = _load_medical_dictionary()
+            suspects = suspect.detect(words, dictionary)
+            detect_spans = _suspects_to_spans(suspects)
         except Exception as exc:
             print(f"[transcribe] DETECT failed: {exc!r}")
             detect_spans = []
@@ -595,7 +989,7 @@ async def transcribe_stream(
 # flagged word back to (start_s, end_s). The UI shows all three so the
 # user can see exactly where in the audio each suspicious word lives.
 
-from .services import alignment_v2 as _alignment, flag as _flag
+from .services import alignment_v2 as _alignment
 
 
 @app.post("/api/transcribe_debug")
@@ -621,6 +1015,12 @@ async def transcribe_debug(
                                     language=effective_lang)
         transcript = asr_result.get("text", "")
         duration_s = float(asr_result.get("duration", 0.0))
+        words = list(asr_result.get("words") or [])
+        pipeline_steps: List[Dict[str, Any]] = []
+        pipeline_steps.append({
+            "step": "ASR",
+            "output": f"text={transcript} | tokens={len(words)} | duration_s={duration_s:.2f}",
+        })
 
         # 2) Word-level CTC forced alignment of the full transcript.
         try:
@@ -628,33 +1028,105 @@ async def transcribe_debug(
         except Exception as exc:
             print(f"[transcribe_debug] alignment failed: {exc!r}")
             words_aligned = []
+        pipeline_steps.append({
+            "step": "Alignment",
+            "output": f"aligned_words={len(words_aligned)}",
+        })
 
-        # 3) Flag suspicious words (phonetic + optional LLM).
+        # 3) LLM detect suspicious spans by context.
         try:
-            flags = _flag.flag_suspicious(transcript, use_llm=use_llm_flag)
+            detect_spans = llm_detect.detect(words)
         except Exception as exc:
-            print(f"[transcribe_debug] flagging failed: {exc!r}")
-            flags = []
+            print(f"[transcribe_debug] LLM detect failed: {exc!r}")
+            detect_spans = []
+        if detect_spans:
+            detect_list = "; ".join(s.get("text", "") for s in detect_spans)
+        else:
+            detect_list = "none"
+        pipeline_steps.append({
+            "step": "LLM detect",
+            "output": f"spans={len(detect_spans)} | {detect_list}",
+        })
 
-        # 4) Stitch alignment into each flag so the UI knows where to slice.
-        for f in flags:
-            idx = f.get("index")
-            if isinstance(idx, int) and 0 <= idx < len(words_aligned):
-                f["start_s"] = words_aligned[idx].get("start_s")
-                f["end_s"] = words_aligned[idx].get("end_s")
-                f["alignment_confidence"] = words_aligned[idx].get("confidence", 0.0)
-            else:
-                f["start_s"] = None
-                f["end_s"] = None
-                f["alignment_confidence"] = 0.0
-
-        # 5) Auto-apply HIGH-confidence LLM corrections (conf >= 0.90).
-        # Surfaced as a separate string so the user can compare to raw.
+        # 4) Phonetic candidate search + LLM choose.
         try:
-            corrected = _flag.apply_high_confidence_corrections(transcript, flags)
+            manager = _load_drug_dictionary_manager()
         except Exception as exc:
-            print(f"[transcribe_debug] auto-correct failed: {exc!r}")
-            corrected = {"corrected_transcript": transcript, "applied": [], "threshold": 0.90}
+            print(f"[transcribe_debug] dictionary load failed: {exc!r}")
+            manager = None
+
+        flags: List[Dict[str, Any]] = []
+        choose_lines: List[str] = []
+        for s in detect_spans:
+            span_text = s.get("text", "")
+            candidates_raw = (
+                asr_correction_pipeline.find_top_k_candidates(span_text, manager, top_k=5)
+                if manager is not None else []
+            )
+            prompt = asr_correction_pipeline.build_llm_correction_prompt(
+                transcript, span_text, candidates_raw
+            )
+            chosen = _llm_choose_term(
+                prompt["system"],
+                prompt["user"],
+                [str(c.get("term")) for c in candidates_raw if c.get("term")],
+            )
+            s["chosen"] = chosen
+            s["llm_prompt"] = prompt
+            s["llm_likely_term"] = chosen or ""
+            s["llm_confidence"] = 1.0 if chosen else 0.0
+
+            cand_out = []
+            for c in candidates_raw:
+                uses = None
+                meta = c.get("meta")
+                if isinstance(meta, dict):
+                    uses = meta.get("uses")
+                cand_out.append(
+                    {
+                        "term": c.get("term"),
+                        "phonetic_similarity": float(c.get("score") or 0.0),
+                        "uses": uses,
+                        "score": float(c.get("score") or 0.0),
+                    }
+                )
+            top_terms = ", ".join(c.get("term", "") for c in candidates_raw[:5])
+            choose_lines.append(f"{span_text} -> [{top_terms}] | chosen={chosen or 'NO_CHANGE'}")
+            flags.append(
+                {
+                    "index": int(s.get("index_start", 0)),
+                    "word": span_text,
+                    "start_s": s.get("start_s"),
+                    "end_s": s.get("end_s"),
+                    "alignment_confidence": 0.0,
+                    "reason": s.get("reason") or "near_medical",
+                    "candidates": cand_out,
+                    "llm_prompt": prompt,
+                    "llm_likely_term": chosen or "",
+                    "llm_confidence": 1.0 if chosen else 0.0,
+                    "index_start": s.get("index_start"),
+                    "index_end": s.get("index_end"),
+                    "chosen": chosen,
+                }
+            )
+
+        pipeline_steps.append({
+            "step": "Phonetic candidates + LLM choose",
+            "output": " ; ".join(choose_lines) if choose_lines else "no spans",
+        })
+
+        # 5) Apply LLM choices to build corrected transcript.
+        raw_tokens = [(w.get("word") or "").strip() for w in words]
+        corrected_text, applied = _apply_span_replacements(raw_tokens, flags)
+        corrected = {
+            "corrected_transcript": corrected_text or transcript,
+            "applied": applied,
+            "threshold": 0.0,
+        }
+        pipeline_steps.append({
+            "step": "Corrected output",
+            "output": corrected["corrected_transcript"],
+        })
 
         return {
             "session_id": session_id,
@@ -666,6 +1138,7 @@ async def transcribe_debug(
             "duration_s": duration_s,
             "words": words_aligned,
             "flags": flags,
+            "pipeline_steps": pipeline_steps,
         }
     except Exception as exc:
         print(f"[transcribe_debug] error: {exc!r}")
