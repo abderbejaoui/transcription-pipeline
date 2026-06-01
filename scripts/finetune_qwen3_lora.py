@@ -521,6 +521,11 @@ def _run_eval(
         sys.path.insert(0, str(PROJECT_ROOT))
         from scripts.eval_arabic import normalize_arabic_text
 
+    # One-time full traceback on the first per-sample failure, so a broken
+    # generate/decode path can't hide behind the skip counter again.
+    if not hasattr(_run_eval, "_traceback_shown"):
+        _run_eval._traceback_shown = False
+
     lines = [ln for ln in manifest_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     if max_samples is not None and 0 < max_samples < len(lines):
         rng = random.Random(seed)
@@ -575,19 +580,38 @@ def _run_eval(
                 if torch.is_tensor(v) and v.is_floating_point():
                     inputs[k] = v.to(dtype=model_dtype)
         # A single failed generate (e.g. transient OOM) must not abort the
-        # whole eval round. Skip and continue.
+        # whole eval round. Skip and continue. The decode/slice steps are
+        # inside the SAME try because `model.generate(..., return_dict_in_
+        # generate=...)` (or certain transformers versions) can return a
+        # `GenerateDecoderOnlyOutput`/tuple rather than a plain LongTensor.
+        # Doing `gen[:, X:]` on a tuple raises
+        # "tuple indices must be integers or slices, not tuple" and that
+        # was silently nuking the WHOLE eval round (every sample -> nan).
         try:
             with torch.no_grad():
                 gen = model.generate(
                     **inputs, max_new_tokens=448,
                     do_sample=False, num_beams=1,
                 )
+            # Normalize generate() output to a LongTensor of shape [B, T].
+            if not torch.is_tensor(gen):
+                # GenerateOutput dataclass exposes `.sequences`; a bare
+                # tuple puts sequences first. (Avoid `a or b` here: numpy/
+                # torch tensors raise on bool() of multi-element tensors.)
+                seq = getattr(gen, "sequences", None)
+                gen = seq if seq is not None else gen[0]
+            # Strip prompt tokens then decode.
+            out = gen[:, inputs["input_ids"].shape[1]:]
+            hyp = processor.batch_decode(out, skip_special_tokens=True)[0]
         except Exception:
             n_skipped += 1
+            if not _run_eval._traceback_shown:
+                import traceback
+                _run_eval._traceback_shown = True
+                print(f"[eval] {manifest_path.name}: first sample failure "
+                      f"traceback (shown once):", flush=True)
+                traceback.print_exc()
             continue
-        # Strip prompt tokens then decode.
-        out = gen[:, inputs["input_ids"].shape[1]:]
-        hyp = processor.batch_decode(out, skip_special_tokens=True)[0]
         # Strip the leading "language X<asr_text>" prefix if present.
         if "<asr_text>" in hyp:
             hyp = hyp.split("<asr_text>", 1)[1]

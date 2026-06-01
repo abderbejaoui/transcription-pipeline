@@ -214,12 +214,15 @@ details[open] > summary::before { transform: rotate(90deg); }
   min-height: 18px;
 }
 
-/* A/B test panel ---------------------------------------------------------- */
+/* A/B/C test panel -------------------------------------------------------- */
 .ab-grid {
   display: grid;
-  grid-template-columns: 1fr 1fr;
+  grid-template-columns: 1fr 1fr 1fr;
   gap: 16px;
   margin-top: 12px;
+}
+@media (max-width: 1080px) {
+  .ab-grid { grid-template-columns: 1fr 1fr; }
 }
 @media (max-width: 720px) {
   .ab-grid { grid-template-columns: 1fr; }

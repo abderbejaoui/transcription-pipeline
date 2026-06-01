@@ -7,10 +7,12 @@ does NOT touch or replace the Gulf v1 model used by /api/transcribe.
 
 Arms
 ----
-  A = stock base (Qwen/Qwen3-ASR-1.7B)        + medical LoRA A
+  A = stock base (Qwen/Qwen3-ASR-1.7B)              + medical LoRA A
   B = Gulf-merged base (runs/qwen3_gulf_merged_base) + medical LoRA B
+  C = Gulf-merged base (runs/qwen3_gulf_merged_base) + v3 medical LoRA C
+      (real-dominant mix, LR 1e-5, val-set early-stop)
 
-Both arms are loaded lazily on first request and then cached for the life of
+All arms are loaded lazily on first request and then cached for the life of
 the process. They use the SAME qwen_asr wrapper API as services.asr — i.e.
 `wrapper.transcribe(audio=path, language=..., context=...)` — which is the
 correct call (the manual processor(...) path in scripts/infer_v2.py is what
@@ -43,6 +45,13 @@ ARMS: Dict[str, Dict[str, str]] = {
             "V2_ARM_B_ADAPTER", "runs/qwen3_lora_v2_medical_B/final_adapter"
         ),
         "label": "Arm B · Gulf-merged base + medical LoRA",
+    },
+    "C": {
+        "base": os.environ.get("V3_ARM_C_BASE", "runs/qwen3_gulf_merged_base"),
+        "adapter": os.environ.get(
+            "V3_ARM_C_ADAPTER", "runs/qwen3_lora_v3_B/best_adapter"
+        ),
+        "label": "Arm C · v3 (real-dominant mix, val early-stop)",
     },
 }
 
@@ -279,12 +288,16 @@ def transcribe_ab(
     language: Optional[str] = None,
     run_pipeline: bool = False,
 ) -> Dict[str, Any]:
-    """Run BOTH arms on the same clip. Returns {arm_a, arm_b}.
+    """Run ALL arms on the same clip. Returns {arm_a, arm_b, arm_c}.
 
     Converts the (usually webm/opus) recording to a clean 16k mono WAV ONCE
-    and loads the medical context, then feeds both arms identical input — the
+    and loads the medical context, then feeds every arm identical input — the
     same path the production ASR uses, which avoids the decode-garbage
     hallucination we saw with raw webm.
+
+    An arm whose adapter is missing (e.g. v3 still training) returns an error
+    field but does NOT take down the other arms — that's why each call is
+    wrapped in transcribe_one which returns errors instead of raising.
 
     When `run_pipeline` is True, each arm also runs the full Record-button
     pipeline (alignment + flagging + auto-correction) so the A/B view shows
@@ -305,6 +318,10 @@ def transcribe_ab(
             ),
             "arm_b": transcribe_one(
                 "B", wav_str, language=language, context=context,
+                run_pipeline=run_pipeline,
+            ),
+            "arm_c": transcribe_one(
+                "C", wav_str, language=language, context=context,
                 run_pipeline=run_pipeline,
             ),
         }
