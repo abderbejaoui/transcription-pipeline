@@ -86,6 +86,8 @@ def _load_model():
         # "Cannot copy out of meta tensor; no data!" — accelerate placed the
         # weights on the meta device and the string device_map move failed.
         # Retry loading onto CPU first, then move the real tensors to the GPU.
+        # This still loads ONLY the 900h Gulf model; it is NOT a fallback to a
+        # different model — same weights, different placement path.
         if "meta tensor" not in str(exc).lower():
             raise
         print(f"[asr] meta-tensor load failed ({exc}); retrying CPU->GPU load")
@@ -94,8 +96,24 @@ def _load_model():
             base_repo, dtype=_DTYPE, device_map="cpu", max_new_tokens=1024,
         )
         inner = getattr(_MODEL, "model", None)
-        if inner is not None and _DEVICE != "cpu":
-            _MODEL.model = inner.to(_DEVICE)
+        if inner is None:
+            raise RuntimeError(
+                "[asr] could not access the inner module of the 900h model to "
+                "move it to the GPU. Refusing to run a partially-loaded model."
+            )
+        if _DEVICE != "cpu":
+            inner = inner.to(_DEVICE)
+            _MODEL.model = inner
+            # Verify the weights really materialized on the target device — no
+            # silent half-on-CPU model that would degrade transcript quality.
+            for name, p in inner.named_parameters():
+                if p.device.type == "meta":
+                    raise RuntimeError(
+                        f"[asr] 900h model parameter '{name}' is still on the "
+                        "meta device after load. Refusing to transcribe with an "
+                        "incompletely-loaded model (no fallback allowed)."
+                    )
+                break
     _PROCESSOR = None  # wrapper handles its own processor
     return _MODEL, _PROCESSOR
 
@@ -159,7 +177,8 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     except Exception as exc:
         if tmp_wav and tmp_wav.exists():
             tmp_wav.unlink(missing_ok=True)
-        return {"text": "", "language": language or "ar", "language_probability": 0.0, "duration": 0.0, "words": [], "error": str(exc)}
+        # Surface the failure instead of silently returning an empty transcript.
+        raise RuntimeError(f"[asr] failed to decode audio {audio_path}: {exc}") from exc
     # NOTE: do NOT delete tmp_wav here. The qwen-asr wrapper path below
     # re-reads the audio FILE by path; if we delete the clean 16k mono WAV
     # now, the wrapper falls back to decoding the original webm/opus via

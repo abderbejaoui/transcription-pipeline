@@ -50,7 +50,7 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, asr_dual, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
 
 
 # ---------------------------------------------------------------------------
@@ -65,10 +65,6 @@ SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "")  # "" = auto-detect (Arabic+English)
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
-# HARD-DISABLED. Dual-ASR would also load the vanilla base Qwen3 alongside the
-# Gulf model; we only ever want the 900h Gulf Arabic fine-tune, so this stays
-# off regardless of the environment.
-USE_DUAL_ASR = False
 # When 1, skip word-level forced alignment in /api/transcribe_debug. Alignment
 # only produces per-word TIMESTAMPS (it does not change the transcript text),
 # so disabling it avoids loading the MMS aligner / whisper-small timing model.
@@ -217,19 +213,16 @@ def _run_transcribe_pipeline(
     """The full pipeline. Calls into services that emit trace events via
     `app.services.tracing`, so this function can be run with or without an
     active Tracer."""
-    # 1) ASR. If USE_DUAL_ASR=1, run both Gulf LoRA + base Qwen3 in parallel
-    # and merge their outputs with an LLM judge. Otherwise just the LoRA.
+    # 1) ASR. ONLY the 900h Gulf Arabic fine-tune. There is no other model and
+    # no fallback: if it can't run, no transcript is produced.
     tracing.emit("asr.start", {
         "session_id": session_id,
         "audio_path": str(session_path),
-        "model": "dual_asr" if USE_DUAL_ASR else model_size,
+        "model": model_size,
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
     })
-    if USE_DUAL_ASR:
-        asr_result = asr_dual.transcribe_and_merge(session_path, language=language)
-    else:
-        asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
+    asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
     raw_text = asr_result["text"]
     words = list(asr_result["words"])
     tracing.emit("asr.done", {
@@ -488,10 +481,8 @@ def _run_transcribe_pipeline(
             "language": asr_result["language"],
             "language_probability": asr_result["language_probability"],
             "duration": asr_result["duration"],
-            "model_size": "dual_asr" if USE_DUAL_ASR else model_size,
+            "model_size": model_size,
             "words": words,
-            # When USE_DUAL_ASR=1 this exposes both raw ASR outputs and the
-            # LLM merge reason so the UI can show them side-by-side.
             "dual": asr_result.get("extra"),
         },
     }
