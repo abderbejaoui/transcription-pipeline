@@ -27,6 +27,7 @@ from pathlib import Path
 from typing import Any, Dict, Optional
 
 from . import asr as asr_module
+from .drug_normalize import normalize_drugs
 from .llm_config import (
     get_llm_headers,
     get_llm_model,
@@ -288,8 +289,17 @@ def transcribe_and_merge(
 
     print(f"[asr_dual] merged:       {merged!r}  ({reason})")
 
+    # Phonetic drug-name canonicalization on the final merged transcript:
+    # the LLM judge may re-introduce Arabic-script brand names, so normalize
+    # them back to Latin (بنادول → panadol). Drug-only, deterministic.
+    merged, drug_fixes = normalize_drugs(merged)
+    if drug_fixes:
+        print(f"[asr_dual] drug fixes:   {drug_fixes!r}")
+
     return {
         "text": merged,
+        "raw_text": merged,
+        "drug_corrections": drug_fixes,
         "language": result_a.get("language") or "ar",
         "language_probability": 1.0,
         "duration": result_a.get("duration", 0.0),

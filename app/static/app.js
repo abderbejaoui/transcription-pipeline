@@ -212,6 +212,9 @@ let recordedBlob = null;
 let recordedMime = "audio/webm";
 let recordTimer = null;
 let recordStart = 0;
+// Which pipeline the current recording should feed once stopped.
+// "debug" = default correction pipeline, "ab" = v2 A/B model test.
+let recordMode = "debug";
 
 const PREFERRED_MIMES = [
   "audio/webm;codecs=opus",
@@ -230,9 +233,17 @@ function pickMime() {
 }
 
 function setRecordingUI(isRecording) {
+  const ab = recordMode === "ab";
+  // While recording, only the active mode's Stop button shows; the other
+  // mode's Record button is hidden. When idle, BOTH Record buttons show.
+  // Default pipeline buttons
   $("btn-record").hidden = isRecording;
-  $("btn-stop").hidden = !isRecording;
-  $("btn-record").classList.toggle("recording", isRecording);
+  $("btn-stop").hidden = !(isRecording && !ab);
+  $("btn-record").classList.toggle("recording", isRecording && !ab);
+  // A/B pipeline buttons
+  $("btn-record-ab").hidden = isRecording;
+  $("btn-stop-ab").hidden = !(isRecording && ab);
+  $("btn-record-ab").classList.toggle("recording", isRecording && ab);
 }
 
 function fmtTime(ms) {
@@ -240,7 +251,11 @@ function fmtTime(ms) {
   return `${String(Math.floor(s / 60)).padStart(2, "0")}:${String(s % 60).padStart(2, "0")}`;
 }
 
-async function startRecording() {
+async function startRecording(mode = "debug") {
+  // Guard: ignore clicks while a recording is already in progress so the
+  // buttons can't kick off a second overlapping recorder.
+  if (mediaRecorder && mediaRecorder.state === "recording") return;
+  recordMode = mode === "ab" ? "ab" : "debug";
   $("record-status").textContent = "";
 
   if (!navigator.mediaDevices || !navigator.mediaDevices.getUserMedia) {
@@ -304,7 +319,11 @@ async function startRecording() {
     $("record-status").textContent =
       `Processing ${(recordedBlob.size / 1024).toFixed(0)} KB…`;
     try {
-      await transcribeDebug(recordedBlob);
+      if (recordMode === "ab") {
+        await transcribeAB(recordedBlob);
+      } else {
+        await transcribeDebug(recordedBlob);
+      }
       $("record-status").textContent = "Done.";
     } catch (err) {
         clearInterval(progressInterval);
@@ -359,6 +378,177 @@ async function transcribeDebug(blob) {
   }
   const data = await r.json();
   showDebugResult(data);
+}
+
+// ---------------------------------------------------------------------------
+// A/B pipeline — calls /api/transcribe_ab and shows both v2 arms' output.
+// ---------------------------------------------------------------------------
+async function transcribeAB(blob) {
+  const form = new FormData();
+  const ext = (blob.type.split("/")[1] || "webm").split(";")[0];
+  form.append("audio", blob, `recording.${ext}`);
+  const lang = $("lang").value;
+  if (lang) form.append("language", lang);
+  const runPipeline = $("ab-run-pipeline") && $("ab-run-pipeline").checked;
+  if (runPipeline) form.append("run_pipeline", "true");
+
+  $("ab-card").hidden = false;
+  $("ab-status").textContent = runPipeline
+    ? "Running all arms + full pipeline (alignment, flags, corrections)… first run loads the models, this can take a while…"
+    : "Running all arms (first run loads the models, this can take a while)…";
+  for (const p of ["ab-a", "ab-b", "ab-c"]) {
+    if ($(p + "-text")) $(p + "-text").textContent = "";
+    if ($(p + "-raw")) $(p + "-raw").textContent = "";
+    if ($(p + "-fixes")) $(p + "-fixes").innerHTML = "";
+    if ($(p + "-meta")) $(p + "-meta").textContent = "";
+    if ($(p + "-pipeline")) $(p + "-pipeline").innerHTML = "";
+  }
+
+  const r = await fetch("/api/transcribe_ab", { method: "POST", body: form });
+  if (!r.ok) {
+    let msg = `HTTP ${r.status}`;
+    try { msg = (await r.json()).error || msg; } catch (_) { msg = await r.text(); }
+    $("ab-status").textContent = "❌ " + msg;
+    throw new Error(msg);
+  }
+  showABResult(await r.json());
+}
+
+function renderArm(prefix, arm) {
+  if (!arm) return;
+  if (arm.label) $(prefix + "-label").textContent = arm.label;
+  if (arm.error) {
+    $(prefix + "-raw").textContent = "";
+    $(prefix + "-fixes").innerHTML = "";
+    $(prefix + "-text").textContent = "";
+    $(prefix + "-meta").innerHTML = `<span style="color:#c0392b">❌ ${escapeHtml(arm.error)}</span>`;
+    return;
+  }
+
+  const raw = arm.raw_text || "";
+  const finalText = arm.text || "";
+  const fixes = arm.drug_corrections || [];
+
+  // Stage 1 — raw ASR output (what the model literally produced).
+  $(prefix + "-raw").textContent = raw || "(empty)";
+
+  // Stage 2 — what the drug normalizer changed, token by token.
+  const fixesEl = $(prefix + "-fixes");
+  if (fixes.length) {
+    fixesEl.innerHTML = fixes
+      .map(
+        (f) =>
+          `<span class="ab-fix"><span class="ab-fix-from">${escapeHtml(f.from)}</span>` +
+          `<span class="ab-fix-arrow">→</span>` +
+          `<span class="ab-fix-to">${escapeHtml(f.to)}</span></span>`
+      )
+      .join("");
+  } else {
+    fixesEl.innerHTML = `<span class="muted small">no drug changes</span>`;
+  }
+
+  // Stage 3 — final transcript (raw with the fixes applied).
+  $(prefix + "-text").textContent = finalText || "(empty)";
+
+  // Stage 4+ — full downstream pipeline (only when requested).
+  renderArmPipeline(prefix, arm.pipeline);
+
+  const bits = [];
+  if (arm.elapsed_s != null) bits.push(`${arm.elapsed_s}s`);
+  bits.push(
+    `${fixes.length} drug fix${fixes.length === 1 ? "" : "es"}`
+  );
+  if (arm.pipeline) {
+    const nFlags = (arm.pipeline.flags || []).length;
+    const nCorr = (arm.pipeline.auto_corrections || []).length;
+    bits.push(`${nFlags} flag${nFlags === 1 ? "" : "s"}`);
+    bits.push(`${nCorr} auto-correction${nCorr === 1 ? "" : "s"}`);
+  }
+  $(prefix + "-meta").innerHTML = bits.join(" &nbsp;·&nbsp; ");
+}
+
+// Render the downstream pipeline (flags + auto-corrected transcript) for an
+// arm into its `<prefix>-pipeline` container. No-op when the pipeline wasn't
+// requested/returned.
+function renderArmPipeline(prefix, pipeline) {
+  const host = $(prefix + "-pipeline");
+  if (!host) return;
+  if (!pipeline) {
+    host.innerHTML = "";
+    return;
+  }
+
+  const flags = pipeline.flags || [];
+  const corrections = pipeline.auto_corrections || [];
+  const corrected = pipeline.corrected_transcript || "";
+
+  const parts = [];
+
+  // Flagged suspicious words with their top candidate and timestamps.
+  parts.push(`<div class="ab-stage-label">4 · Flagged words (${flags.length})</div>`);
+  if (flags.length) {
+    parts.push('<div class="ab-flags">');
+    for (const f of flags) {
+      const word = escapeHtml(f.word || "");
+      const cands = f.candidates || [];
+      const top = cands[0];
+      const topStr = top
+        ? `${escapeHtml(top.term)} (${Math.round((top.phonetic_similarity || 0) * 100)}%)`
+        : "—";
+      const llm = f.llm_likely_term
+        ? ` · llm: ${escapeHtml(f.llm_likely_term)} (${Math.round((f.llm_confidence || 0) * 100)}%)`
+        : "";
+      const ts =
+        f.start_s != null && f.end_s != null
+          ? ` · ${Number(f.start_s).toFixed(2)}–${Number(f.end_s).toFixed(2)}s`
+          : "";
+      parts.push(
+        `<div class="ab-flag"><span class="ab-flag-word">${word}</span>` +
+          `<span class="muted small">top: ${topStr}${llm}${ts}</span></div>`
+      );
+    }
+    parts.push("</div>");
+  } else {
+    parts.push('<div class="muted small">no suspicious words</div>');
+  }
+
+  // Auto-corrected transcript (high-confidence corrections applied).
+  parts.push(
+    `<div class="ab-stage-label" style="margin-top:8px">5 · Auto-corrected (${corrections.length})</div>`
+  );
+  if (corrections.length) {
+    parts.push('<div class="ab-fixes">');
+    for (const c of corrections) {
+      const from = escapeHtml(c.original || c.from || "");
+      const to = escapeHtml(c.corrected || c.correction || c.to || "");
+      const src = c.source ? ` <span class="muted small">[${escapeHtml(c.source)}]</span>` : "";
+      parts.push(
+        `<span class="ab-fix"><span class="ab-fix-from">${from}</span>` +
+          `<span class="ab-fix-arrow">→</span>` +
+          `<span class="ab-fix-to">${to}</span>${src}</span>`
+      );
+    }
+    parts.push("</div>");
+  } else {
+    parts.push('<div class="muted small">no auto-corrections applied</div>');
+  }
+  parts.push(`<pre class="ab-text ab-final" dir="auto">${escapeHtml(corrected || "(empty)")}</pre>`);
+
+  host.innerHTML = `<div class="ab-stage">${parts.join("")}</div>`;
+}
+
+function showABResult(data) {
+  $("ab-card").hidden = false;
+  $("ab-status").textContent = "Compare the models below.";
+  renderArm("ab-a", data.arm_a);
+  renderArm("ab-b", data.arm_b);
+  renderArm("ab-c", data.arm_c);
+  if (data.audio_url) {
+    const a = $("ab-audio");
+    a.src = data.audio_url;
+    a.hidden = false;
+  }
+  $("ab-card").scrollIntoView({ behavior: "smooth", block: "nearest" });
 }
 
 // ---------------------------------------------------------------------------
@@ -469,22 +659,27 @@ function traceSummary(stage, payload) {
 // ---------------------------------------------------------------------------
 // Button wiring
 // ---------------------------------------------------------------------------
-$("btn-record").addEventListener("click", startRecording);
-$("btn-stop").addEventListener("click", stopRecording);
+$("btn-record").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); startRecording("debug"); });
+$("btn-stop").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); stopRecording(); });
+$("btn-record-ab").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); startRecording("ab"); });
+$("btn-stop-ab").addEventListener("click", (e) => { e.preventDefault(); e.currentTarget.blur(); stopRecording(); });
 
 document.addEventListener("keydown", (e) => {
   if (e.code !== "Space" || e.repeat) return;
   const tgt = e.target;
-  if (tgt && /INPUT|TEXTAREA|SELECT/.test(tgt.tagName)) return;
+  // Ignore when typing in a field, or when a button is focused (the button's
+  // own Space-to-click already handles it — avoids a double trigger).
+  if (tgt && /INPUT|TEXTAREA|SELECT|BUTTON/.test(tgt.tagName)) return;
   e.preventDefault();
   if (mediaRecorder?.state === "recording") return;
-  startRecording();
+  startRecording("debug");
 });
 document.addEventListener("keyup", (e) => {
   if (e.code !== "Space") return;
   const tgt = e.target;
-  if (tgt && /INPUT|TEXTAREA|SELECT/.test(tgt.tagName)) return;
-  if (mediaRecorder?.state === "recording") stopRecording();
+  if (tgt && /INPUT|TEXTAREA|SELECT|BUTTON/.test(tgt.tagName)) return;
+  // Only the spacebar push-to-talk (debug mode) auto-stops on key release.
+  if (mediaRecorder?.state === "recording" && recordMode === "debug") stopRecording();
 });
 
 $("btn-correct").addEventListener("click", async () => {

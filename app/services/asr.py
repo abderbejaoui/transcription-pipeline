@@ -14,6 +14,8 @@ import time
 from pathlib import Path
 from typing import Any, Dict, Optional
 
+from .drug_normalize import normalize_drugs
+
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 _MODEL = None
@@ -42,6 +44,11 @@ def _load_model():
     adapter_path = os.environ.get(
         "QWEN3_GULF_ADAPTER", "runs/qwen3_lora_r6/final_adapter"
     )
+    # Setting QWEN3_GULF_ADAPTER to an empty string or "none"/"0"/"false"
+    # disables the extra LoRA adapter and runs the base model standalone.
+    # Use this when QWEN3_ASR_BASE already points at a merged fine-tuned
+    # model (e.g. runs/qwen3_gulf_merged_base, the 900h Gulf Arabic model).
+    use_adapter = adapter_path.strip().lower() not in ("", "none", "0", "false")
     adapter_dir = Path(adapter_path)
     if not adapter_dir.is_absolute():
         adapter_dir = (PROJECT_ROOT / adapter_dir).resolve()
@@ -75,7 +82,9 @@ def _load_model():
             base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
         )
         _PROCESSOR = None  # wrapper handles its own processor
-        if adapter_dir.exists():
+        if not use_adapter:
+            print(f"[asr] adapter disabled — using base model standalone: {base_repo}")
+        elif adapter_dir.exists():
             print(f"[asr] attaching LoRA adapter: {adapter_dir}")
             inner = getattr(_MODEL, "model", None) or _MODEL
             peft_model = PeftModel.from_pretrained(inner, str(adapter_dir)).to(_DEVICE).eval()
@@ -83,9 +92,14 @@ def _load_model():
                 _MODEL.model = peft_model
             else:
                 _MODEL = peft_model
+        else:
+            print(f"[asr] WARNING: adapter not found at {adapter_dir}, using base model")
         return _MODEL, _PROCESSOR
 
-    if adapter_dir.exists():
+    if not use_adapter:
+        print(f"[asr] adapter disabled — using base model standalone: {base_repo}")
+        _MODEL = base
+    elif adapter_dir.exists():
         print(f"[asr] attaching LoRA adapter: {adapter_dir}")
         _MODEL = PeftModel.from_pretrained(base, str(adapter_dir)).to(_DEVICE).eval()
     else:
@@ -155,8 +169,12 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
         if tmp_wav and tmp_wav.exists():
             tmp_wav.unlink(missing_ok=True)
         return {"text": "", "language": language or "ar", "language_probability": 0.0, "duration": 0.0, "words": [], "error": str(exc)}
-    if tmp_wav and tmp_wav.exists():
-        tmp_wav.unlink(missing_ok=True)
+    # NOTE: do NOT delete tmp_wav here. The qwen-asr wrapper path below
+    # re-reads the audio FILE by path; if we delete the clean 16k mono WAV
+    # now, the wrapper falls back to decoding the original webm/opus via
+    # librosa->audioread ("PySoundFile failed. Trying audioread instead."),
+    # which produces garbled samples and worse transcripts. We hand the
+    # wrapper the clean wav_path and only delete tmp_wav at the very end.
 
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
@@ -178,22 +196,39 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     # qwen_asr wrapper path (older transformers)
     if processor is None:
         t0 = time.time()
-        kwargs = {"audio": str(audio_path), "language": lang_label}
+        # Hand the wrapper the CLEAN 16k mono WAV (wav_path), not the raw
+        # webm/opus. Passing the original triggers the librosa->audioread
+        # fallback ("PySoundFile failed") and garbled samples. wav_path is
+        # the ffmpeg-converted file produced above and is still on disk.
+        kwargs = {"audio": str(wav_path), "language": lang_label}
         if context:
             kwargs["context"] = context
             print(f"[asr] using context bias: {len(context)} chars, "
                   f"{context.count(',') + 1} terms")
-        results = model.transcribe(**kwargs)
-        text = getattr(results[0], "text", "").strip() if results else ""
+        try:
+            results = model.transcribe(**kwargs)
+            raw_text = getattr(results[0], "text", "").strip() if results else ""
+        finally:
+            # Clean up the temp WAV now that the wrapper is done reading it.
+            if tmp_wav and tmp_wav.exists():
+                tmp_wav.unlink(missing_ok=True)
+        # Phonetic drug-name canonicalization: map Arabic-script brand names
+        # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
+        text, drug_fixes = normalize_drugs(raw_text)
         return {
             "text": text,
+            "raw_text": raw_text,
+            "drug_corrections": drug_fixes,
             "language": language or "ar",
             "language_probability": 1.0,
             "duration": duration,
             "words": [],
         }
 
-    # transformers path
+    # transformers path: we already have the decoded `audio` array in memory,
+    # so the temp WAV is no longer needed. Delete it now.
+    if tmp_wav and tmp_wav.exists():
+        tmp_wav.unlink(missing_ok=True)
     if sr != 16000:
         import librosa
         audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
@@ -213,10 +248,15 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     with torch.inference_mode():
         out_ids = model.generate(**inputs, max_new_tokens=1024, do_sample=False)
     input_len = inputs["input_ids"].shape[1]
-    text = processor.batch_decode(out_ids[:, input_len:], skip_special_tokens=True)[0].strip()
+    raw_text = processor.batch_decode(out_ids[:, input_len:], skip_special_tokens=True)[0].strip()
+    # Phonetic drug-name canonicalization: map Arabic-script brand names
+    # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
+    text, drug_fixes = normalize_drugs(raw_text)
 
     return {
         "text": text,
+        "raw_text": raw_text,
+        "drug_corrections": drug_fixes,
         "language": language or "ar",
         "language_probability": 1.0,
         "duration": duration,

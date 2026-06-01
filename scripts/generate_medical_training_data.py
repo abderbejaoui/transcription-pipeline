@@ -231,6 +231,13 @@ def main():
                         help="Sentences per tier-3 term (long tail).")
     parser.add_argument("--target-hours", type=float, default=70.0,
                         help="Stop generating audio after reaching this many hours.")
+    parser.add_argument("--max-tier", type=int, default=3,
+                        help="Only generate sentences for terms at this tier or "
+                             "lower. Default 3 (all tiers). Set to 1 to only "
+                             "process tier-1 terms (~543 terms). Tier-1 alone "
+                             "produces ~32k sentences which is already enough "
+                             "for the 70h audio budget — use this when speed "
+                             "matters more than vocabulary breadth.")
     parser.add_argument("--voice-references",
                         default="data/tts_references/references.jsonl",
                         help="Path to references.jsonl produced by "
@@ -335,9 +342,20 @@ def main():
     # we get killed early.
     lexicon_by_tier = sorted(lexicon, key=lambda e: int(e.get("tier", 3)))
 
-    print(f"[gen] generating sentences for {len(lexicon_by_tier)} terms ...")
+    # Apply --max-tier filter: skip terms above the specified tier.
+    filtered_lexicon = [
+        e for e in lexicon_by_tier
+        if int(e.get("tier", 3)) <= args.max_tier
+    ]
+    if args.max_tier < 3:
+        skipped_tiers = len(lexicon_by_tier) - len(filtered_lexicon)
+        print(f"[gen] --max-tier {args.max_tier}: "
+              f"processing {len(filtered_lexicon)} terms "
+              f"(skipping {skipped_tiers} tier>{args.max_tier} terms)")
+
+    print(f"[gen] generating sentences for {len(filtered_lexicon)} terms ...")
     with open(sentences_path, "a") as fh:
-        for i, entry in enumerate(lexicon_by_tier):
+        for i, entry in enumerate(filtered_lexicon):
             term = entry["term"]
             term_type = entry.get("type", "medical")
             tier = int(entry.get("tier", 3))
@@ -347,7 +365,7 @@ def main():
             if need == 0:
                 continue
 
-            print(f"  [{i + 1}/{len(lexicon_by_tier)}] T{tier} {term} ({term_type}) "
+            print(f"  [{i + 1}/{len(filtered_lexicon)}] T{tier} {term} ({term_type}) "
                   f"need={need}...", end="", flush=True)
             try:
                 sents = generate_sentences(

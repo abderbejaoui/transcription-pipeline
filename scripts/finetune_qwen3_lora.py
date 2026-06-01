@@ -521,19 +521,33 @@ def _run_eval(
         sys.path.insert(0, str(PROJECT_ROOT))
         from scripts.eval_arabic import normalize_arabic_text
 
+    # One-time full traceback on the first per-sample failure, so a broken
+    # generate/decode path can't hide behind the skip counter again.
+    if not hasattr(_run_eval, "_traceback_shown"):
+        _run_eval._traceback_shown = False
+
     lines = [ln for ln in manifest_path.read_text(encoding="utf-8").splitlines() if ln.strip()]
     if max_samples is not None and 0 < max_samples < len(lines):
         rng = random.Random(seed)
         lines = rng.sample(lines, max_samples)
 
     refs, hyps = [], []
+    n_skipped = 0
     for line in lines:
         rec = json.loads(line)
         ap = rec.get("audio_path") or rec.get("path") or rec.get("audio")
         if not ap:
             continue
         ap = _resolve_audio_path(ap, manifest_path)
-        arr, sr = sf.read(ap, dtype="float32", always_2d=False)
+        # Robustly load audio: a single missing/corrupt file must NOT abort
+        # the whole eval (that bug left us training blind for 2 full epochs
+        # when one worldspeech clip was missing). Skip the bad sample and
+        # keep going; report the skip count at the end.
+        try:
+            arr, sr = sf.read(ap, dtype="float32", always_2d=False)
+        except Exception:
+            n_skipped += 1
+            continue
         if arr.ndim > 1:
             arr = arr.mean(axis=1)
         if sr != 16_000:
@@ -565,14 +579,39 @@ def _run_eval(
             for k, v in list(inputs.items()):
                 if torch.is_tensor(v) and v.is_floating_point():
                     inputs[k] = v.to(dtype=model_dtype)
-        with torch.no_grad():
-            gen = model.generate(
-                **inputs, max_new_tokens=448,
-                do_sample=False, num_beams=1,
-            )
-        # Strip prompt tokens then decode.
-        out = gen[:, inputs["input_ids"].shape[1]:]
-        hyp = processor.batch_decode(out, skip_special_tokens=True)[0]
+        # A single failed generate (e.g. transient OOM) must not abort the
+        # whole eval round. Skip and continue. The decode/slice steps are
+        # inside the SAME try because `model.generate(..., return_dict_in_
+        # generate=...)` (or certain transformers versions) can return a
+        # `GenerateDecoderOnlyOutput`/tuple rather than a plain LongTensor.
+        # Doing `gen[:, X:]` on a tuple raises
+        # "tuple indices must be integers or slices, not tuple" and that
+        # was silently nuking the WHOLE eval round (every sample -> nan).
+        try:
+            with torch.no_grad():
+                gen = model.generate(
+                    **inputs, max_new_tokens=448,
+                    do_sample=False, num_beams=1,
+                )
+            # Normalize generate() output to a LongTensor of shape [B, T].
+            if not torch.is_tensor(gen):
+                # GenerateOutput dataclass exposes `.sequences`; a bare
+                # tuple puts sequences first. (Avoid `a or b` here: numpy/
+                # torch tensors raise on bool() of multi-element tensors.)
+                seq = getattr(gen, "sequences", None)
+                gen = seq if seq is not None else gen[0]
+            # Strip prompt tokens then decode.
+            out = gen[:, inputs["input_ids"].shape[1]:]
+            hyp = processor.batch_decode(out, skip_special_tokens=True)[0]
+        except Exception:
+            n_skipped += 1
+            if not _run_eval._traceback_shown:
+                import traceback
+                _run_eval._traceback_shown = True
+                print(f"[eval] {manifest_path.name}: first sample failure "
+                      f"traceback (shown once):", flush=True)
+                traceback.print_exc()
+            continue
         # Strip the leading "language X<asr_text>" prefix if present.
         if "<asr_text>" in hyp:
             hyp = hyp.split("<asr_text>", 1)[1]
@@ -581,6 +620,9 @@ def _run_eval(
             ref = ref.split("<asr_text>", 1)[1]
         refs.append(normalize_arabic_text(ref))
         hyps.append(normalize_arabic_text(hyp))
+    if n_skipped:
+        print(f"[eval] {manifest_path.name}: skipped {n_skipped} "
+              f"unreadable/failed sample(s)", flush=True)
     if not refs:
         return float("nan"), float("nan"), 0
     return jiwer.wer(refs, hyps), jiwer.cer(refs, hyps), len(refs)

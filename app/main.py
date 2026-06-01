@@ -789,6 +789,50 @@ async def transcribe_debug(
         return JSONResponse(status_code=500, content={"error": str(exc)})
 
 
+# ---------------------------------------------------------------------------
+# /api/transcribe_ab — qualitative A/B test of the two v2 medical LoRA arms.
+# ---------------------------------------------------------------------------
+#
+# Independent from the production ASR mode above. Records your own voice and
+# returns BOTH arms' transcripts side by side. Models are loaded lazily and
+# cached in app.services.asr_ab the first time this endpoint is hit.
+
+
+@app.post("/api/transcribe_ab")
+async def transcribe_ab(
+    audio: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+    run_pipeline: bool = Form(False),
+) -> Dict[str, Any]:
+    """Transcribe one clip with both v2 medical LoRA arms (A and B).
+
+    When `run_pipeline` is set, each arm also runs the full downstream
+    pipeline (alignment + flagging + auto-correction), so the A/B view can
+    show exactly what happens to each model's transcript."""
+    from .services import asr_ab
+
+    session_id, session_path, size = _save_upload(audio)
+    effective_lang = language or DEFAULT_LANGUAGE
+    print(
+        f"[transcribe_ab] session={session_id} type={audio.content_type!r} "
+        f"size={size}B lang={effective_lang} pipeline={run_pipeline}"
+    )
+    if size < 200:
+        return JSONResponse(
+            status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
+        )
+    try:
+        result = asr_ab.transcribe_ab(
+            session_path, language=effective_lang, run_pipeline=run_pipeline
+        )
+        result["session_id"] = session_id
+        result["audio_url"] = f"/api/session_audio/{session_id}"
+        return result
+    except Exception as exc:
+        print(f"[transcribe_ab] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
 @app.get("/api/session_audio/{session_id}")
 def get_session_audio(session_id: str):
     """Serve the raw session audio so the browser can <audio>-play it
