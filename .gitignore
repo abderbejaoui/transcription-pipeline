@@ -53,4 +53,4 @@ fixes.md
 scripts/run_asr_benchmark.py
 .cache/
 .tmp/
-eval/reports
+eval/reports.claude/

@@ -48,9 +48,7 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from fastapi.responses import StreamingResponse
-
-from .services import asr, asr_dual, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, pipeline_test, tracing, voice_match
+from fastapi.responses import StreamingResponsefrom .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, pipeline_test, tracing, voice_match
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 
 
@@ -97,9 +95,10 @@ SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "")  # "" = auto-detect (Arabic+English)
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
-# When 1, transcription runs the dual-ASR (Gulf LoRA + base Qwen3) with an
-# LLM judge merging the two outputs. Costs 2x GPU memory + one extra LLM call.
-USE_DUAL_ASR = os.environ.get("USE_DUAL_ASR", "0") == "1"
+# When 1, skip word-level forced alignment in /api/transcribe_debug. Alignment
+# only produces per-word TIMESTAMPS (it does not change the transcript text),
+# so disabling it avoids loading the MMS aligner / whisper-small timing model.
+DISABLE_ALIGNMENT = os.environ.get("DISABLE_ALIGNMENT", "0") == "1"
 
 # Audio-retrieval thresholds, calibrated for the CTC phonetic similarity
 # scale (normalized Levenshtein over greedy wav2vec2-base-960h transcripts).
@@ -329,19 +328,16 @@ def _run_transcribe_pipeline(
     """The full pipeline. Calls into services that emit trace events via
     `app.services.tracing`, so this function can be run with or without an
     active Tracer."""
-    # 1) ASR. If USE_DUAL_ASR=1, run both Gulf LoRA + base Qwen3 in parallel
-    # and merge their outputs with an LLM judge. Otherwise just the LoRA.
+    # 1) ASR. ONLY the 900h Gulf Arabic fine-tune. There is no other model and
+    # no fallback: if it can't run, no transcript is produced.
     tracing.emit("asr.start", {
         "session_id": session_id,
         "audio_path": str(session_path),
-        "model": "dual_asr" if USE_DUAL_ASR else model_size,
+        "model": model_size,
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
     })
-    if USE_DUAL_ASR:
-        asr_result = asr_dual.transcribe_and_merge(session_path, language=language)
-    else:
-        asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
+    asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
     raw_text = asr_result["text"]
     words = list(asr_result["words"])
     tracing.emit("asr.done", {
@@ -600,10 +596,8 @@ def _run_transcribe_pipeline(
             "language": asr_result["language"],
             "language_probability": asr_result["language_probability"],
             "duration": asr_result["duration"],
-            "model_size": "dual_asr" if USE_DUAL_ASR else model_size,
+            "model_size": model_size,
             "words": words,
-            # When USE_DUAL_ASR=1 this exposes both raw ASR outputs and the
-            # LLM merge reason so the UI can show them side-by-side.
             "dual": asr_result.get("extra"),
         },
     }
@@ -764,11 +758,18 @@ async def transcribe_debug(
         duration_s = float(asr_result.get("duration", 0.0))
 
         # 2) Word-level CTC forced alignment of the full transcript.
-        try:
-            words_aligned = _alignment.align_words(session_path, transcript)
-        except Exception as exc:
-            print(f"[transcribe_debug] alignment failed: {exc!r}")
+        # Set DISABLE_ALIGNMENT=1 to skip this entirely — it ONLY produces
+        # per-word timestamps (it does NOT affect the transcript text). When
+        # disabled, neither the MMS aligner nor the whisper-small timing
+        # fallback is ever loaded, which is faster and removes those logs.
+        if DISABLE_ALIGNMENT:
             words_aligned = []
+        else:
+            try:
+                words_aligned = _alignment.align_words(session_path, transcript)
+            except Exception as exc:
+                print(f"[transcribe_debug] alignment failed: {exc!r}")
+                words_aligned = []
 
         # 3) Flag suspicious words (phonetic + optional LLM).
         try:
@@ -833,6 +834,17 @@ async def transcribe_ab(
     When `run_pipeline` is set, each arm also runs the full downstream
     pipeline (alignment + flagging + auto-correction), so the A/B view can
     show exactly what happens to each model's transcript."""
+    # DISABLED: the A/B/C arms load other models (vanilla base + medical LoRA
+    # adapters). This service is pinned to the single 900h Gulf Arabic
+    # fine-tune, so the A/B test endpoint is turned off.
+    return JSONResponse(
+        status_code=410,
+        content={
+            "error": "A/B/C arms are disabled. This service only uses the "
+            "900h Gulf Arabic fine-tune. Use /api/transcribe_debug."
+        },
+    )
+
     from .services import asr_ab
 
     session_id, session_path, size = _save_upload(audio)
