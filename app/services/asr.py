@@ -157,8 +157,12 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
         if tmp_wav and tmp_wav.exists():
             tmp_wav.unlink(missing_ok=True)
         return {"text": "", "language": language or "ar", "language_probability": 0.0, "duration": 0.0, "words": [], "error": str(exc)}
-    if tmp_wav and tmp_wav.exists():
-        tmp_wav.unlink(missing_ok=True)
+    # NOTE: do NOT delete tmp_wav here. The qwen-asr wrapper path below
+    # re-reads the audio FILE by path; if we delete the clean 16k mono WAV
+    # now, the wrapper falls back to decoding the original webm/opus via
+    # librosa->audioread ("PySoundFile failed. Trying audioread instead."),
+    # which produces garbled samples and worse transcripts. We hand the
+    # wrapper the clean wav_path and only delete tmp_wav at the very end.
 
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
@@ -180,13 +184,22 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     # qwen_asr wrapper path (older transformers)
     if processor is None:
         t0 = time.time()
-        kwargs = {"audio": str(audio_path), "language": lang_label}
+        # Hand the wrapper the CLEAN 16k mono WAV (wav_path), not the raw
+        # webm/opus. Passing the original triggers the librosa->audioread
+        # fallback ("PySoundFile failed") and garbled samples. wav_path is
+        # the ffmpeg-converted file produced above and is still on disk.
+        kwargs = {"audio": str(wav_path), "language": lang_label}
         if context:
             kwargs["context"] = context
             print(f"[asr] using context bias: {len(context)} chars, "
                   f"{context.count(',') + 1} terms")
-        results = model.transcribe(**kwargs)
-        raw_text = getattr(results[0], "text", "").strip() if results else ""
+        try:
+            results = model.transcribe(**kwargs)
+            raw_text = getattr(results[0], "text", "").strip() if results else ""
+        finally:
+            # Clean up the temp WAV now that the wrapper is done reading it.
+            if tmp_wav and tmp_wav.exists():
+                tmp_wav.unlink(missing_ok=True)
         # Phonetic drug-name canonicalization: map Arabic-script brand names
         # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
         text, drug_fixes = normalize_drugs(raw_text)
@@ -200,7 +213,10 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
             "words": [],
         }
 
-    # transformers path
+    # transformers path: we already have the decoded `audio` array in memory,
+    # so the temp WAV is no longer needed. Delete it now.
+    if tmp_wav and tmp_wav.exists():
+        tmp_wav.unlink(missing_ok=True)
     if sr != 16000:
         import librosa
         audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)
