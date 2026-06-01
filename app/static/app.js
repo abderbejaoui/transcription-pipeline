@@ -391,14 +391,15 @@ async function transcribeAB(blob) {
 
   $("ab-card").hidden = false;
   $("ab-status").textContent = runPipeline
-    ? "Running both arms + full pipeline (alignment, flags, corrections)… first run loads the models, this can take a while…"
-    : "Running both arms (first run loads the models, this can take a while)…";
-  $("ab-a-text").textContent = "";
-  $("ab-b-text").textContent = "";
-  $("ab-a-meta").textContent = "";
-  $("ab-b-meta").textContent = "";
-  if ($("ab-a-pipeline")) $("ab-a-pipeline").innerHTML = "";
-  if ($("ab-b-pipeline")) $("ab-b-pipeline").innerHTML = "";
+    ? "Running all arms + full pipeline (alignment, flags, corrections)… first run loads the models, this can take a while…"
+    : "Running all arms (first run loads the models, this can take a while)…";
+  for (const p of ["ab-a", "ab-b", "ab-c"]) {
+    if ($(p + "-text")) $(p + "-text").textContent = "";
+    if ($(p + "-raw")) $(p + "-raw").textContent = "";
+    if ($(p + "-fixes")) $(p + "-fixes").innerHTML = "";
+    if ($(p + "-meta")) $(p + "-meta").textContent = "";
+    if ($(p + "-pipeline")) $(p + "-pipeline").innerHTML = "";
+  }
 
   const r = await fetch("/api/transcribe_ab", { method: "POST", body: form });
   if (!r.ok) {
@@ -535,9 +536,10 @@ function renderArmPipeline(prefix, pipeline) {
 
 function showABResult(data) {
   $("ab-card").hidden = false;
-  $("ab-status").textContent = "Compare the two models below.";
+  $("ab-status").textContent = "Compare the models below.";
   renderArm("ab-a", data.arm_a);
   renderArm("ab-b", data.arm_b);
+  renderArm("ab-c", data.arm_c);
   if (data.audio_url) {
     const a = $("ab-audio");
     a.src = data.audio_url;
