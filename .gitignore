@@ -43,3 +43,25 @@ eval/*/wavs/
 eval/gulf_medical_v1/wavs/
 *.tar.gz
 test_gulf*.wav
+
+.env
+.github/
+PROJECT_DESCRIPTION.md
+app/services/asr_benchmark.py
+data/download_sada.py
+fixes.md
+scripts/run_asr_benchmark.py
+.cache/
+.tmp/
+
+# Debug / exploration scripts
+.tmp_*
+
+# MCP server config (contains API tokens)
+.mcp.json
+
+# Generated eval reports (regenerable via scripts/eval_correction.py)
+eval/reports/
+
+# Ad-hoc manual test scripts
+_test_*.py

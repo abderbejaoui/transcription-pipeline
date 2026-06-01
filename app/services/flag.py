@@ -16,6 +16,7 @@ candidate medical terms phonetically closest to it.
 from __future__ import annotations
 
 import json
+import math
 import os
 import re
 import time
@@ -31,6 +32,19 @@ from .llm_config import (
     get_llm_url,
     parse_chat_content,
 )
+from . import llm_scorer
+
+# Used by _is_arabic_normalcy() for fuzzy skeleton comparison
+from rapidfuzz import fuzz as _rapidfuzz
+
+# ---------------------------------------------------------------------------
+# Character-class regexes — used by many functions throughout this module.
+# Placed here (near imports) so they are available before any function
+# that references them, even functions defined earlier in the file.
+# ---------------------------------------------------------------------------
+
+_ARABIC_DIGIT_RE = re.compile(r"^[0-9\u0660-\u0669\u06f0-\u06f9]+$")
+_ARABIC_LETTER_RE = re.compile(r"[\u0600-\u06ff]")
 
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
@@ -63,12 +77,12 @@ def _strip_arabic_clitics(word: str) -> str:
     'paracetamol' because of the extra 'al' prefix.
 
     We're conservative: we only strip when the remainder is at least
-    4 characters, so we don't decapitate short words.
+    3 characters, so we don't decapitate very short words.
     """
     PREFIXES = ("ال", "وال", "بال", "كال", "فال", "لل",
-                "و", "ف", "ب", "ل", "ك", "س")
+                "و", "ف", "ب", "ل", "ك")
     for pre in PREFIXES:
-        if word.startswith(pre) and len(word) - len(pre) >= 4:
+        if word.startswith(pre) and len(word) - len(pre) >= 3:
             return word[len(pre):]
     return word
 
@@ -197,15 +211,34 @@ def _length_ratio_ok(needle: str, term: str, *, tolerance: float = 0.5) -> bool:
 
 
 def _consonant_skeleton_ar(s: str) -> str:
-    """Strip vowels from an already-transliterated Arabic word.
+    """Strip short vowels + long vowel markers from an already-transliterated
+    Arabic word, but KEEP 'h' which is a real consonant in Arabic.
 
     Arabic doesn't write short vowels — when we transliterate, the
-    long vowels 'ا'/'و'/'ي' come out as 'a'/'w'/'y'. Drop those and
-    'h' (often a silent ta-marbuta carrier) so the comparison hits
-    consonants only.
+    long vowels 'ا'/'و'/'ي' come out as 'a'/'w'/'y'. Drop 'w' and 'y'
+    (long vowel markers) but KEEP 'h' because it represents the consonant
+    ه (hā') in transliterations like هستوري (hstwry) and هارت (hart).
+    The ONLY case where 'h' is silent is ة → 'h' (tā' marbūṭa), but
+    dropping ALL 'h's destroys critical skeleton matches (e.g. هستوري
+    → skeleton 'str' instead of 'hstr', which fails to match 'history'
+    at skeleton 'hstr').
+
+    IMPORTANT: 'h' from Arabic DIGRAPHS (غ→gh, ش→sh, ث→th, خ→kh, ذ→dh)
+    is NOT a real consonant — it's part of a two-letter representation of
+    a single Arabic letter. We drop 'h' when it follows g, s, t, k, or d
+    to handle this. Examples:
+      - نيتروغلسرين (nytrwghlsryn): the 'h' after 'g' is from غ→gh,
+        not a real consonant. Keeping it would produce skeleton 'ntrghlsrn'
+        which mismatches 'nitroglycerin's Latin skeleton 'ntrglcrn'.
+      - بريث (bryth): the 'h' after 't' is from ث→th. Keeping it would
+        produce 'brth' instead of 'brt', breaking the match with 'breath'.
     """
-    VOWELS = set("aeiouy w h".replace(" ", ""))
-    return "".join(c for c in s.lower() if c not in VOWELS)
+    VOWELS = set("aeiouy w")  # Keep 'h' as consonant — it's a real sound in Arabic
+    result = "".join(c for c in s.lower() if c not in VOWELS)
+    # Drop 'h' from digraphs: gh→g, sh→s, th→t, kh→k, dh→d
+    # (re is already imported at module level)
+    result = re.sub(r'([gstkd])h', r'\1', result)
+    return result
 
 
 def _consonant_skeleton_latin(s: str) -> str:
@@ -291,15 +324,202 @@ _DRUG_HINT_TERMS = {
 # the classic "if all gone" mishearing). Each entry is well-known in the
 # Gulf clinical-ASR literature.
 _PHONETIC_ALIAS: Dict[str, str] = {
-    # 'اف اول قن' = 'EF ALL GONE' homophone of efferalgan
-    "afawlqn": "efferalgan",
-    "afaqln": "efferalgan",
-    "afawlqln": "efferalgan",
-    # 'اف يور قان' = 'EF YOUR GAN' another efferalgan mishearing
-    "afywrqan": "efferalgan",
-    "afywrqn": "efferalgan",
-    # 'اوغ من تين' was already handled by n-grams but list it as a sanity
-    "awqmntyn": "augmentin",
+    # =================================================================
+    # Efferalgan family: English "if all gone" / "if your gan" / "ever again"
+    # =================================================================
+    "afawlqn": "efferalgan",         # اف اول قن (if all gone)
+    "afaqln": "efferalgan",           # اف قالن  (if gallen)
+    "afawlqln": "efferalgan",         # اف اول قالن
+    "afywrqan": "efferalgan",         # اف يور قان (if your gan)
+    "afywrqn": "efferalgan",          # اف يور قن
+    "afyrqn": "efferalgan",           # اف ير قن  (ef-er-gan)
+    "afrqan": "efferalgan",           # افر قان
+    "afiragn": "efferalgan",          # افرجن
+    # =================================================================
+    # Augmentin: "aught men tin" / "og mentin" / "oagmentin"
+    # =================================================================
+    "awqmntyn": "augmentin",          # اوغ من تين (aught men teen)
+    "awgmnty": "augmentin",           # اوغمنتي
+    "awqmntn": "augmentin",           # اوغ متن (augment-n)
+    "awgmntyn": "augmentin",          # اومنتين
+    "awqmn": "augmentin",             # اوغمن (aug-men)
+    "awqmt": "augmentin",             # اوغمت (aug-met)
+    # =================================================================
+    # Amoxicillin: "amoxy cillin" / "mix a cillin"
+    # =================================================================
+    "amksylyn": "amoxicillin",        # اموكسي سيلين
+    "amwksylyn": "amoxicillin",       # اموكسيسيلين
+    "mksylyn": "amoxicillin",         # مكسيلين
+    "amksy": "amoxicillin",           # اموكسي
+    "amksylynb": "amoxicillin",       # اموكسيلينب
+    # =================================================================
+    # Paracetamol: "burse tamr" / "parassi tamol" / "barasetamol"
+    # =================================================================
+    "brsytml": "paracetamol",         # برسيتامل
+    "brastml": "paracetamol",         # براستامل
+    "brastamwl": "paracetamol",       # براستامول
+    "parastml": "paracetamol",        # پاراستامل
+    "pyrsytml": "paracetamol",        # پيرسيتامل
+    # =================================================================
+    # Ciprofloxacin: "cipro floxacin" / "siprofloxacin"
+    # =================================================================
+    "sybrwflwksasyn": "ciprofloxacin",  # سيبروفلوكساسين
+    "sprwflwks": "ciprofloxacin",     # سبروفلوكس
+    "sybrwflwks": "ciprofloxacin",    # سيبروفلوكس
+    # =================================================================
+    # Atorvastatin: "ator vastatin" / "atorvasta"
+    # =================================================================
+    "atwrfstasyn": "atorvastatin",    # اتورفاستاتين
+    "atwrfstatyn": "atorvastatin",    # اتورفاستاتين
+    "atwrfsta": "atorvastatin",       # اتورفاستا
+    # =================================================================
+    # Metformin: "met formin" / "mitformin" / "metaformin"
+    # =================================================================
+    "mitfwrmin": "metformin",         # ميتفورمين
+    "mtafwrmyn": "metformin",         # متافورمين
+    "matfwrmyn": "metformin",         # ميتفورمين
+    # =================================================================
+    # Nitroglycerin: "nitro glycerin" / "nitroglycerin"
+    # =================================================================
+    "nytrwghlsryn": "nitroglycerin",   # نيتروغلسرين
+    "nytrwglycryn": "nitroglycerin",  # نيتروغليسرين
+    "nytrwlscryn": "nitroglycerin",   # نيترولسيرين
+    # =================================================================
+    # Omeprazole: "ome prazole" / "omaprazole" / "lumiprazole"
+    # =================================================================
+    "awmbrazwl": "omeprazole",        # ومبرازول
+    "awmbraz": "omeprazole",          # ومبراز
+    "awmbrazawl": "omeprazole",        # ومبرازول
+    # =================================================================
+    # Prednisolone / Prednisone: "prednisolone" / "prednison"
+    # =================================================================
+    "bridnyswlyn": "prednisolone",    # بريدنيسولون
+    "bridnyswn": "prednisone",        # بريدنيسون
+    "bridnyslyn": "prednisolone",     # بريدنيسلون
+    "bridnyzwn": "prednisone",        # بريدنيزون
+    # =================================================================
+    # Clopidogrel: "clopi dogrel" / "clopidogrel" / "cloba dogrel"
+    # =================================================================
+    "klwbyjdwgrl": "clopidogrel",     # كلوبيدوجرل
+    "klwbydwgrl": "clopidogrel",      # كلوبيدوجرل
+    "klwbajwgrl": "clopidogrel",      # كلوباجوجرل
+    # =================================================================
+    # Warfarin: "war farin" / "warfarin" / "walfarin"
+    # =================================================================
+    "wrfaryn": "warfarin",            # ورفارين
+    "walfaryn": "warfarin",           # والفارين
+    "wrfar": "warfarin",              # ورفار
+    # =================================================================
+    # Heparin: "hep arin" / "heparin" / "ebarin"
+    # =================================================================
+    "hybaryn": "heparin",             # هيبارين
+    "hibrin": "heparin",              # هيبرين
+    "hbarn": "heparin",               # هبارن
+    # =================================================================
+    # Insulin: "in sulin" / "insulin" / "ansulin"
+    # =================================================================
+    "answlyn": "insulin",             # انسولين
+    "anslyn": "insulin",              # انسلين
+    "ynslyn": "insulin",              # ينسلين
+    # =================================================================
+    # Tramadol: "tra ma dol" / "tramadol" / "tramadol"
+    # =================================================================
+    "tramadwl": "tramadol",           # ترامادول
+    "tramdwla": "tramadol",           # ترامدولا
+    "trmdwl": "tramadol",             # ترامدول
+    # =================================================================
+    # Voltaren: "vol taren" / "voltaren" / "foltaren"
+    # =================================================================
+    "fwltrn": "voltaren",             # فولترن
+    "fwltr": "voltaren",              # فولتر
+    "fwltrn": "voltaren",             # فولترن
+    # =================================================================
+    # Azithromycin: "azithro mycin" / "azithromycin" / "azetromycin"
+    # =================================================================
+    "azythrwmysyn": "azithromycin",   # ازيثروميسين
+    "azythrmysyn": "azithromycin",    # ازيثروميسين
+    "aztrmysyn": "azithromycin",      # ازيتروميسين
+    # =================================================================
+    # Vancomycin: "vanco mycin" / "vancomycin" / "vankomycin"
+    # =================================================================
+    "fankwmaysyn": "vancomycin",      # فانكومايسين
+    "fankwmwmysyn": "vancomycin",     # فانكوموميسين
+    "wankwmysyn": "vancomycin",       # وانكوميسين
+    # =================================================================
+    # Levofloxacin: "levo floxacin" / "levofloxacin"
+    # =================================================================
+    "lyfwflwksasyn": "levofloxacin",  # ليفوفلوكساسين
+    "lyfwflwks": "levofloxacin",      # ليفوفلوكس
+    # =================================================================
+    # Metoprolol: "meto prolol" / "metopro" / "metobrolol"
+    # =================================================================
+    "mitwbrwlwl": "metoprolol",       # ميتوبرولول
+    "mitwprwlwl": "metoprolol",       # ميتوبرولول
+    # =================================================================
+    # Amlodipine: "amlo dipine" / "amladipine" / "amlodobene"
+    # =================================================================
+    "amlwdybyn": "amlodipine",        # املوديبين
+    "amlydbyn": "amlodipine",         # امليديبين
+    # =================================================================
+    # Ativan / Lorazepam: "ati van" -> "lorazepam"
+    # =================================================================
+    "atyfan": "lorazepam",            # اتيفان (ativan brand → lorazepam)
+    "lwrazbam": "lorazepam",          # لورازبام
+    # =================================================================
+    # Xanax / Alprazolam: "xanax" / "zanax" / "sanas"
+    # =================================================================
+    "zanaks": "alprazolam",           # زاناكس (xanax → alprazolam)
+    "snaks": "alprazolam",             # سناكص
+    # =================================================================
+    # Morphine: "mor phine" / "morphine" / "murfin"
+    # =================================================================
+    "mwrfyn": "morphine",             # مورفين
+    "murfin": "morphine",             # مورفين
+    # =================================================================
+    # Codeine: "co deine" / "codeine" / "kuwaitin"
+    # =================================================================
+    "kwdyn": "codeine",               # كودين
+    "kwtyn": "codeine",               # كوتين (kuwait-teen)
+    "kwdyyn": "codeine",              # كوديين
+    # =================================================================
+    # Diazepam / Valium: "valium" / "falium" / "balium"
+    # =================================================================
+    "falywm": "diazepam",             # فاليوم (valium → diazepam)
+    "balywm": "diazepam",             # باليوم
+    # =================================================================
+    # Fluconazole: "flu conazole" / "fluconazole" / "fulcanazole"
+    # =================================================================
+    "flwknazwl": "fluconazole",       # فلوكنازول
+    "flkwnazwl": "fluconazole",       # فلكونازول
+    # =================================================================
+    # Pantoprazole: "panto prazole" / "pantozole" / "bantoprazole"
+    # =================================================================
+    "fantwbrazwl": "pantoprazole",    # فانتب رازول
+    "bantwbrazwl": "pantoprazole",    # بانتب رازول
+    # =================================================================
+    # Misoprostol: "miso prostol" / "mesoprostol"
+    # =================================================================
+    "myswbrwstwl": "misoprostol",     # ميسوبروستول
+    "myzbrstwl": "misoprostol",       # ميزبروستول
+    # =================================================================
+    # Aspirin: "as prin" / "aspirin" / "asbarin" / "estern"
+    # =================================================================
+    "asbryn": "aspirin",              # اسبرين (NO DUPLICATE — kept intentionally for Estren mishearing)
+    "asbarn": "aspirin",              # اسبرن
+    # =================================================================
+    # Ceftriaxone: "cef triaxone" / "ceftriaxone" / "seftriakson"
+    # =================================================================
+    "syftryakswn": "ceftriaxone",     # سيفترياكسون
+    "sftryakswn": "ceftriaxone",      # سفترياكسون
+    # =================================================================
+    # Flagyl: "flag yl" / "flagil" / "felagyl"
+    # =================================================================
+    "flajyl": "flagyl",               # فلاجيل
+    # =================================================================
+    # Ibuprofen: "ibu pro fen" / "ibuprofen" / "iboprufin"
+    # =================================================================
+    "aybwbrwfyn": "ibuprofen",        # ايبوبروفين
+    "ybwbrwfyn": "ibuprofen",         # يبوبروفين
 }
 
 
@@ -462,10 +682,26 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     flags: List[Dict[str, Any]] = []
     consumed: set = set()
 
-    # Compute single-word candidates once (used by both single + n-gram passes).
+    # Stage A: Compute suspicion scores as a pre-filter BEFORE any phonetic matching.
+    # Words scoring below SUSPICION_THRESHOLD are safe — skip entirely.
+    # Suspicious words go to Stage B for phonetic candidate generation.
+    # Context windows (2 words each side) are passed to score_suspicion()
+    # so the LM perplexity and semantic coherence signals can fire.
+
+    # --- LLM suspicion scorer (Stage A+): call once for the whole transcript ---
+    # This makes a single API call — cache handles dedup within the 5-min TTL.
+    # On failure (timeout/rate-limit), llm_scores is None and we fall through
+    # to the algorithmic signals cleanly.
+    llm_scores = llm_scorer.score_words(words, timeout=20.0)
+
     single_results: List[Optional[List[Dict[str, Any]]]] = []
-    for word in words:
-        if _is_arabic_filler(word):
+    for i, word in enumerate(words):
+        left_ctx = words[max(0, i - 2):i]
+        right_ctx = words[i + 1:i + 3]
+        llm_val = llm_scores.get(i, 0.0) if llm_scores is not None else None
+        susp = score_suspicion(word, left_context=left_ctx, right_context=right_ctx,
+                               llm_suspicion=llm_val)
+        if susp < SUSPICION_THRESHOLD:
             single_results.append(None)
             continue
         single_results.append(_phonetic_candidates(word, lexicon, k=3))
@@ -637,6 +873,145 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
+# Auto-detection: Arabic normalcy via lexicon skeleton matching
+# ---------------------------------------------------------------------------
+
+# Cache of Latin consonant skeletons from the medical lexicon (term + aliases).
+# Precomputed once so _is_arabic_normalcy() can check efficiently whether an
+# Arabic word could possibly be a medical transliteration.
+_LEXICON_SKELETONS: List[str] = []
+_LEXICON_SKELETONS_LOADED = False
+# Path to the primary medical lexicon (JSONL with term/type/aliases/priority)
+_LEXICON_MEDICAL_PATH = PROJECT_ROOT / "data" / "medical_lexicon.jsonl"
+
+
+def _load_lexicon_terms() -> List[str]:
+    """Load all terms + aliases from the medical_lexicon.jsonl file."""
+    terms: List[str] = []
+    if not _LEXICON_MEDICAL_PATH.exists():
+        return terms
+    with _LEXICON_MEDICAL_PATH.open("r", encoding="utf-8") as f:
+        for line in f:
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = json.loads(line)
+                term = entry.get("term", "")
+                if term:
+                    terms.append(term)
+                for alias in entry.get("aliases", []):
+                    if alias:
+                        terms.append(alias)
+            except json.JSONDecodeError:
+                continue
+    return terms
+
+
+def _ensure_lexicon_skeletons() -> None:
+    """Precompute Latin consonant skeletons for all lexicon terms + aliases.
+
+    This is called once (lazily) and cached.  Each term is converted to a
+    Latin consonant skeleton via _consonant_skeleton_latin(), which strips
+    vowels and maps p→b, v→f, c→k, etc.  The resulting set of skeletons is
+    used by _is_arabic_normalcy() to check if an Arabic word's skeleton
+    could possibly match any known medical term.
+    """
+    global _LEXICON_SKELETONS, _LEXICON_SKELETONS_LOADED
+    if _LEXICON_SKELETONS_LOADED:
+        return
+    terms = _load_lexicon_terms()
+    seen: set = set()
+    for term in terms:
+        lat = re.sub(r"[^a-z]", "", term.lower())
+        # Skip very short terms — they produce trivial skeletons
+        if not lat or len(lat) < 4:
+            continue
+        sk = _consonant_skeleton_latin(lat)
+        if sk and len(sk) >= 3:
+            seen.add(sk)
+    _LEXICON_SKELETONS = list(seen)
+    _LEXICON_SKELETONS_LOADED = True
+
+
+def _clear_lexicon_skeleton_cache() -> None:
+    """Invalidate the skeleton cache so new lexicon terms are picked up.
+
+    Called when the user teaches a new term via /api/teach.
+    """
+    global _LEXICON_SKELETONS, _LEXICON_SKELETONS_LOADED
+    _LEXICON_SKELETONS = []
+    _LEXICON_SKELETONS_LOADED = False
+
+
+def _is_arabic_normalcy(word: str) -> bool:
+    """Check if an Arabic word is almost certainly normal Arabic (not a
+    medical transliteration), by verifying that its consonant skeleton does
+    NOT match any term in the medical lexicon above a low threshold.
+
+    How it works:
+      1. Transliterate the Arabic word to Latin.
+      2. Compute the Arabic consonant skeleton (strips vowels, 'w', 'y'
+         that represent long vowel markers, and digraph 'h').
+      3. If the skeleton is too short (< 3 chars), it cannot be a meaningful
+         medical transliteration → return True (normal Arabic).
+      4. Compare against ALL precomputed Latin lexicon skeletons using
+         fuzzy Levenshtein ratio.
+      5. If ANY lexicon skeleton scores >= 40% similarity, the word COULD
+         be a medical transliteration → return False.
+      6. If no match above threshold, the word is normal Arabic → return True.
+
+    The 40% threshold is calibrated to be MORE permissive than the
+    phonetic_candidates threshold (45%), ensuring that we never block a
+    genuine transliteration at this gate.  Words that pass through here
+    (return False) still go through the full scoring pipeline which has
+    a much higher acceptance bar (~80%).
+
+    Returns True if the word should be treated as normal Arabic (skip it).
+    Returns False if the word COULD be a medical transliteration.
+    """
+    # Only applies to Arabic-script words
+    if not _ARABIC_LETTER_RE.search(word):
+        return True
+
+    _ensure_lexicon_skeletons()
+    # If the lexicon is empty, we can't check — let the word through
+    # (the downstream scoring pipeline will handle it).
+    if not _LEXICON_SKELETONS:
+        return False
+
+    # Transliterate and strip clitics (e.g. الـ prefix)
+    translit = _translit(word, strip_clitics=True)
+    if not translit or len(translit) < 3:
+        return True  # Too short to be a meaningful medical transliteration
+
+    # Compute Arabic consonant skeleton
+    arabic_sk = _consonant_skeleton_ar(translit)
+    if not arabic_sk or len(arabic_sk) < 3:
+        return True  # Skeleton too short for meaningful comparison
+
+    # Quick length-ratio pre-filter: if the Arabic skeleton is less than
+    # 35% the length of the longest Latin skeleton, skip immediately.
+    # Most Arabic transliterations have skeletons 3-7 chars (same as Latin).
+    for latin_sk in _LEXICON_SKELETONS:
+        if len(latin_sk) < 3:
+            continue
+        # Length ratio pre-filter: skeletons must be within 65% of each other
+        len_ratio = len(arabic_sk) / max(1, len(latin_sk))
+        if len_ratio < 0.35 or len_ratio > 3.0:
+            continue
+
+        # Fuzzy score on consonant skeletons
+        sim = float(_rapidfuzz.ratio(arabic_sk, latin_sk))
+        # Threshold: >= 40% similarity → potentially a transliteration
+        if sim >= 40.0:
+            return False  # Could be a medical transliteration — don't block
+
+    # No match found above threshold → almost certainly normal Arabic
+    return True
+
+
+# ---------------------------------------------------------------------------
 # Arabic filler words: pronouns, prepositions, common verbs, conjunctions.
 # These can sometimes phonetic-match a disease name by accident (e.g.
 # 'الاكل' -> 'flagyl'). We never flag them.
@@ -648,11 +1023,40 @@ _ARABIC_FILLER = {
     "اذا", "ان", "انت", "انا", "هو", "هي", "هم", "هذا", "هذه", "ذلك",
     "كل", "لا", "ما", "لم", "لن", "قد", "ثم", "او", "اي", "كما", "تحت",
     "فوق", "بين", "حول", "بدون", "غير", "نفس", "بنفس",
+    # greetings & polite forms
+    "السلام", "سلام", "عليكم", "مرحبا", "اهلا", "أهلا", "شكرا", "عفوا",
+    "معليش", "معلش", "ياليت", "ياريت", "لو", "لكن", "بس", "بس",
+    # common verbs (Gulf dialect)
+    "بدا", "بدأ", "يبدا", "يبدأ", "يشتكي", "اشتكى", "أخذ", "أخد", "ياخذ",
+    "يأخذ", "بينت", "بين", "نبين", "تبين", "ونسوي", "نسوي", "سوينا",
+    "يسوي", "تم", "لاحظ", "لاحظنا", "يلاحظ", "ظهر", "يظهر", "يقول",
+    "قال", "قلت", "نقول",
+    # common adjectives
+    "بسيط", "خفيف", "خفيفة", "شديد", "شديدة", "مزمن", "مزمنة", "حاد", "حادة",
+    # pronouns & demonstratives
+    "فيه", "فيها", "فيهم", "عليه", "عليها", "عليهم",
+    "هذا", "هذه", "ذلك", "هذي", "هذول", "الي", "اللي",
+    "إنه", "أنه", "إنها", "أنها", "إنهم", "أنهم",
+    # conjunctions & adverbs
+    "كذلك", "أيضا", "ايضا", "هكذا", "كمان", "برضه", "برضو",
+    "حاليا", "سابقا", "لاحقا", "اخر", "آخر", "اخرى", "أخرى",
+    # anatomical / medical context words (NOT drug/disease names)
+    "يمتد", "لليسار", "لليمين", "يسار", "يمين",
+    "متابعة", "فحص", "نتيجة", "نتيجه", "تشخيص", "علاج",
     # common verbs (Gulf imperatives + frequent forms)
     "خذ", "خذي", "خذو", "خود", "اخذ", "اخذي", "تاخذ", "تاخذي",
-    "قال", "قالت", "قلت", "اعطاني", "اعطته", "اعطيه", "استعمل",
+    "قال", "قالت", "قلت", "اعطاني", "اعطته", "اعطيه", "اعطاء", "أعطاء",
+    "استعمل",
     "استعملي", "ابي", "اروح", "احس", "تعبان", "وصف", "خليه",
     "خليني", "روح", "تعال", "اجلس", "ينفع", "يصحى", "يطلب",
+    # code-switch function words (Arabic-script renditions of English words
+    # that are NOT medical terms — must not be matched against the lexicon)
+    "اوف", "أوف", "اف", "أن", "ال", "ذ", "ذيز", "ذات",
+    "فور", "فار", "ان", "اند", "بت", "باي",
+    # Arabic prepositional phrases & pronouns
+    "ومعاه", "ومعها", "معاه", "معها", "عنده", "عندها", "عندي",
+    "عندك", "عندكم", "اللي", "الي", "الذي", "التي",
+    "بعدين", "هني", "هناك", "دائما", "احيانا", "كثير", "شوي",
     # body / symptom / anatomy words
     "صداع", "دوخه", "تعب", "حرارة", "الم", "وجع", "ضيق",
     "نفس", "ربو", "سكر", "ضغط", "ظهر", "ظهري", "حلق", "بطن",
@@ -681,7 +1085,8 @@ _ARABIC_FILLER = {
     "ستين", "سبعين", "ثمانين", "تسعين", "وعشرين", "وثلاثين",
     "ومايه", "ولفين", "ثلث", "ربع", "نصف",
     # honorifics / roles
-    "الدكتور", "الطبيب", "الصيدلي", "ابني", "امي", "ابي", "اختي",
+    "الدكتور", "دكتور", "الطبيب", "طبيب", "الصيدلي", "صيدلي",
+    "ابني", "امي", "ابي", "اختي",
     "اخوي", "خالي", "خالتي", "عمي", "عمتي", "جدي", "جدتي",
     "المريض", "المريضه", "الوصفه", "الوصفة", "الفحص", "تحليل",
     "اشعه", "اشعة", "صوره", "صورة", "موعد", "اخصائي", "طبيب",
@@ -708,26 +1113,549 @@ _ARABIC_FILLER = {
     "هند", "ريم", "لمى", "شهد", "غلا", "العنود", "الجوهره",
     # Tribal/family-name particles (al-, ibn-, abu-, umm-)
     "ابو", "أبو", "ام", "أم", "ابن", "بنت", "بن", "بنت",
+    # time / quantity words
+    "سنة", "سنه", "سنين", "سنوات", "سنتين",
+    "شهر", "شهرين", "اشهر", "أشهر",
+    "حوالي", "تقريبا", "تقريباً",
+    "ساعة", "ساعه", "ساعتين",
+    # verbs / adjectives (Gulf medical context)
+    "يمتد", "تمتد",
+    "مجهود",
+    "جا", "جات", "يجي",
+    "خلص", "خلاص", "يخلص",
+    "باقي",
+    # nouns / qualifiers
+    "الألم", "الالم",
+    "الأم",
+    "شي", "شى",
+    "لان", "لأن", "لانه", "لأنه",
+    "وهو", "وهي", "وهم",
+    "كيف", "اشلون", "شلون",
     # identity / possession words
     "اسم", "اسمي", "اسمك", "اسمه", "اسمها", "عمري", "عمرك", "عمره",
     "بلدي", "بلدك", "جنسيتي", "رقمي", "هاتفي", "تلفوني",
+    # Gulf Arabic clinical words (common in dictations, not drug names)
+    "مريض", "مرتفع", "منخفض", "طبيعي", "ممتاز",
+    "لازم", "ضروري", "ممكن", "لابد", "فقط",
+    "وايد", "مره", "قليل", "كثير",
+    "قسنا", "قست", "يقيس",
+    "نغير", "يغير", "غيرنا",
+    "نحتاج", "احتاج", "يحتاج",
+    "نقدر", "يقدر", "قدرنا",
+    "راح", "نروح", "يروح",
+    "مال", "حساب",
+    "حق", "بخصوص",
+    "لذلك", "لهذا", "هكذا",
+    "بعض", "نفس",
+    # additional anatomy / symptom words
+    "جرح", "كسر", "خلع", "ورم", "نزيف", "حروق",
+    # additional time / quantity words
+    "دقيقه", "دقيقة", "دقايق", "دقائق",
+    # ================================================================
+    # Common Gulf clinical words (MUST be here to prevent false
+    # positives from English transliteration matching).
+    # These are normal Arabic words — NOT medical transliterations.
+    # ================================================================
+    # Verbs — daily actions in clinical dictation
+    "حضر", "يحضر", "حضور",
+    "بدأ", "بدا", "بدأت", "بدات", "يبدأ", "يبدا",
+    "صار", "صارت", "وصار", "وصارت",
+    "عمل", "يعمل", "أعمل", "نعمل", "تعمل",
+    "عملنا", "عملت", "عملوا",
+    "أعمل", "تعمل", "نعمل",
+    "شمل", "يشمل", "تشمل", "يتضمن", "تتضمن",
+    "أظهر", "اظهر", "أظهرت", "اظهرت", "وأظهرت", "تظهر", "يظهر",
+    "يحتاج", "تحتاج", "احتاج", "نحتاج",
+    "يدخل", "ادخال", "إدخال", "يدخل", "إجراء", "اجراء", "أجرى",
+    # Nouns — common in clinical reports
+    "عام", "شامل",
+    "خفان", "خفقان", "خفكان", "خفقان",
+    "تنفس", "التنفس",
+    "نبض", "نبضة", "نبضات",
+    "نسبة", "نسب",
+    "أكسجين", "اكسجين", "الأكسجين", "الاكسجين",
+    "أوكسجين", "اوكسجين",
+    "شفة", "شفتين", "الشفتين",
+    "ساق", "ساقين", "الساقين",
+    "ماض", "ماضية", "ماضيين", "الماضيين",
+    "اضطراب", "اضطرابات", "الاضطراب",
+    "ضرابات",  # common Gulf misspelling of اضطرابات
+    "اضظراب", "اضظرابات",  # additional common misspellings
+    "نسيان", "النسيان",
+    "تورم", "انتفاخ",
+    "ازرقاق", "زرقة",
+    "مخبري", "مخبرية", "مخبريه",
+    "ارتفاع", "ارتفاح",
+    "هيموغلوبين",
+    "ارتشاح", "ارتشاحات",
+    "رئة", "الرئة", "رئوي",
+    "تخطيط",
+    "احتشاء",
+    "حديث",
+    "مضاد", "مضادات",
+    "حيوي", "حيوية", "حيويه", "الحيوية",
+    "علامة", "علامات",
+    "تسارع",
+    "نقص", "ناقص",
+    "ألم", "الم", "الالم", "الألم",
+    "إصابة", "اصابة",
+    "فحوصات", "اختبار", "اختبارات",
+    "جراحة", "عمليه", "عملي",
+    "أشعة", "اشعة",
+    "إبرة", "ابره", "ابرة",
+    # Adjectives — clinical descriptions
+    "أسوأ", "اسوأ", "أسوء",
+    "منتظم", "منتضام",
+    "تدريجي", "تدريجية", "تدريجيا", "تدريجياً",
+    "واضح", "واضحة", "واضحه",
+    "حالي", "حالية", "الحالي", "الحالية",
+    # Prepositions / conjunctions / particles
+    "بشكل",
+    "انتظام",  # allows بانتظام (ب+انتظام) via clitic stripping
+    "إنتظام",  # hamza variant allows بإنتظام (ب+إنتظام)
+    "بسبب",
+    "أكثر", "اكثر",
+    "أيام", "ايام",
+    "بالمئة", "بالمائة", "بالميه",
+    # Numbers (verbal)
+    "أربعة", "اربعة",
+    "ستة",
+    "سبعة",
+    "ثمانية",
+    "تسعة",
+    # Hamza forms (أ/إ variants of existing filler words)
+    # These MUST be here to prevent the Arabic spelling corrector
+    # from "correcting" أ→ا (which is wrong direction in MSA).
+    "أعراض",  # symptoms (with hamza above) — NOT اعراض
+    "إعطاء",  # giving (with hamza below) — NOT اعطاء
+    "ألم", "الالم", "الألم",  # pain (with hamza above)
+    "أخذ", "يأخذ", "تأخذ",  # take/takes
+    "أسبوع", "أسبوعين", "أسابيع",  # week/weeks
+    "إصابة", "أصابة",  # injury
+    # Additional hamza variants for common words
+    "إلا", "ألا",
+    "إلى",
+    "أي",
+    "أين",
+    "أمام",
 }
 
 
 def _is_arabic_filler(word: str) -> bool:
-    # Strip definite article + waw conjunction for matching, then compare.
-    w = word
-    for pre in ("و", "ال", "وال", "بال", "كال", "فال", "لل", "ف", "ب", "ل", "ك"):
-        if w.startswith(pre) and len(w) > len(pre):
-            stripped = w[len(pre):]
-            if stripped in _ARABIC_FILLER:
-                return True
-    return word in _ARABIC_FILLER
+    """Check if an Arabic word is a known filler/normal word that should
+    NOT be treated as a potential medical transliteration.
+
+    Single-gate design: relies entirely on _is_arabic_normalcy(), which
+    compares the word's consonant skeleton against the full medical lexicon.
+    If no skeleton reaches 40% similarity, the word is almost certainly
+    normal Arabic → treat it as filler.
+
+    NOTE: The _ARABIC_FILLER set (defined above) is intentionally NOT used
+    as a fast path here. A manual whitelist is fragile — it must be kept in
+    sync with the lexicon and clinical vocabulary. The auto-detection via
+    consonant skeleton matching handles the full distribution of Arabic
+    clinical words without manual maintenance. The _ARABIC_FILLER set is
+    preserved only for backward compatibility (correction.py imports it
+    as a vocabulary for the Arabic spelling corrector).
+
+    Returns True if the word is normal Arabic (skip suspicion entirely).
+    Returns False if the word COULD be a medical transliteration.
+    """
+    if _ARABIC_LETTER_RE.search(word):
+        return _is_arabic_normalcy(word)
+    return False
 
 
-# Latin-only words (no Arabic letters) or pure digits / Arabic-Indic digits.
-_ARABIC_DIGIT_RE = re.compile(r"^[0-9\u0660-\u0669\u06f0-\u06f9]+$")
-_ARABIC_LETTER_RE = re.compile(r"[\u0600-\u06ff]")
+# ---------------------------------------------------------------------------
+# Feedback loop: record high-confidence corrections so Stage A learns
+# which Arabic transliteration skeletons are genuinely medical.
+# ---------------------------------------------------------------------------
+
+# Maps (consonant_skeleton, language_tag) -> count of confirmed corrections.
+# Populated by _record_correction() calls from apply_high_confidence_corrections().
+# Stage A uses this to boost suspicion scores for skeletons that have been
+# corrected before, making the pipeline self-improving over time.
+_CORRECTION_FEEDBACK: Dict[Tuple[str, str], int] = {}
+
+
+def _record_correction(original_word: str, corrected_term: str) -> None:
+    """Record a high-confidence correction so Stage A becomes more
+    sensitive to the same transliteration skeleton in future transcripts.
+
+    The key is (consonant skeleton of original, 'ar'|'en') so we learn
+    specific transliteration patterns rather than generic boosts.
+    """
+    if not original_word or not corrected_term:
+        return
+    is_arabic = bool(_ARABIC_LETTER_RE.search(original_word))
+    tag = 'ar' if is_arabic else 'en'
+    # Compute the consonant skeleton of the original word after transliteration
+    if is_arabic:
+        translit = _translit(original_word, strip_clitics=True)
+        sk = _consonant_skeleton_ar(translit) if len(translit) >= 3 else original_word.lower()
+    else:
+        sk = _consonant_skeleton_latin(original_word.lower())
+        if not sk or len(sk) < 3:
+            sk = original_word.lower()[:6]
+    key = (sk, tag)
+    _CORRECTION_FEEDBACK[key] = _CORRECTION_FEEDBACK.get(key, 0) + 1
+    # Also record a more general version: first 4 chars of the skeleton
+    # so 'brstml' (paracetamol) and 'brsytml' both contribute to 'brs'
+    # Only if the prefix is different from the full key (avoids double-count
+    # when skeleton is exactly 4 chars, e.g. 'hstr' for 'history').
+    if len(sk) >= 4:
+        gen_key = (sk[:4], tag)
+        if gen_key != key:
+            _CORRECTION_FEEDBACK[gen_key] = _CORRECTION_FEEDBACK.get(gen_key, 0) + 1
+
+
+def _get_feedback_boost(word: str) -> float:
+    """Check if this word's skeleton has been seen in previous high-confidence
+    corrections. Returns a boost value 0.0-0.20 based on correction count."""
+    if not _CORRECTION_FEEDBACK:
+        return 0.0
+    is_arabic = bool(_ARABIC_LETTER_RE.search(word))
+    tag = 'ar' if is_arabic else 'en'
+    # Compute skeleton the same way _record_correction does
+    if is_arabic:
+        translit = _translit(word, strip_clitics=True)
+        sk = _consonant_skeleton_ar(translit) if len(translit) >= 3 else word.lower()
+    else:
+        sk = _consonant_skeleton_latin(word.lower())
+        if not sk or len(sk) < 3:
+            return 0.0
+    # Check exact match
+    count = _CORRECTION_FEEDBACK.get((sk, tag), 0)
+    # Check partial match (first 4 chars of skeleton)
+    if count == 0 and len(sk) >= 4:
+        count = _CORRECTION_FEEDBACK.get((sk[:4], tag), 0)
+    # Check partial match (first 3 chars)
+    if count == 0 and len(sk) >= 3:
+        count = _CORRECTION_FEEDBACK.get((sk[:3], tag), 0)
+    if count <= 0:
+        return 0.0
+    # Scale: 1 correction → 0.05, 2 → 0.08, 3+ → 0.12
+    # (deliberately modest so feedback doesn't dominate other signals)
+    if count == 1:
+        return 0.05
+    elif count == 2:
+        return 0.08
+    elif count == 3:
+        return 0.10
+    else:
+        return min(0.15, 0.10 + 0.02 * (count - 3))
+
+
+# ---------------------------------------------------------------------------
+# Stage A: Suspicion Scoring — lexicon-independent pre-filter
+# ---------------------------------------------------------------------------
+
+# Suspicion score constants (0.0 = definitely safe, higher = more suspicious)
+SUSPICION_SCORE_NONE = 0.0      # Definitely not suspicious — skip entirely
+SUSPICION_SCORE_LOW = 0.05      # Minimal baseline suspicion (default for Latin)
+SUSPICION_SCORE_MED = 0.15      # Medium suspicion (Arabic, not a known filler)
+SUSPICION_SCORE_HIGH = 0.50     # High suspicion
+
+# Stage A fusion threshold: words scoring >= this enter Stage B
+SUSPICION_THRESHOLD = 0.10
+
+# LM perplexity scaling: typical word PPL is 0.5-5.0, errors can be 10+
+# We map PPL to 0-1 via: suspicion = 1 - exp(-PPL / LM_PPL_SCALE)
+LM_PPL_SCALE = 4.0
+
+# Weights for algorithmic baseline (when LLM is not available, or as the
+# pre-gate score when LLM is available). Must sum to 1.0.
+WEIGHT_NO_LLM_NORMALCY    = 0.30
+WEIGHT_NO_LLM_PERPLEXITY  = 0.35
+WEIGHT_NO_LLM_SEMANTIC    = 0.20
+WEIGHT_NO_LLM_FEEDBACK    = 0.15
+
+# ---------------------------------------------------------------------------
+# Lazy-loaded n-gram language model for context perplexity scoring
+# ---------------------------------------------------------------------------
+
+_LM_CACHE: Optional['NGramLM'] = None
+
+
+def _load_lm() -> Optional['NGramLM']:
+    """Load the trained n-gram LM lazily (first call caches it)."""
+    global _LM_CACHE
+    if _LM_CACHE is not None:
+        return _LM_CACHE
+    try:
+        from pathlib import Path
+        from .ngram_lm import NGramLM
+        pkl_path = Path(__file__).resolve().parent / "medical_lm.pkl"
+        if pkl_path.exists():
+            _LM_CACHE = NGramLM.load(str(pkl_path))
+            return _LM_CACHE
+    except Exception:
+        pass
+    return None
+
+
+# ---------------------------------------------------------------------------
+# English words that are common in clinical transcripts — safe-list
+# ---------------------------------------------------------------------------
+
+_COMMON_ENGLISH: set = {
+    "that", "this", "these", "those", "which", "what", "when", "where",
+    "there", "their", "them", "they", "your", "yours", "some", "such",
+    "than", "then", "also", "very",
+    "been", "being", "having", "doing", "make", "made", "take", "took",
+    "taken", "given", "said", "tell", "told", "know", "known", "think",
+    "need", "needs", "want", "wants", "like", "come", "came", "feel",
+    "felt", "keep", "keeps", "show", "start", "starts", "stop", "stops",
+    "call", "calls", "use", "uses", "used", "using", "see", "saw", "seen",
+    "look", "looks", "find", "finds", "found", "help", "helps", "work",
+    "works", "worked",
+    "about", "above", "after", "again", "against", "almost", "along",
+    "always", "around", "away", "back", "before", "behind", "below",
+    "between", "beyond", "close", "during", "early", "ever", "every",
+    "first", "forward", "here", "high", "inside", "last", "later",
+    "left", "long", "more", "much", "near", "never", "next", "often",
+    "once", "only", "open", "other", "outside", "over", "past",
+    "quite", "rather", "really", "right", "since", "still", "sure",
+    "through", "thus", "today", "together", "tomorrow", "under",
+    "until", "upon", "well", "while", "whole", "within", "without",
+    "today", "yesterday", "tomorrow", "morning", "afternoon", "evening",
+    "night", "week", "weeks", "month", "months", "year", "years",
+    "time", "times", "hour", "hours", "minute", "minutes", "day", "days",
+    "patient", "doctor", "nurse", "hospital", "clinic", "office", "home",
+    "family", "people", "child", "wife", "husband", "mother", "father",
+    "brother", "sister", "baby", "adult",
+    "able", "better", "best", "clear", "cold", "common", "different",
+    "easy", "full", "good", "great", "hard", "heavy", "hot", "important",
+    "large", "little", "major", "minor", "normal", "old", "other",
+    "poor", "possible", "quick", "ready", "right", "same", "second",
+    "short", "simple", "small", "strong", "sure", "true", "usual",
+    "warm", "weak", "wide", "young",
+    "reason", "result", "results", "cause", "problem", "problems",
+    "issue", "issues", "condition", "change", "changes", "check",
+    "checked", "course", "plan", "plans", "care", "test", "tests",
+    "tested", "report", "reports", "noted", "note", "notes", "list",
+    "type", "types", "set", "group", "number", "level", "levels",
+    "point", "points", "part", "parts", "way", "ways", "side", "sides",
+    "step", "steps", "case", "cases", "sample", "samples", "value",
+    "values", "range", "ranges", "rate", "rates", "count", "counts",
+    "total", "average", "current", "previous", "initial", "final",
+    "stable", "typical", "routine", "regular", "frequent", "severe",
+    "mild", "moderate", "slight", "slightly",
+    # Clinical context words (frequently appear in dictation, not medical terms)
+    "please", "review", "department", "biopsy", "examination",
+    "examine", "examined", "continuing", "continue", "continued",
+    "status", "treatment", "therapy", "infection", "disease",
+    "team", "clinic", "follow", "followed", "refer", "referred",
+    "assessment", "evaluation", "consultation", "admission",
+    "discharge", "discharged", "transfer", "transferred",
+    "require", "requires", "required", "provide", "provided",
+    "perform", "performed", "schedule", "scheduled",
+    "complete", "completed", "consider", "considered",
+    "recommend", "recommended", "monitor", "monitored",
+    "remain", "remains", "remained", "started",
+    "setting", "already", "promyelocytic", "leukemia",
+    "hematology", "all", "trans", "retinoic", "acid",
+    "coagulopathy", "risk", "clean", "physical",
+    "unremarkable", "here", "place", "time",
+    "vital", "signs", "stable",
+    "scan", "mri", "ct", "xray", "x-ray", "ultrasound",
+    "lab", "labs", "result", "results",
+    "symptom", "symptoms", "complaint", "complaints",
+    "chief", "pain", "fever", "cough", "nausea", "vomiting",
+    "diarrhea", "headache", "fatigue", "weakness", "weight",
+    "appetite", "sleep",
+    "both", "upper", "lower", "left", "right", "central",
+    "proximal", "distal", "medial", "lateral", "anterior",
+    "posterior", "superior", "inferior",
+    "blood", "pressure", "heart", "rate", "temperature",
+    "respiratory", "saturation", "oxygen",
+    "body", "mass", "index", "bmi",
+    "the", "one", "two", "three", "four", "five", "six", "seven", "eight",
+    "nine", "ten", "eleven", "twelve", "hundred", "thousand",
+    "single", "double", "triple",
+}
+
+
+def _normalize_ppl(ppl: float) -> float:
+    """Map LM perplexity to a 0-1 score.
+    PPL=0 → 0.0 (very expected), PPL=10 → ~0.92 (very surprising)."""
+    return 1.0 - math.exp(-ppl / LM_PPL_SCALE)
+
+
+def _context_perplexity(word: str, left_context: List[str]) -> float:
+    """Compute LM perplexity of word given its left context.
+
+    Returns a 0-1 suspicion score, or 0.0 if no LM is available.
+    """
+    lm = _load_lm()
+    if lm is None:
+        return 0.0
+    try:
+        ppl = lm.word_perplexity(word, left_context)
+        return _normalize_ppl(ppl)
+    except Exception:
+        return 0.0
+
+
+def _semantic_coherence(word: str, left_context: List[str], right_context: List[str]) -> float:
+    """Compute context-aware coherence score.
+
+    Detects script-mismatch anomalies: an English word surrounded by
+    Arabic (or vice versa) is more suspicious because the ASR may have
+    produced a wrong word that happens to be in the wrong script.
+
+    Also detects when a word's character shape is unusual for its
+    script (e.g., mixed Arabic-Latin letters in a single token).
+
+    Returns 0.0-1.0 where higher = more suspicious.
+    """
+    score = 0.0
+
+    # Signal 1: Script mismatch with context
+    has_arabic = bool(_ARABIC_LETTER_RE.search(word))
+    has_latin = bool(re.search(r'[a-zA-Z]', word))
+
+    # Count Arabic/Latin in context
+    ctx_words = left_context[-2:] + right_context[:2]
+    ctx_arabic = sum(1 for w in ctx_words if _ARABIC_LETTER_RE.search(w))
+    ctx_latin = sum(1 for w in ctx_words if re.search(r'[a-zA-Z]', w))
+    total_ctx = len(ctx_words)
+
+    if total_ctx >= 2:
+        # If word is Arabic but most context is Latin (or vice versa): suspicious
+        if has_arabic and not has_latin:
+            # Arabic word in mostly Latin context → could be transliteration
+            if ctx_latin >= ctx_arabic and ctx_latin >= 2:
+                score = max(score, 0.15)
+        elif has_latin and not has_arabic:
+            # Latin word in mostly Arabic context → could be ASR hallucination
+            if ctx_arabic >= ctx_latin and ctx_arabic >= 2:
+                score = max(score, 0.10)
+
+    # Signal 2: Mixed-script tokens are almost always ASR errors
+    if has_arabic and has_latin:
+        score = max(score, 0.30)
+
+    # Signal 3: Pure digits surrounded by letters (likely a measurement)
+    # Not suspicious — handled by _ARABIC_DIGIT_RE earlier.
+
+    return score
+
+
+def score_suspicion(
+    word: str,
+    left_context: Optional[List[str]] = None,
+    right_context: Optional[List[str]] = None,
+    llm_suspicion: Optional[float] = None,
+) -> float:
+    """Stage A: Return a suspicion score for a word by fusing multiple
+    lexicon-independent signals.
+
+    Returns a value 0.0–1.0 where:
+      0.0 = definitely not suspicious (safe — skip correction)
+      >= SUSPICION_THRESHOLD (0.10) = potentially suspicious
+
+    Fusion method: MULTIPLICATIVE LLM GATING (not additive weights).
+
+    First, the algorithmic baseline is computed from 4 signals:
+      1. Normalcy (30%): Arabic auto-detection via _is_arabic_normalcy().
+         Normal Arabic words → 0.0. Possible transliterations → 0.3+.
+         Latin words not in _COMMON_ENGLISH → 0.05 baseline.
+      2. LM Perplexity (35%): does this word fit its context? N-gram LM
+         computes -log P(word | context). Higher = more suspicious.
+      3. Semantic Coherence (20%): script-mismatch detection.
+      4. Feedback Loop (15%): prior high-confidence corrections boost.
+
+    Then, when LLM signal IS available, the algorithmic baseline is
+    gated multiplicatively:
+      - LLM says "not suspicious" (0.0): dampen algorithmic by 5× (×0.20)
+        so normal Arabic words fall below SUSPICION_THRESHOLD.
+      - LLM says "suspicious" (1.0): amplify algorithmic by 2× (×2.0).
+      - Intermediate values (0.0-1.0): linearly interpolate gate factor
+        between 0.20 and 2.0.
+
+    When LLM signal is NOT available (API failure, rate-limit), pure
+    algorithmic score is returned.
+
+    This multiplicative approach was chosen because an additive LLM
+    weight could not override the noisy n-gram LM perplexity signal
+    (which assigns PPL~10 to all OOV Arabic words, contributing ~0.32
+    to the fused score at 35% weight). With multiplicative gating,
+    the LLM's "not suspicious" verdict (0.0) damps the entire
+    algorithmic signal below threshold, while "suspicious" amplifies
+    it strongly.
+
+    Words scoring below SUSPICION_THRESHOLD skip Stage B entirely.
+    """
+    # --- Hard gates: never suspicious ---
+
+    # Digits are never suspicious
+    if _ARABIC_DIGIT_RE.match(word):
+        return SUSPICION_SCORE_NONE
+
+    # Very short words can't be meaningful ASR errors for medical terms
+    if len(word) < 3:
+        return SUSPICION_SCORE_NONE
+
+    # Pure Latin, known common English → never suspicious
+    if not _ARABIC_LETTER_RE.search(word):
+        if word.lower() in _COMMON_ENGLISH:
+            return SUSPICION_SCORE_NONE
+
+    # --- Compute signals ---
+
+    signal_normalcy = 0.0
+    signal_perplexity = 0.0
+    signal_semantic = 0.0
+
+    # Signal 1: Arabic normalcy / Latin baseline
+    if _ARABIC_LETTER_RE.search(word):
+        # Arabic script: if _is_arabic_normalcy() says it's normal → 0.0
+        # If it could be a transliteration → base suspicion
+        if _is_arabic_normalcy(word):
+            signal_normalcy = 0.0  # Normal Arabic word, skip entirely
+        else:
+            signal_normalcy = 0.30  # Could be a medical transliteration
+    else:
+        # Latin word not in common English → low baseline
+        signal_normalcy = 0.05
+
+    # Signal 2: LM perplexity (requires left context)
+    if left_context is not None and len(left_context) > 0:
+        signal_perplexity = _context_perplexity(word, left_context)
+
+    # Signal 3: Semantic coherence (script-mismatch detection)
+    if right_context is not None:
+        signal_semantic = _semantic_coherence(word, left_context or [], right_context)
+
+    # Signal 4: Feedback loop — has this skeleton been corrected before?
+    signal_feedback = _get_feedback_boost(word)
+
+    # --- Compute algorithmic baseline (always the same) ---
+    algorithmic = (
+        signal_normalcy * WEIGHT_NO_LLM_NORMALCY +
+        signal_perplexity * WEIGHT_NO_LLM_PERPLEXITY +
+        signal_semantic * WEIGHT_NO_LLM_SEMANTIC +
+        signal_feedback * WEIGHT_NO_LLM_FEEDBACK
+    )
+
+    # --- Fuse signals ---
+    if llm_suspicion is not None:
+        # Multiplicative LLM gating:
+        #   LLM says "not suspicious" (0.0): dampen algorithmic signals by 5×
+        #     (×0.20) so normal Arabic words fall below SUSPICION_THRESHOLD.
+        #     3× was tested empirically — the worst Arabic word hit 0.136
+        #     (above 0.10), so 5× is needed for reliable clearance.
+        #   LLM says "suspicious" (1.0): amplify by 2× so flagged words
+        #     strongly exceed threshold.
+        #   In between (0.0 < val < 1.0): linearly interpolate gate factor.
+        gate_factor = 0.20 + (2.0 - 0.20) * llm_suspicion
+        fused = algorithmic * gate_factor
+    else:
+        # No LLM signal → pure algorithmic score
+        fused = algorithmic
+
+    return min(1.0, fused)
 
 
 def _is_pure_latin_or_digit(word: str) -> bool:
@@ -944,6 +1872,10 @@ def apply_high_confidence_corrections(
             "confidence": chosen_conf,
             "source": source,
         })
+        # Record the correction in the feedback loop so Stage A becomes
+        # more sensitive to this transliteration pattern in future runs.
+        _record_correction(" ".join(original_parts), chosen)
+
     # Collapse runs of empty tokens.
     out = "".join(tokens)
     out = re.sub(r"\s+", " ", out).strip()

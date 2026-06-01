@@ -238,6 +238,81 @@ contributors can verify total hours per dataset before preprocessing.
   transcript; very long inputs may exceed the LLM's effective context. If
   you need >5 minutes per call, add chunking in `_run_transcribe_pipeline`.
 
-## Architecture summary
+## Architecture (v0.4 — LLM-First Pipeline)
+
+### Correction Pipeline (Text-Only)
+
+The ``/api/correct`` endpoint runs a multi-stage correction pipeline:
+
+```
+Input Transcript
+       │
+       ▼
+┌─────────────────────────────────────┐
+│ Phase 1: LLM Corrector (local 4-bit)│  → app/services/llm_corrector.py
+│ Qwen2.5-1.5B-Instruct (4-bit)       │
+│ If confidence >= threshold → use    │
+│ Fallback: OpenRouter API (72B)      │
+└─────────────────────────────────────┘
+       │ (low confidence or failure)
+       ▼
+┌─────────────────────────────────────┐
+│ Phase 2: Rule-Based Fallback        │  → app/services/correction.py
+│   a. Arabic Spelling Corrector      │  → app/services/arabic_spelling.py
+│   b. Vector Lexicon (n-gram)        │  → app/services/vector_lexicon.py
+│   c. Multi-word Phrase Matcher      │  → app/services/phonetic.py
+│   d. Standard Lexicon Fuzzy Score   │
+│   e. Flagging for HITL              │  → app/services/flag.py
+└─────────────────────────────────────┘
+       │
+       ▼
+  Corrected Transcript + Flags
+```
+
+### Suspicion Scoring (Stage A)
+The ``flag.py`` module uses multiplicative LLM gating to fuse four signals:
+  1. **Arabic normalcy** (30%) — auto-detection via consonant skeleton matching
+  2. **LM perplexity** (35%) — Kneser-Ney n-gram language model
+  3. **Semantic coherence** (20%) — script-mismatch detection
+  4. **Feedback loop** (15%) — prior high-confidence corrections boost
+
+When the LLM suspicion scorer is available, its signal gates the algorithmic
+score multiplicatively (×0.20 to ×2.0) so trustworthy LLM verdicts can
+override the noisy n-gram signal.
+
+### New Modules (v0.4)
+
+| Module | Path | Purpose |
+|--------|------|---------|
+| LLM Corrector | ``app/services/llm_corrector.py`` | Local 4-bit Qwen2.5-1.5B + API fallback |
+| Vector Lexicon | ``app/services/vector_lexicon.py`` | Multi-view n-gram term retrieval |
+| LLM Scorer | ``app/services/llm_scorer.py`` | Single-API-call suspicion scoring with TTL cache |
+| N-gram LM | ``app/services/ngram_lm.py`` | Pure Python Kneser-Ney interpolated n-gram model |
+| Config | ``app/services/config.py`` | Central pipeline configuration (env vars) |
+
+### Learning from User Corrections
+
+Two mechanisms:
+1. **Feedback loop** in ``flag.py``: ``_record_correction()`` stores consonant
+   skeletons of confirmed corrections, boosting future suspicion scores for
+   similar transliterations.
+2. **LoRA fine-tuning** via ``scripts/finetune_llm.py``: trains the local
+   LLM on correction data from ``data/user_corrections.jsonl``, masking
+   system/user tokens in labels so the model learns only the correction
+   pattern.
+
+### Configuration
+
+All feature flags are controllable via environment variables:
+
+| Variable | Default | Purpose |
+|----------|---------|---------|
+| ``USE_LLM_CORRECTOR`` | ``true`` | Enable/disable the LLM corrector |
+| ``LLM_MODEL_NAME`` | ``Qwen/Qwen2.5-1.5B-Instruct`` | Local model |
+| ``LLM_CONFIDENCE_THRESHOLD`` | ``0.85`` | Min confidence to use LLM output |
+| ``USE_API_FALLBACK`` | ``true`` | Allow OpenRouter fallback |
+| ``VECTOR_LEXICON_ENABLED`` | ``true`` | Enable vector lexicon fallback |
+| ``VECTOR_BACKEND`` | ``ngram`` | ``ngram`` or ``transformer`` |
+| ``FALLBACK_TO_RULES`` | ``true`` | Allow rule-based fallback |
 
 See [PLATFORM_PLAN.md](PLATFORM_PLAN.md) for the full design rationale.

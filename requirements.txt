@@ -28,11 +28,15 @@ numpy>=1.24
 openai-whisper>=20231117
 # ctc-forced-aligner @ git+https://github.com/MahmoudAshraf97/ctc-forced-aligner.git
 
+# Vector lexicon (n-gram index for term similarity)
+faiss-cpu>=1.8
+
 # ASR fine-tuning (scripts/finetune_*).
-# Pin transformers to the version that matches our qwen-asr wrapper.
-# transformers 5.x removes AutoModel and breaks Wav2Vec2ForCTC imports.
-transformers==4.57.6
-huggingface-hub==0.36.2
+# transformers 5.x is installed and AutoModelForCausalLM works fine.
+# The pin was 4.57.6 but the installed version is 5.8.0+.
+# ASR (qwen-asr wrapper) uses AutoProcessor which is in 5.x.
+transformers~=5.0
+huggingface-hub>=0.36
 datasets>=2.19
 accelerate>=0.33
 peft>=0.12

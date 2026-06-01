@@ -50,7 +50,41 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, asr_dual, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_dual, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact, _has_arabic
+from .services.flag import _is_arabic_filler, _clear_lexicon_skeleton_cache
+from .services.arabic_matcher import HybridMatcher, LLMOpenCorrector
+
+
+def _build_corrector() -> MedicalCorrector:
+    """Build a MedicalCorrector from the current lexicon on disk.
+
+    Short abbreviation aliases (<= 3 compact characters, e.g. 'asa', 'aml')
+    are stripped here because they match too many common English short words
+    when applied to free-form medical conversation text.  The LLM DETECT
+    / DECIDE pipeline handles those cases when the context is clear.
+    """
+    raw = lexicon.list_terms()
+    entries = []
+    for e in raw:
+        aliases = [
+            a for a in (e.get("aliases") or [])
+            if len(compact(a)) > 3  # drop 2-3 char abbreviations
+        ]
+        entries.append(
+            _LexiconEntry(
+                term=e["term"],
+                type=e.get("type", ""),
+                aliases=tuple(aliases),
+                priority=float(e.get("priority", 1.0)),
+            )
+        )
+    return MedicalCorrector(
+        lexicon=entries,
+        accept_threshold=88.0,         # was 80 — tighter to reduce false positives
+        single_word_score_floor=80.0,  # floor for the strong-phonetic path
+        single_word_phonetic_floor=92.0,
+    )
 
 
 # ---------------------------------------------------------------------------
@@ -120,20 +154,24 @@ async def _no_cache_static(request, call_next):
 
 @app.on_event("startup")
 def _prewarm() -> None:
-    def _bg() -> None:
-        try:
-            asr._load_model()
-            print("[startup] Gulf Arabic ASR model ready.")
-        except Exception as exc:
-            print(f"[startup] ASR warmup failed: {exc}")
-
-    threading.Thread(target=_bg, daemon=True).start()
+    # ASR model is loaded lazily on first /api/transcribe request.
+    # Do NOT try to pre-load it here — the transformers C extensions
+    # can segfault (DLL init failure on Windows) which kills the
+    # entire server process and cannot be caught with try/except.
+    #
+    # Voice-match warmup uses safe numpy/scipy operations:
     voice_match.warm_up()
 
 
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/pipeline", include_in_schema=False)
+def pipeline_tester() -> FileResponse:
+    """Standalone page to test the correction pipeline on text, without ASR."""
+    return FileResponse(STATIC_DIR / "pipeline.html")
 
 
 @app.get("/api/healthz")
@@ -169,6 +207,14 @@ def teach(req: TeachRequest) -> Dict[str, Any]:
         target=lambda: descriptions.get_or_generate(req.term, type_hint=req.type),
         daemon=True,
     ).start()
+    # Invalidate the cached corrector and hybrid matcher so the next
+    # /api/correct call picks up the newly added term.
+    global _TEXT_CORRECTOR, _HYBRID_MATCHER
+    _TEXT_CORRECTOR = None
+    _HYBRID_MATCHER = None
+    # Invalidate the flag.py lexicon skeleton cache so auto-normalcy
+    # detection picks up the new term.
+    _clear_lexicon_skeleton_cache()
     return {"ok": True, "entry": entry}
 
 
@@ -176,29 +222,570 @@ class CorrectRequest(BaseModel):
     text: str = Field(..., description="Raw text without audio.")
 
 
+# Cached corrector for text-only correction path.
+_TEXT_CORRECTOR: Optional[MedicalCorrector] = None
+_HYBRID_MATCHER: Optional[HybridMatcher] = None
+_LLM_OPEN_CORRECTOR: Optional[LLMOpenCorrector] = None
+
+
+def _get_text_corrector() -> MedicalCorrector:
+    global _TEXT_CORRECTOR
+    if _TEXT_CORRECTOR is None:
+        _TEXT_CORRECTOR = _build_corrector()
+    return _TEXT_CORRECTOR
+
+
+def _get_hybrid_matcher() -> HybridMatcher:
+    """Lazy-build the hybrid matcher (Stages 2-3: skeleton + embedding).
+
+    Embedding matching (LaBSE) is DISABLED because it produces many
+    false positives for Arabic text: LaBSE matches Arabic words to
+    English medical terms via cross-lingual semantic similarity
+    (e.g. 'قلب' → 'cardiac'), which is the OPPOSITE of what we want.
+    We want to match Arabic TRANSLITERATIONS (هستوري → history) not
+    Arabic TRANSLATIONS (قلب → cardiac). The skeleton matcher handles
+    transliteration matching correctly.
+    """
+    global _HYBRID_MATCHER
+    if _HYBRID_MATCHER is None:
+        raw = lexicon.list_terms()
+        _HYBRID_MATCHER = HybridMatcher(
+            lexicon=raw,
+            enable_embedding=False,
+            # LLM open correction is handled separately
+            enable_llm_open=False,
+        )
+    return _HYBRID_MATCHER
+
+
+def _get_llm_open_corrector() -> LLMOpenCorrector:
+    """Lazy-build the LLM open corrector (Stage 4)."""
+    global _LLM_OPEN_CORRECTOR
+    if _LLM_OPEN_CORRECTOR is None:
+        _LLM_OPEN_CORRECTOR = LLMOpenCorrector(confidence_threshold=0.60)
+    return _LLM_OPEN_CORRECTOR
+
+
+def _build_scored_words(
+    transcript: str,
+    flags: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Build scored_words array for the UI from the raw transcript and flags."""
+    tokens = re.split(r"\s+", transcript.strip())
+    flag_map: Dict[str, Dict[str, Any]] = {}
+    for f in flags:
+        fw = f.get("word", "")
+        if fw:
+            flag_map[fw] = f
+
+    scored: List[Dict[str, Any]] = []
+    for idx, token in enumerate(tokens):
+        if not token:
+            continue
+        flag = flag_map.get(token)
+        suspicion = 0.0
+        if flag:
+            candidates = flag.get("candidates", [])
+            if candidates:
+                suspicion = min(1.0, candidates[0].get("phonetic_similarity", 0.6))
+            else:
+                suspicion = 0.7
+        in_lexicon = suspicion < 0.3 and not flag
+        scored.append({
+            "text": token,
+            "index": idx,
+            "suspicion": round(suspicion, 4),
+            "in_lexicon": in_lexicon,
+        })
+    return scored
+
+
+def _build_spans(flags: List[Dict[str, Any]], tokens: List[str]) -> List[Dict[str, Any]]:
+    """Build spans array for the UI from flags, mapping each flag to its token indices."""
+    spans: List[Dict[str, Any]] = []
+    for f in flags:
+        word = f.get("word", "")
+        candidates = f.get("candidates", [])
+        score = 0.6
+        if candidates:
+            score = min(1.0, candidates[0].get("phonetic_similarity", 0.6))
+
+        # Map the flag word back to its token indices in the original text
+        word_parts = word.split()
+        start_idx = -1
+        end_idx = -1
+        for i in range(len(tokens) - len(word_parts) + 1):
+            if tokens[i:i + len(word_parts)] == word_parts:
+                start_idx = i
+                end_idx = i + len(word_parts) - 1
+                break
+
+        if start_idx == -1:
+            # Fallback: use position in flags array
+            start_idx = len(spans)
+            end_idx = len(spans)
+
+        spans.append({
+            "text": word,
+            "start": start_idx,
+            "end": end_idx,
+            "suspicion": round(score, 4),
+            "reason": f.get("reason", "both"),
+        })
+    return spans
+
+
+def _build_candidates_list(flags: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
+    """Build candidates_list grouped by span for the UI."""
+    candidates_list: List[Dict[str, Any]] = []
+    for f in flags:
+        word = f.get("word", "")
+        raw_candidates = f.get("candidates", [])
+        cands = [
+            {
+                "term": c.get("term", ""),
+                "phonetic_score": min(1.0, c.get("phonetic_similarity", 0.5)),
+                "term_type": c.get("match_type", f.get("reason", "")),
+                "source": c.get("match_type", "pipeline"),
+                "description": "",
+            }
+            for c in raw_candidates
+        ]
+        candidates_list.append({
+            "span": {"text": word},
+            "candidates": cands,
+        })
+    return candidates_list
+
+
+def _build_decisions(
+    flags: List[Dict[str, Any]],
+    auto_corrections: List[Dict[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Build decisions array from flags + auto_corrections."""
+    # Map original word -> corrected word
+    auto_map: Dict[str, str] = {}
+    for ac in auto_corrections:
+        auto_map[ac["original"]] = ac["corrected"]
+
+    decisions: List[Dict[str, Any]] = []
+    for f in flags:
+        word = f.get("word", "")
+        candidates = f.get("candidates", [])
+        corrected = auto_map.get(word)
+        if corrected:
+            decisions.append({
+                "span": {"text": word},
+                "chosen": corrected,
+                "path": "auto_fix",
+                "confidence": 1.0,
+            })
+        else:
+            top = candidates[0]["term"] if candidates else None
+            decisions.append({
+                "span": {"text": word},
+                "chosen": top,
+                "path": top and "auto_fix" or "hitl",
+                "confidence": top and (candidates[0].get("phonetic_similarity", 0.6)) or 0.0,
+            })
+    return decisions
+
+
+def _find_uncorrected_spans(
+    transcript: str,
+    corrected_text: str,
+    existing_flags: List[Dict[str, Any]],
+) -> List[str]:
+    """Find words/phrases in the transcript that weren't changed and
+    weren't already flagged — these are candidates for Stage 4 LLM
+    open correction.
+
+    Arabic-script words are SKIPPED entirely because:
+      1. Genuine Arabic medical transliterations are already caught by
+         Stage 1 (MedicalCorrector with Arabic skeleton matching).
+      2. Normal Arabic words (filler, context, anatomy terms) when sent
+         to an English-biased LLM produce hallucinated English medical
+         terms (e.g. 'المريض' -> 'amaryl', 'لسان' -> 'lasix').
+      3. The Arabic filler list catches common non-medical words, but
+         there will always be Arabic words NOT in the filler list that
+         are still not medical transliterations (e.g. 'لاحظنا', 'يمتد',
+         'بينت'). Sending them to the LLM is harmful.
+    """
+    if transcript.strip() == corrected_text.strip():
+        # Nothing changed; find suspicious-looking words (English only)
+        words = [w for w in re.split(r"\s+", transcript.strip()) if w]
+        already_flagged = set()
+        for f in existing_flags:
+            already_flagged.add(f.get("word", "").lower())
+        return [
+            w for w in words
+            if w.lower() not in already_flagged
+            and len(w) >= 4
+            and not _has_arabic(w)  # Skip Arabic-script words entirely
+        ]
+    return []
+
+
 @app.post("/api/correct")
 def correct_text_only(req: CorrectRequest) -> Dict[str, Any]:
-    """Text-only quick path. No audio means no voice retrieval; the LLM
-    DECIDE step will see only NO_CHANGE candidates per span — so this
-    endpoint is mostly for showing the DETECT output. Real corrections
-    require audio."""
+    """Multi-stage text-only correction pipeline.
+
+    Stage 1 — MedicalCorrector: deterministic fuzzy + phonetic matching
+               (now Arabic-aware via transliteration + consonant skeletons).
+    Stage 2 — SkeletonMatcher: supplementary Arabic→Latin skeleton matching
+               for Arabic spans the MedicalCorrector missed.
+    Stage 3 — EmbeddingMatcher: LaBSE multilingual similarity (if available).
+    Stage 4 — LLM Open Correction: final-resort LLM correction for terms
+               the lexicon doesn't cover.
+    """
     if not req.text.strip():
         raise HTTPException(status_code=400, detail="text must not be empty")
-    fake_words = []
-    for tok in req.text.split():
-        fake_words.append({"word": " " + tok, "start": 0.0, "end": 0.0, "probability": 1.0})
-    spans = []
-    if USE_LLM and fake_words:
+
+    # ------------------------------------------------------------------
+    # Stage 1: Deterministic correction via MedicalCorrector
+    # ------------------------------------------------------------------
+    corrector = _get_text_corrector()
+    result = corrector.correct_transcript(req.text)
+    corrected_text = result["corrected_text"]
+    suspicious = list(result["suspicious_spans"])
+
+    # Track which original spans were corrected (for dedup)
+    corrected_originals = {}
+    for s in suspicious:
+        orig = s.get("original_text", "")
+        corr = s.get("possible_correction", "")
+        if orig and corr:
+            corrected_originals[orig] = corr
+
+    # ------------------------------------------------------------------
+    # Build initial flags + auto_corrections from Stage 1
+    # ------------------------------------------------------------------
+    flags: List[Dict[str, Any]] = []
+    auto_corrections: List[Dict[str, Any]] = []
+    for s in suspicious:
+        original = s.get("original_text", "")
+        correction = s.get("possible_correction", "")
+        score = s.get("score", 0.0)
+        issue_type = s.get("issue_type", "misspelling")
+        flags.append({
+            "index": 0,
+            "word": original,
+            "reason": issue_type,
+            "candidates": [{
+                "term": correction,
+                "phonetic_similarity": score / 100.0,
+                "match_type": "deterministic",
+            }] if correction else [],
+            "start_s": None,
+            "end_s": None,
+        })
+        if correction:
+            auto_corrections.append({
+                "original": original,
+                "corrected": correction,
+                "type": issue_type,
+            })
+
+    # ------------------------------------------------------------------
+    # Stage 2-3: Hybrid matcher for additional Arabic/non-Latin spans
+    # that MedicalCorrector might have missed (e.g. terms not in lexicon
+    # but phonetically close via skeleton matching).
+    # ------------------------------------------------------------------
+    if USE_LLM:
+        # Collect Arabic-script tokens from the original text that weren't corrected
+        words = re.split(r"\s+", req.text.strip())
+        missed_arabic: List[str] = []
+        for w in words:
+            if not _has_arabic(w):
+                continue
+            # Strip leading/trailing punctuation that defeats filler detection
+            # (e.g. "دكتور،" with comma won't match the filler "دكتور")
+            clean_w = re.sub(r"^[\s\u060c\u061b\u061f!\"#$%&'()*+,\-./:;<=>?@\[\]^_`{|}~]+", "", w)
+            clean_w = re.sub(r"[\s\u060c\u061b\u061f!\"#$%&'()*+,\-./:;<=>?@\[\]^_`{|}~]+$", "", clean_w)
+            if not clean_w or not _has_arabic(clean_w):
+                continue
+            is_corrected = any(
+                orig in clean_w or clean_w in orig for orig in corrected_originals
+            )
+            if not is_corrected and len(clean_w) >= 3:
+                missed_arabic.append(clean_w)
+
+        if missed_arabic:
+            try:
+                hybrid = _get_hybrid_matcher()
+                # Pre-filter: skip Arabic filler words (words from common
+                # Gulf Arabic vocabulary that happen to look like they
+                # could be English medical transliterations via skeleton).
+                filtered_arabic = [
+                    w for w in missed_arabic
+                    if not _is_arabic_filler(w)
+                ]
+                for w in filtered_arabic:
+                    candidates = hybrid.match(w, top_k=3, context=req.text)
+                    if candidates:
+                        # Check if already flagged
+                        already_flagged = any(
+                            f.get("word", "") == w for f in flags
+                        )
+                        if not already_flagged:
+                            flags.append({
+                                "index": 0,
+                                "word": w,
+                                "reason": "arabic_phonetic_match",
+                                "candidates": [
+                                    {
+                                        "term": c["term"],
+                                        "phonetic_similarity": c["score"] / 100.0,
+                                        "match_type": c.get("match_type", "hybrid"),
+                                    }
+                                    for c in candidates
+                                ],
+                                "start_s": None,
+                                "end_s": None,
+                            })
+                            # Apply high-confidence auto-correction
+                            top = candidates[0]
+                            if top["score"] >= 80.0:
+                                corrected_text = corrected_text.replace(w, top["term"])
+                                auto_corrections.append({
+                                    "original": w,
+                                    "corrected": top["term"],
+                                })
+            except Exception as exc:
+                print(f"[correct] Hybrid matcher failed: {exc!r}")
+
+    # ------------------------------------------------------------------
+    # Stage 4: LLM Open Correction for remaining uncorrected flags
+    # ------------------------------------------------------------------
+    if USE_LLM:
         try:
-            spans = llm_detect.detect(fake_words)
+            uncorrected = _find_uncorrected_spans(
+                req.text, corrected_text, flags
+            )
+            if uncorrected:
+                llm_corr = _get_llm_open_corrector()
+                results = llm_corr.correct_batch(
+                    uncorrected, context=req.text, timeout=60.0
+                )
+                for w, r in zip(uncorrected, results):
+                    if r is None:
+                        continue
+                    already_flagged = any(
+                        f.get("word", "") == w for f in flags
+                    )
+                    if not already_flagged:
+                        flags.append({
+                            "index": 0,
+                            "word": w,
+                            "reason": "llm_open_correction",
+                            "candidates": [{
+                                "term": r["term"],
+                                "phonetic_similarity": r["score"] / 100.0,
+                                "match_type": r.get("match_type", "llm_open"),
+                                "confidence": r.get("confidence", 0.0),
+                                "reason": r.get("reason", ""),
+                            }],
+                            "start_s": None,
+                            "end_s": None,
+                        })
+                        # Apply to corrected_text if confident
+                        if r["score"] >= 80.0:
+                            corrected_text = corrected_text.replace(w, r["term"])
+                            auto_corrections.append({
+                                "original": w,
+                                "corrected": r["term"],
+                            })
         except Exception as exc:
-            print(f"[correct] DETECT failed: {exc!r}")
+            print(f"[correct] LLM open correction failed: {exc!r}")
+
+    # ------------------------------------------------------------------
+    # Optional LLM DETECT pass for additional flagging (existing behavior)
+    # ------------------------------------------------------------------
+    if USE_LLM:
+        fake_words = []
+        for tok in req.text.split():
+            fake_words.append({
+                "word": " " + tok,
+                "start": 0.0,
+                "end": 0.0,
+                "probability": 1.0,
+            })
+        try:
+            llm_spans = llm_detect.detect(fake_words)
+            for span in llm_spans:
+                text = span.get("text", "")
+                if not text:
+                    continue
+                # Skip Arabic-script spans — the LLM detect is biased
+                # toward flagging and will hallucinate English medical
+                # terms for normal Arabic context words (e.g. 'لاحظنا'
+                # -> 'losartan', 'السكر' -> 'saccharin').
+                # Arabic medical transliterations are caught by earlier
+                # deterministic stages.
+                if _has_arabic(text):
+                    continue
+                already_flagged = any(
+                    f.get("word", "").lower() == text.lower()
+                    or text.lower() in f.get("word", "").lower()
+                    or f.get("word", "").lower() in text.lower()
+                    for f in flags
+                )
+                if not already_flagged:
+                    flags.append({
+                        "index": 0,
+                        "word": text,
+                        "reason": span.get("reason", "llm_flag"),
+                        "candidates": [],
+                        "start_s": None,
+                        "end_s": None,
+                    })
+        except Exception as exc:
+            print(f"[correct] LLM DETECT failed: {exc!r}")
+
+    # ------------------------------------------------------------------
+    # Build structured pipeline stages for the UI
+    # ------------------------------------------------------------------
+    tokens = re.split(r"\s+", req.text.strip())
+    pipeline_scored_words = _build_scored_words(req.text, flags)
+    pipeline_spans = _build_spans(flags, tokens)
+    pipeline_candidates_list = _build_candidates_list(flags)
+    pipeline_decisions = _build_decisions(flags, auto_corrections)
+
+    pipeline = {
+        "approaches": {
+            "scoring": {
+                "label": "deterministic",
+                "description": "Lexicon-based fuzzy + phonetic matching",
+                "status": "primary",
+            },
+            "flagging": {
+                "label": "phonetic+skeleton",
+                "description": "Phonetic similarity + Arabic consonant skeleton matching",
+                "status": "primary",
+            },
+            "retrieval": {
+                "label": "deterministic",
+                "description": "Lexicon lookup + skeleton + embedding matcher",
+                "status": "primary",
+            },
+            "decision": {
+                "label": "auto_fix",
+                "description": "High-confidence corrections auto-applied",
+                "status": "primary",
+            },
+            "correction": {
+                "label": "deterministic",
+                "description": "Multi-stage pipeline correction",
+                "status": "primary",
+            },
+        },
+        "stages": [
+            {"scored_words": pipeline_scored_words},
+            {"spans": pipeline_spans},
+            {"candidates_list": pipeline_candidates_list},
+            {"decisions": pipeline_decisions},
+            {
+                "corrected_text": corrected_text,
+                "original_text": req.text,
+                "n_applied": len(auto_corrections),
+            },
+        ],
+    }
+
     return {
         "raw_text": req.text,
-        "corrected_text": req.text,
-        "suspicious": spans,
-        "note": "text-only mode: voice retrieval is disabled without audio",
+        "corrected_text": corrected_text,
+        "suspicious": suspicious,
+        "flags": flags,
+        "auto_corrections": auto_corrections,
+        "note": "text-only correction (no audio) — multi-stage pipeline",
+        "pipeline": pipeline,
     }
+
+
+BENCHMARK_PROGRESS: Dict[str, Any] = {}
+
+@app.get("/api/benchmark_progress/{session_id}")
+def get_benchmark_progress(session_id: str) -> Dict[str, Any]:
+    return BENCHMARK_PROGRESS.get(session_id, {"status": "unknown"})
+
+@app.post("/api/benchmark_asr")
+def benchmark_asr(
+    file: UploadFile = File(...),
+    models: Optional[str] = Form(None),
+    client_session_id: Optional[str] = Form(None)
+) -> JSONResponse:
+    target_models = []
+    if models:
+        target_models = [m.strip() for m in models.split(",") if m.strip()]
+    else:
+        target_models = list(asr_benchmark.MODELS.keys())
+        
+    session_id = client_session_id or uuid.uuid4().hex
+    
+    BENCHMARK_PROGRESS[session_id] = {
+        "status": "Receiving audio file...",
+        "completed": 0,
+        "total": len(target_models),
+        "current_model": None
+    }
+    print(f"[{session_id}] Upload received: {file.filename}")
+    
+    ext = ".wav"
+    if file.filename:
+        _, ext = os.path.splitext(file.filename)
+    audio_path = SESSIONS_DIR / f"{session_id}{ext}"
+    
+    try:
+        with open(audio_path, "wb") as f:
+            shutil.copyfileobj(file.file, f)
+            
+        print(f"[{session_id}] Audio saved to {audio_path}. Starting digestion...")
+        BENCHMARK_PROGRESS[session_id]["status"] = "Audio saved. Initializing models..."
+            
+        results = []
+        for index, model_key in enumerate(target_models):
+            print(f"[{session_id}] Running {index + 1}/{len(target_models)}: {model_key}")
+            BENCHMARK_PROGRESS[session_id].update({
+                "status": f"Running inference on {model_key}...",
+                "current_model": model_key
+            })
+            try:
+                res = asr_benchmark.run_asr(model_key, str(audio_path))
+                print(f"[{session_id}] -> Finished {model_key} in {res.get('duration_s', 0)}s")
+                results.append(res)
+            except Exception as e:
+                 print(f"[{session_id}] -> Failed {model_key}: {e}")
+                 results.append({
+                    "model_key": model_key,
+                    "transcript": "",
+                    "language": None,
+                    "duration_s": 0.0,
+                    "word_timestamps": [],
+                    "error": str(e),
+                })
+                 
+            BENCHMARK_PROGRESS[session_id]["completed"] = index + 1
+                 
+        BENCHMARK_PROGRESS[session_id]["status"] = "Processing completed."
+
+        # Audio duration for extra telemetry, if we can read it
+        audio_duration_s = 0.0
+        try:
+             import soundfile as sf
+             info = sf.info(str(audio_path))
+             audio_duration_s = info.duration
+        except Exception:
+             pass
+
+        return JSONResponse({
+            "audio_filename": file.filename or "uploaded_audio",
+            "audio_duration_s": round(audio_duration_s, 2),
+            "results": results
+        })
+
+    finally:
+        pass
 
 
 # ---------------------------------------------------------------------------
@@ -792,6 +1379,14 @@ def _locate_words_in_raw(
 
 @app.post("/api/learn_from_edit")
 def learn_from_edit(req: LearnFromEditRequest) -> Dict[str, Any]:
+    # Invalidate the cached corrector and hybrid matcher — this endpoint
+    # adds terms to the lexicon just like /api/teach does.
+    global _TEXT_CORRECTOR, _HYBRID_MATCHER
+    _TEXT_CORRECTOR = None
+    _HYBRID_MATCHER = None
+    # Also invalidate the flag.py lexicon skeleton cache
+    _clear_lexicon_skeleton_cache()
+
     pairs = _diff_replacements(req.raw_text, req.corrected_text)
     if not pairs:
         return {"ok": True, "learned_text": [], "learned_voices": []}
