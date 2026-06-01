@@ -48,8 +48,12 @@ ARMS: Dict[str, Dict[str, str]] = {
     },
     "C": {
         "base": os.environ.get("V3_ARM_C_BASE", "runs/qwen3_gulf_merged_base"),
+        # Default to final_adapter, NOT best_adapter: the v3 run's eval was
+        # broken (every WER=nan) so best_adapter/ was never written. Only
+        # final_adapter exists. Override with V3_ARM_C_ADAPTER once a run
+        # with working eval produces a real best_adapter.
         "adapter": os.environ.get(
-            "V3_ARM_C_ADAPTER", "runs/qwen3_lora_v3_B/best_adapter"
+            "V3_ARM_C_ADAPTER", "runs/qwen3_lora_v3_B/final_adapter"
         ),
         "label": "Arm C · v3 (real-dominant mix, val early-stop)",
     },
