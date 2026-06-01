@@ -50,7 +50,7 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, asr_dual, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_dual, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, pipeline_test, tracing, voice_match
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 
 
@@ -713,6 +713,30 @@ async def transcribe_stream(
 # user can see exactly where in the audio each suspicious word lives.
 
 from .services import alignment_v2 as _alignment, flag as _flag
+
+
+# ---------------------------------------------------------------------------
+# /api/test-pipeline — run the curated 30-case test set and return per-stage
+# evaluation results. No audio needed — purely text-input pipeline stages.
+# ---------------------------------------------------------------------------
+
+
+@app.get("/api/test-pipeline")
+async def test_pipeline(use_llm: bool = False) -> Dict[str, Any]:
+    """Run all 30 test cases through every pipeline stage and return
+    per-stage accuracy (Scoring & Flagging, Drug Normalization,
+    Auto-Correction). This is the shared endpoint both you and your
+    colleague hit to compare whose pipeline performs better.
+
+    Query parameters:
+      use_llm (bool, default False) — enable the LLM pass for flagging.
+    """
+    try:
+        result = pipeline_test.evaluate_test_set(use_llm=use_llm)
+        return result
+    except Exception as exc:
+        print(f"[test-pipeline] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc)})
 
 
 @app.post("/api/transcribe_debug")
