@@ -44,6 +44,11 @@ def _load_model():
     adapter_path = os.environ.get(
         "QWEN3_GULF_ADAPTER", "runs/qwen3_lora_r6/final_adapter"
     )
+    # Setting QWEN3_GULF_ADAPTER to an empty string or "none"/"0"/"false"
+    # disables the extra LoRA adapter and runs the base model standalone.
+    # Use this when QWEN3_ASR_BASE already points at a merged fine-tuned
+    # model (e.g. runs/qwen3_gulf_merged_base, the 900h Gulf Arabic model).
+    use_adapter = adapter_path.strip().lower() not in ("", "none", "0", "false")
     adapter_dir = Path(adapter_path)
     if not adapter_dir.is_absolute():
         adapter_dir = (PROJECT_ROOT / adapter_dir).resolve()
@@ -77,7 +82,9 @@ def _load_model():
             base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
         )
         _PROCESSOR = None  # wrapper handles its own processor
-        if adapter_dir.exists():
+        if not use_adapter:
+            print(f"[asr] adapter disabled — using base model standalone: {base_repo}")
+        elif adapter_dir.exists():
             print(f"[asr] attaching LoRA adapter: {adapter_dir}")
             inner = getattr(_MODEL, "model", None) or _MODEL
             peft_model = PeftModel.from_pretrained(inner, str(adapter_dir)).to(_DEVICE).eval()
@@ -85,9 +92,14 @@ def _load_model():
                 _MODEL.model = peft_model
             else:
                 _MODEL = peft_model
+        else:
+            print(f"[asr] WARNING: adapter not found at {adapter_dir}, using base model")
         return _MODEL, _PROCESSOR
 
-    if adapter_dir.exists():
+    if not use_adapter:
+        print(f"[asr] adapter disabled — using base model standalone: {base_repo}")
+        _MODEL = base
+    elif adapter_dir.exists():
         print(f"[asr] attaching LoRA adapter: {adapter_dir}")
         _MODEL = PeftModel.from_pretrained(base, str(adapter_dir)).to(_DEVICE).eval()
     else:
