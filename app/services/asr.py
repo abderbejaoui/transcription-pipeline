@@ -78,9 +78,24 @@ def _load_model():
             "Run: pip install qwen-asr"
         ) from exc
     print("[asr] using qwen-asr wrapper (transformers too old for qwen3_asr)")
-    _MODEL = Qwen3ASRModel.from_pretrained(
-        base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
-    )
+    try:
+        _MODEL = Qwen3ASRModel.from_pretrained(
+            base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
+        )
+    except NotImplementedError as exc:
+        # "Cannot copy out of meta tensor; no data!" — accelerate placed the
+        # weights on the meta device and the string device_map move failed.
+        # Retry loading onto CPU first, then move the real tensors to the GPU.
+        if "meta tensor" not in str(exc).lower():
+            raise
+        print(f"[asr] meta-tensor load failed ({exc}); retrying CPU->GPU load")
+        import torch
+        _MODEL = Qwen3ASRModel.from_pretrained(
+            base_repo, dtype=_DTYPE, device_map="cpu", max_new_tokens=1024,
+        )
+        inner = getattr(_MODEL, "model", None)
+        if inner is not None and _DEVICE != "cpu":
+            _MODEL.model = inner.to(_DEVICE)
     _PROCESSOR = None  # wrapper handles its own processor
     return _MODEL, _PROCESSOR
 
