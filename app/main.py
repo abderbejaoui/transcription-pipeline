@@ -50,7 +50,12 @@ from pydantic import BaseModel, Field
 
 from fastapi.responses import StreamingResponse
 
-from .services import asr, asr_dual, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+from .services import asr, asr_dual, descriptions, lexicon, llm_decide, llm_detect, tracing, voice_match
+
+try:
+    from .services import asr_benchmark  # optional: only used by /api/benchmark_asr
+except ImportError:
+    asr_benchmark = None
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact, _has_arabic
 from .services.flag import _is_arabic_filler, _clear_lexicon_skeleton_cache
 from .services.arabic_matcher import HybridMatcher, LLMOpenCorrector
@@ -715,6 +720,11 @@ def benchmark_asr(
     models: Optional[str] = Form(None),
     client_session_id: Optional[str] = Form(None)
 ) -> JSONResponse:
+    if asr_benchmark is None:
+        return JSONResponse(
+            {"error": "asr_benchmark is not available in this deployment."},
+            status_code=501,
+        )
     target_models = []
     if models:
         target_models = [m.strip() for m in models.split(",") if m.strip()]
