@@ -24,6 +24,12 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# CEQ phonetic similarity from drug_normalize — a more precise phonetic
+# matcher that uses Editex-weighted edit distance + Jaro-Winkler over
+# consonant-equivalence classes. We import it lazily (inside the function)
+# to avoid circular-import risk and so flag.py doesn't become dependent on
+# drug_normalize at import time.
+
 from .llm_config import (
     get_llm_headers,
     get_llm_model,
@@ -128,25 +134,81 @@ def _phonetic_skeleton(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Medical lexicon
+# Medical lexicon — auto-expanded from multiple data sources
 # ---------------------------------------------------------------------------
 
 _lex_cache: Optional[List[str]] = None
 
 
 def load_medical_lexicon() -> List[str]:
+    """Load the medical lexicon from medical_terms.txt, then supplement it
+    with entries from the structured data files (gulf_drug_brands.jsonl and
+    medical_lexicon.jsonl). This is entirely data-driven — any drug/brand
+    in those files is automatically added to the matching pool, so there
+    is no need to manually update one central terms file.
+    """
     global _lex_cache
     if _lex_cache is not None:
         return _lex_cache
-    if not MEDICAL_TERMS_PATH.exists():
-        _lex_cache = []
-        return _lex_cache
+
     terms: List[str] = []
-    for line in MEDICAL_TERMS_PATH.read_text(encoding="utf-8").splitlines():
-        line = line.strip()
-        if line and not line.startswith("#"):
-            terms.append(line)
+    seen: set = set()
+
+    # 1) Base terms from medical_terms.txt
+    if MEDICAL_TERMS_PATH.exists():
+        for line in MEDICAL_TERMS_PATH.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if line and not line.startswith("#") and line.lower() not in seen:
+                terms.append(line)
+                seen.add(line.lower())
+
+    # 2) Supplement from gulf_drug_brands.jsonl — contains ~90 Gulf-region
+    #    drug/brand names. Many are NOT in medical_terms.txt (e.g. klacid,
+    #    novadol, brufen, lyrica, concor). We only add the LATIN term
+    #    (e.g. "panadol"), not the Arabic-script aliases — those are handled
+    #    by the Arabic→Latin transliteration inside _phonetic_candidates().
+    gulf_path = PROJECT_ROOT / "data" / "gulf_drug_brands.jsonl"
+    if gulf_path.exists():
+        import json as _json
+        for line in gulf_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = _json.loads(line)
+                term = entry.get("term", "").strip()
+                # Only add Latin-only terms (Arabic aliases are handled
+                # by the Arabic→Latin transliteration inside the
+                # _phonetic_candidates matching loop).
+                if term and term.isascii() and term.lower() not in seen:
+                    terms.append(term)
+                    seen.add(term.lower())
+            except Exception:
+                pass
+
+    # 3) Supplement from medical_lexicon.jsonl — contains drug aliases,
+    #    diagnoses, anatomy terms. We only pull entries whose type is
+    #    "drug" to keep the matching pool focused on pharmaceutical names.
+    lex_path = PROJECT_ROOT / "data" / "medical_lexicon.jsonl"
+    if lex_path.exists():
+        import json as _json
+        for line in lex_path.read_text(encoding="utf-8").splitlines():
+            line = line.strip()
+            if not line:
+                continue
+            try:
+                entry = _json.loads(line)
+                if entry.get("type", "") not in ("drug",):
+                    continue
+                term = entry.get("term", "").strip()
+                if term and term.isascii() and term.lower() not in seen:
+                    terms.append(term)
+                    seen.add(term.lower())
+            except Exception:
+                pass
+
     _lex_cache = terms
+    print(f"[flag] loaded {len(terms)} medical terms ({len(seen)} unique)")
     return _lex_cache
 
 
@@ -338,6 +400,13 @@ def _phonetic_candidates(
       - Latin 'paracetamol' -> consonant skeleton 'brktml'
         (p->b, c->k, vowels dropped) -> sim ~0.67-0.83
 
+    Additionally uses the CEQ (consonant-equivalence class) similarity
+    from drug_normalize.py (Editex + Jaro-Winkler) as a second signal.
+    The final similarity is the MAX of both approaches — whichever
+    method judges the pair to be closer wins. This catches cases where
+    the simple consonant-skeleton approach undershoots due to aggressive
+    vowel stripping or letter-class collapsing.
+
     Ranking tiebreaker: when two candidates tie on similarity, the
     one classified as a DRUG (suffix -in/-ol/-ine/...) wins over a
     disease. This breaks 'برسي تمر' ties where bursitis and
@@ -351,6 +420,7 @@ def _phonetic_candidates(
     if not needles:
         return []
     needle_sks = [_consonant_skeleton_ar(n) for n in needles]
+    
     scored = []
     for term in lexicon:
         term_lat = re.sub(r"[^a-z]", "", term.lower())
@@ -376,6 +446,31 @@ def _phonetic_candidates(
             "phonetic_similarity": round(best, 3),
             "_is_drug": _is_likely_drug(term),
         })
+
+    # CEQ similarity boost: for the top candidates that are in the
+    # borderline range, recompute with the more precise CEQ matcher
+    # (Editex + Jaro-Winkler) and take the max. This is done ONLY on
+    # the top ~15 candidates to keep performance acceptable.
+    if scored:
+        scored.sort(key=lambda d: -d["phonetic_similarity"])
+        top_k = min(15, len(scored))
+        if not hasattr(_phonetic_candidates, '_ceq'):
+            from .drug_normalize import _phonetic_similarity, _ar_skeleton, _lat_skeleton
+            _phonetic_candidates._ceq = (_phonetic_similarity, _ar_skeleton, _lat_skeleton)
+        ceq_sim, ceq_ar, ceq_lat = _phonetic_candidates._ceq
+        for i in range(top_k):
+            entry = scored[i]
+            if entry["phonetic_similarity"] >= 0.85:
+                continue  # already high enough, no CEQ needed
+            try:
+                n_ceq = ceq_ar(word)
+                t_ceq = ceq_lat(re.sub(r"[^a-z]", "", entry["term"].lower()))
+                if len(n_ceq) >= min_skeleton_len and len(t_ceq) >= min_skeleton_len:
+                    ceq_val = ceq_sim(n_ceq, t_ceq)
+                    if ceq_val > entry["phonetic_similarity"]:
+                        entry["phonetic_similarity"] = round(ceq_val, 3)
+            except (TypeError, ValueError):
+                pass
     # Phonetic-alias rescue: if the flagged span literally matches a
     # known English-mishearing pattern (e.g. 'اف اول قن' = 'if all gone'
     # -> efferalgan), promote that drug to the top with similarity 0.95.
@@ -562,6 +657,15 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 # also passes the n-gram threshold and was hijacking it.
                 if single_sim < 0.80:
                     continue
+                # Strong single-word match (>= 0.90): the bigram is almost
+                # certainly wrong to consume this word. Even if the bigram
+                # is long enough (> 1.7x), a near-perfect single match is
+                # too strong to override. Example: 'اعطيني بنادول' bigram
+                # matches panadol at 0.667, but 'بنادول' alone matches
+                # panadol at 1.0 — always prefer the single.
+                if single_sim >= 0.90:
+                    should_skip_bigram = True
+                    break
                 # Single must be a credible standalone match: needle
                 # length ~ term length.
                 from_word = words[i + off]
@@ -610,9 +714,11 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
         top = cands[0]
         if top["phonetic_similarity"] < 0.55:
             continue
-        # Skip only when the literal word IS already the Latin term.
-        if words[i].lower() == top["term"].lower():
-            continue
+        # Flag the word even if it already IS the correct Latin term.
+        # The downstream auto-correction stage handles this by applying
+        # the correction (which is a no-op when the word is already
+        # correct) — but the flag itself tells the user "this is a
+        # medical term" which the test / UX expects.
         # Precision check for borderline single matches: when sim is
         # only 0.55-0.65 AND the contiguous shared skeleton is only
         # 2 chars or less, drop it. Example: 'النزار' (skel 'nzr')
@@ -711,6 +817,23 @@ _ARABIC_FILLER = {
     # identity / possession words
     "اسم", "اسمي", "اسمك", "اسمه", "اسمها", "عمري", "عمرك", "عمره",
     "بلدي", "بلدك", "جنسيتي", "رقمي", "هاتفي", "تلفوني",
+    # additional filler words from discovered false positives
+    "بس", "عادي", "كيف", "حالك", "حال", "شلون",
+    "هذول", "ذول", "متى", "وين", "ليه", "ليش",
+    "لانه", "لان", "حتى", "عند", "عنده", "عندي", "عندها", "عندك",
+    "ممكن", "تقريبا", "طيب", "مثل", "كثير", "قليل",
+    # empty / discourse markers
+    "اي", "ايه", "اه", "امم", "آه", "اوكي", "تمام", "ان شاء الله",
+    "انشاءالله", "ان شاالله", "باذن الله",
+    # additional body words (commonly mis-flagged)
+    "سنين", "سنة", "سني", "عمر", "السنين", "الظهر", "الصدر",
+    "البطن", "العين", "الاذن", "الراس", "القدم", "اليد", "الفم",
+    "الحلق", "الرقبة", "الركبة", "الكتف", "المفاصل",
+    # additional time / number words
+    "النهار", "الليل", "الصباح","المساء", "الاسبوع", "الشهر",
+    "الاول", "الثاني", "ثاني", "اول", "اخر",
+    "نص", "ربع", "ثلث", "عشرين", "ثلاثين", "اربعين", "خمسين",
+    "ستين", "سبعين", "ثمانين", "تسعين",
 }
 
 
