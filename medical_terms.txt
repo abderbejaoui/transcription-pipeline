@@ -196,11 +196,26 @@ saline
 glucose
 novadol
 klacid
+motilium
 brufen
 lyrica
 neurontin
-motilium
 glucophage
 amaryl
 concor
 colistin
+inhaler
+glucometer
+lisinopril
+carbamazepine
+colonoscopy
+crestor
+prilosec
+lantus
+ramipril
+metoprolol
+sphygmomanometer
+hba1c
+echocardiogram
+risedronic acid
+voltaren

@@ -24,12 +24,6 @@ import urllib.request
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
-# CEQ phonetic similarity from drug_normalize — a more precise phonetic
-# matcher that uses Editex-weighted edit distance + Jaro-Winkler over
-# consonant-equivalence classes. We import it lazily (inside the function)
-# to avoid circular-import risk and so flag.py doesn't become dependent on
-# drug_normalize at import time.
-
 from .llm_config import (
     get_llm_headers,
     get_llm_model,
@@ -134,81 +128,25 @@ def _phonetic_skeleton(s: str) -> str:
 
 
 # ---------------------------------------------------------------------------
-# Medical lexicon — auto-expanded from multiple data sources
+# Medical lexicon
 # ---------------------------------------------------------------------------
 
 _lex_cache: Optional[List[str]] = None
 
 
 def load_medical_lexicon() -> List[str]:
-    """Load the medical lexicon from medical_terms.txt, then supplement it
-    with entries from the structured data files (gulf_drug_brands.jsonl and
-    medical_lexicon.jsonl). This is entirely data-driven — any drug/brand
-    in those files is automatically added to the matching pool, so there
-    is no need to manually update one central terms file.
-    """
     global _lex_cache
     if _lex_cache is not None:
         return _lex_cache
-
+    if not MEDICAL_TERMS_PATH.exists():
+        _lex_cache = []
+        return _lex_cache
     terms: List[str] = []
-    seen: set = set()
-
-    # 1) Base terms from medical_terms.txt
-    if MEDICAL_TERMS_PATH.exists():
-        for line in MEDICAL_TERMS_PATH.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if line and not line.startswith("#") and line.lower() not in seen:
-                terms.append(line)
-                seen.add(line.lower())
-
-    # 2) Supplement from gulf_drug_brands.jsonl — contains ~90 Gulf-region
-    #    drug/brand names. Many are NOT in medical_terms.txt (e.g. klacid,
-    #    novadol, brufen, lyrica, concor). We only add the LATIN term
-    #    (e.g. "panadol"), not the Arabic-script aliases — those are handled
-    #    by the Arabic→Latin transliteration inside _phonetic_candidates().
-    gulf_path = PROJECT_ROOT / "data" / "gulf_drug_brands.jsonl"
-    if gulf_path.exists():
-        import json as _json
-        for line in gulf_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                entry = _json.loads(line)
-                term = entry.get("term", "").strip()
-                # Only add Latin-only terms (Arabic aliases are handled
-                # by the Arabic→Latin transliteration inside the
-                # _phonetic_candidates matching loop).
-                if term and term.isascii() and term.lower() not in seen:
-                    terms.append(term)
-                    seen.add(term.lower())
-            except Exception:
-                pass
-
-    # 3) Supplement from medical_lexicon.jsonl — contains drug aliases,
-    #    diagnoses, anatomy terms. We only pull entries whose type is
-    #    "drug" to keep the matching pool focused on pharmaceutical names.
-    lex_path = PROJECT_ROOT / "data" / "medical_lexicon.jsonl"
-    if lex_path.exists():
-        import json as _json
-        for line in lex_path.read_text(encoding="utf-8").splitlines():
-            line = line.strip()
-            if not line:
-                continue
-            try:
-                entry = _json.loads(line)
-                if entry.get("type", "") not in ("drug",):
-                    continue
-                term = entry.get("term", "").strip()
-                if term and term.isascii() and term.lower() not in seen:
-                    terms.append(term)
-                    seen.add(term.lower())
-            except Exception:
-                pass
-
+    for line in MEDICAL_TERMS_PATH.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if line and not line.startswith("#"):
+            terms.append(line)
     _lex_cache = terms
-    print(f"[flag] loaded {len(terms)} medical terms ({len(seen)} unique)")
     return _lex_cache
 
 
@@ -400,13 +338,6 @@ def _phonetic_candidates(
       - Latin 'paracetamol' -> consonant skeleton 'brktml'
         (p->b, c->k, vowels dropped) -> sim ~0.67-0.83
 
-    Additionally uses the CEQ (consonant-equivalence class) similarity
-    from drug_normalize.py (Editex + Jaro-Winkler) as a second signal.
-    The final similarity is the MAX of both approaches — whichever
-    method judges the pair to be closer wins. This catches cases where
-    the simple consonant-skeleton approach undershoots due to aggressive
-    vowel stripping or letter-class collapsing.
-
     Ranking tiebreaker: when two candidates tie on similarity, the
     one classified as a DRUG (suffix -in/-ol/-ine/...) wins over a
     disease. This breaks 'برسي تمر' ties where bursitis and
@@ -420,7 +351,6 @@ def _phonetic_candidates(
     if not needles:
         return []
     needle_sks = [_consonant_skeleton_ar(n) for n in needles]
-    
     scored = []
     for term in lexicon:
         term_lat = re.sub(r"[^a-z]", "", term.lower())
@@ -446,31 +376,6 @@ def _phonetic_candidates(
             "phonetic_similarity": round(best, 3),
             "_is_drug": _is_likely_drug(term),
         })
-
-    # CEQ similarity boost: for the top candidates that are in the
-    # borderline range, recompute with the more precise CEQ matcher
-    # (Editex + Jaro-Winkler) and take the max. This is done ONLY on
-    # the top ~15 candidates to keep performance acceptable.
-    if scored:
-        scored.sort(key=lambda d: -d["phonetic_similarity"])
-        top_k = min(15, len(scored))
-        if not hasattr(_phonetic_candidates, '_ceq'):
-            from .drug_normalize import _phonetic_similarity, _ar_skeleton, _lat_skeleton
-            _phonetic_candidates._ceq = (_phonetic_similarity, _ar_skeleton, _lat_skeleton)
-        ceq_sim, ceq_ar, ceq_lat = _phonetic_candidates._ceq
-        for i in range(top_k):
-            entry = scored[i]
-            if entry["phonetic_similarity"] >= 0.85:
-                continue  # already high enough, no CEQ needed
-            try:
-                n_ceq = ceq_ar(word)
-                t_ceq = ceq_lat(re.sub(r"[^a-z]", "", entry["term"].lower()))
-                if len(n_ceq) >= min_skeleton_len and len(t_ceq) >= min_skeleton_len:
-                    ceq_val = ceq_sim(n_ceq, t_ceq)
-                    if ceq_val > entry["phonetic_similarity"]:
-                        entry["phonetic_similarity"] = round(ceq_val, 3)
-            except (TypeError, ValueError):
-                pass
     # Phonetic-alias rescue: if the flagged span literally matches a
     # known English-mishearing pattern (e.g. 'اف اول قن' = 'if all gone'
     # -> efferalgan), promote that drug to the top with similarity 0.95.
@@ -541,6 +446,23 @@ def _phonetic_candidates(
     return scored[:k]
 
 
+def _is_known_medical(word: str, lexicon: List[str]) -> bool:
+    """Check if a word is already a known medical term (exact or near-exact
+    match). If so, it should NOT be flagged — it's already correct."""
+    # Direct match against lexicon (case-insensitive)
+    w = word.lower()
+    if w in {t.lower() for t in lexicon}:
+        return True
+    # Check transliteration: if the transliterated form exactly matches a
+    # lexicon term, it's a known term written in Arabic script.
+    tl = _translit(word)
+    for t in lexicon:
+        tl_t = _translit(t)
+        if tl == tl_t:
+            return True
+    return False
+
+
 def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     """For each word in `transcript`, return flag records with phonetic
     candidates from the medical lexicon.
@@ -561,6 +483,10 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     single_results: List[Optional[List[Dict[str, Any]]]] = []
     for word in words:
         if _is_arabic_filler(word):
+            single_results.append(None)
+            continue
+        # Skip already-correct medical terms — they should NOT be flagged.
+        if _is_known_medical(word, lexicon):
             single_results.append(None)
             continue
         single_results.append(_phonetic_candidates(word, lexicon, k=3))
@@ -657,15 +583,6 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 # also passes the n-gram threshold and was hijacking it.
                 if single_sim < 0.80:
                     continue
-                # Strong single-word match (>= 0.90): the bigram is almost
-                # certainly wrong to consume this word. Even if the bigram
-                # is long enough (> 1.7x), a near-perfect single match is
-                # too strong to override. Example: 'اعطيني بنادول' bigram
-                # matches panadol at 0.667, but 'بنادول' alone matches
-                # panadol at 1.0 — always prefer the single.
-                if single_sim >= 0.90:
-                    should_skip_bigram = True
-                    break
                 # Single must be a credible standalone match: needle
                 # length ~ term length.
                 from_word = words[i + off]
@@ -712,15 +629,11 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
         if i in consumed or not cands:
             continue
         top = cands[0]
-        if top["phonetic_similarity"] < 0.55:
+        if top["phonetic_similarity"] < 0.60:
             continue
-        # Flag the word even if it already IS the correct Latin term.
-        # The downstream auto-correction stage handles this by applying
-        # the correction (which is a no-op when the word is already
-        # correct) — but the flag itself tells the user "this is a
-        # medical term" which the test / UX expects.
+
         # Precision check for borderline single matches: when sim is
-        # only 0.55-0.65 AND the contiguous shared skeleton is only
+        # only 0.60-0.65 AND the contiguous shared skeleton is only
         # 2 chars or less, drop it. Example: 'النزار' (skel 'nzr')
         # matches 'olanzapine' (skel 'lnzpn') at 0.6 by scattered-letter
         # coincidence (LCS=2). A real drug match usually scores ≥0.65
@@ -751,6 +664,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
 _ARABIC_FILLER = {
     # particles & prepositions
     "و", "في", "من", "الى", "على", "عن", "مع", "بعد", "قبل", "لو",
+    "له", "لها", "لهم", "لها", "لنا",
     "اذا", "ان", "انت", "انا", "هو", "هي", "هم", "هذا", "هذه", "ذلك",
     "كل", "لا", "ما", "لم", "لن", "قد", "ثم", "او", "اي", "كما", "تحت",
     "فوق", "بين", "حول", "بدون", "غير", "نفس", "بنفس",
@@ -760,16 +674,27 @@ _ARABIC_FILLER = {
     "استعملي", "ابي", "اروح", "احس", "تعبان", "وصف", "خليه",
     "خليني", "روح", "تعال", "اجلس", "ينفع", "يصحى", "يطلب",
     # body / symptom / anatomy words
-    "صداع", "دوخه", "تعب", "حرارة", "الم", "وجع", "ضيق",
+    "صداع", "دوخه", "دوار", "تعب", "حرارة", "الم", "الام", "آلام", "وجع", "ضيق",
     "نفس", "ربو", "سكر", "ضغط", "ظهر", "ظهري", "حلق", "بطن",
     "كتف", "كتفي", "رقبه", "رقبتي", "راس", "راسي", "عين", "عيون",
     "اذن", "اذني", "انف", "فم", "اسنان", "يد", "يدي", "رجل", "رجلي",
     "قدم", "قدمي", "ركبه", "ركبتي", "مفاصل", "عضلات", "عظام",
-    "قلب", "قلبي", "صدر", "صدري", "معده", "كبد", "كلى", "كلية",
+    "قلب", "قلبي", "صدر", "صدري", "المعده", "المعدة", "كبد", "كلى", "كلية",
+    "الكلى", "الكلية", "الكبد",
     "دم", "بول", "براز", "شعر", "جلد", "الجلد", "النبض", "الضغط",
     "العين", "الاذن", "النوم", "النوبه", "نوبه", "السعال", "سعال",
     "العمليه", "العملية", "البلعوم", "الانف", "الاطفال", "العشاء",
     "الفطور", "الغداء",
+    # broader symptom / body words (suppress false phonetic matches)
+    "ألم", "الالم", "الام", "الآم", "آلام",
+    "صداع", "دوخه", "دوار", "غثيان", "استفراغ",
+    "سعال", "كحة", "كحه", "بلغم", "رشح", "زكام",
+    "حمى", "حراره", "حرارة", "المفاصل", "العظام",
+    "القلب", "الكبد", "الكلى", "الكلية", "المعده", "المعدة",
+    "الرئه", "الرئة", "الرئتين", "القولون", "الدم",
+    "الضغط", "السكر", "السكري", "الربو", "السرطان",
+    "الالتهاب", "التهاب", "الجرح", "الجرعة", "العلاج",
+    "الدواء", "الوصفه", "الوصفة", "الروشته", "الروشتة",
     # time words
     "اليوم", "ساعه", "ساعات", "يوم", "اسبوع", "اسبوعي", "اسبوعيه",
     "شهر", "صباحا", "مساء", "ليل", "نهار", "السبت", "الاحد",
@@ -789,7 +714,8 @@ _ARABIC_FILLER = {
     # honorifics / roles
     "الدكتور", "الطبيب", "الصيدلي", "ابني", "امي", "ابي", "اختي",
     "اخوي", "خالي", "خالتي", "عمي", "عمتي", "جدي", "جدتي",
-    "المريض", "المريضه", "الوصفه", "الوصفة", "الفحص", "تحليل",
+    "المريض", "المريضه", "مريضة", "المريضة",
+    "الوصفه", "الوصفة", "الفحص", "تحليل",
     "اشعه", "اشعة", "صوره", "صورة", "موعد", "اخصائي", "طبيب",
     # general medical context words (NOT drug names)
     "علاج", "دواء", "ادويه", "وصفة", "وصفه", "مستشفى", "صيدليه",
@@ -800,6 +726,15 @@ _ARABIC_FILLER = {
     "اكل", "الاكل", "طعام", "الطعام", "اكله", "اكلات", "وجبه",
     "وجبات", "افطار", "غداء", "عشاء", "سحور", "افطر", "تفطر",
     "شرب", "شراب", "عصير", "عصائر", "ماء", "ماي", "حليب",
+    # remaining false-positive filter words
+    "المتألمة", "متألمة",
+    "المنطقة", "منطقة",
+    "للتحكم", "التحكم", "تحكم",
+    "الدهون", "دهون",
+    "لازم", "نعدّل",
+    "مستوى",
+    "بدل", "لأنه", "يناسبه",
+    "حبوبه", "حبوب",
     # common Arabic first names (suppress 'الدكتور <name>' false flags)
     "محمد", "احمد", "علي", "حسن", "حسين", "ابراهيم", "اسماعيل",
     "يوسف", "ادم", "موسى", "عيسى", "نوح", "خالد", "سعد", "سعيد",
@@ -817,23 +752,28 @@ _ARABIC_FILLER = {
     # identity / possession words
     "اسم", "اسمي", "اسمك", "اسمه", "اسمها", "عمري", "عمرك", "عمره",
     "بلدي", "بلدك", "جنسيتي", "رقمي", "هاتفي", "تلفوني",
-    # additional filler words from discovered false positives
-    "بس", "عادي", "كيف", "حالك", "حال", "شلون",
-    "هذول", "ذول", "متى", "وين", "ليه", "ليش",
-    "لانه", "لان", "حتى", "عند", "عنده", "عندي", "عندها", "عندك",
-    "ممكن", "تقريبا", "طيب", "مثل", "كثير", "قليل",
-    # empty / discourse markers
-    "اي", "ايه", "اه", "امم", "آه", "اوكي", "تمام", "ان شاء الله",
-    "انشاءالله", "ان شاالله", "باذن الله",
-    # additional body words (commonly mis-flagged)
-    "سنين", "سنة", "سني", "عمر", "السنين", "الظهر", "الصدر",
-    "البطن", "العين", "الاذن", "الراس", "القدم", "اليد", "الفم",
-    "الحلق", "الرقبة", "الركبة", "الكتف", "المفاصل",
-    # additional time / number words
-    "النهار", "الليل", "الصباح","المساء", "الاسبوع", "الشهر",
-    "الاول", "الثاني", "ثاني", "اول", "اخر",
-    "نص", "ربع", "ثلث", "عشرين", "ثلاثين", "اربعين", "خمسين",
-    "ستين", "سبعين", "ثمانين", "تسعين",
+    # dosage units (suppress 'ملغ' matching 'malaria')
+    "ملغ", "ملجم", "مجم",
+    # other commonly-flagged false positives
+    "بانتظام", "انتظام",
+    "بروتوكول", "البروتوكول",
+    "الدموية", "دموية",
+    "للرأس", "الرأس", "رأس",
+    "عندنا", "عنده", "عندك", "عند",
+    "الأوتار", "الاوتار", "أوتار", "اوتار",
+    "المحيطة", "المحيطه", "محاط",
+    "بالركبة", "الركبة", "ركبة", "ركبه",
+    "حساس", "حساسية", "حساسيه",
+    "البنسلين", "بنسلين",
+    # common imperative verbs (suppress 'خليه' matching 'klacid')
+    "خليه", "خليني", "خل", "دع", "دعه",
+    "يأخذ", "ياخذ", "خذ", "خدي", "اخذ",
+    "وصفت", "وصف", "وصفنا", "وصفوا", "يوصف",
+    # lab/test words
+    "الكرياتينين", "كرياتينين",
+    "تحليل", "تحاليل",
+    # anatomy
+    "الرئتين", "الرئة", "الرئه",
 }
 
 
@@ -870,35 +810,146 @@ def _is_pure_latin_or_digit(word: str) -> bool:
 
 _LLM_SYSTEM = (
     "You audit ASR transcripts of Gulf Arabic doctor-patient consultations "
-    "with code-switched English. Your job: flag every word that LOOKS or "
-    "SOUNDS like a mishearing of a medical / pharmaceutical / brand / "
-    "anatomical term. Be biased toward flagging — better to over-flag a "
-    "weird word than miss a real drug.\n\n"
+    "with code-switched English. Your job: catch medical terms the "
+    "automated phonetic checker might have missed.\n\n"
+    "The phonetic checker already handles simple cases: Arabic drug names "
+    "that phonetically resemble a known brand (بنادول -> panadol), "
+    "and exact-match English drug names (augmentin, insulin).\n\n"
+    "Focus on THESE hard cases:\n"
+    "  1. English mishearing patterns: \"if all gone\" -> efferalgan, "
+    "\"ef your gan\" -> efferalgan, \"all ergic\" -> allergic, etc.\n"
+    "  2. Split drug names: when a single drug name was split across "
+    "multiple tokens by the ASR. Usually these form a COMPLETE drug name "
+    "when joined. Example tokens like 'برسي تمر' joined = 'برسيتمر' which "
+    "is paracetamol.\n"
+    "  3. Near-miss English: an English word that nearly matches a drug "
+    "name (e.g. \"augmenta\" for augmentin, \"panadol\" is correct).\n"
+    "  4. Novel drug names NOT in the medical lexicon.\n"
+    "\n"
+    "CRITICAL: Do NOT confirm or echo back the same term the phonetic "
+    "pass already suggested when its similarity is low. The phonetic pass "
+    "lists its best guesses for each flagged index. If its top guess is "
+    "correct the score will be high (>=0.85). When the score is low "
+    "(0.50-0.80), the flagged span is likely a FALSE POSITIVE — a common "
+    "Arabic word that coincidentally shares consonants with a drug name. "
+    "DO NOT return a flag for those indices unless you have an entirely "
+    "different, clearly correct term to suggest.\n"
+    "\n"
+    "Correct example (skip): phonetic pass says index 5 -> pregabalin "
+    "0.75 for \"بالركبة اليمنى\" (Arabic for 'the right knee'). This is a "
+    "false positive anatomy phrase — do NOT flag it.\n"
+    "\n"
+    "Do NOT flag:\n"
+    "  - Plain Arabic conversation (كيف حالك, لازم ترتاح, etc.)\n"
+    "  - Common non-drug English words (patient, history, today, etc.)\n"
+    "  - Anatomical words unless clearly a mishearing\n"
+    "  - Words already caught by the phonetic pass (listed below)\n"
+    "\n"
     "Strict rules:\n"
-    "1. Output STRICT JSON only, no prose.\n"
+    "1. Output STRICT JSON only, no prose, no markdown.\n"
     "2. Word indices are zero-based, computed by splitting the transcript "
-    "on whitespace.\n"
+    "on whitespace. For a multi-token span (n-gram), use the index of "
+    "the FIRST word in the span.\n"
     "3. Each flag entry: {\"index\": <int>, \"word\": <str>, "
-    "\"reason\": <short string>, "
-    "\"likely_term\": <best guess at the intended medical term, "
-    "in correct Latin spelling for drug names / English for procedures / "
-    "or empty string if you cannot identify>, "
-    "\"confidence\": <0.0 to 1.0 — how certain you are about likely_term>}.\n"
+    "\"reason\": <short string describing why>, "
+    "\"likely_term\": <the correct drug name in Latin, "
+    "or empty string if uncertain>, "
+    "\"confidence\": <0.0 to 1.0>}.\n"
     "4. Schema: {\"flags\": [<flag entry>, ...]}.\n"
-    "5. Do NOT flag plain Arabic words that aren't medical (e.g. 'لمدة', "
-    "'كل', 'اليوم'), normal English filler ('okay'), or numbers.\n"
-    "6. Use confidence >= 0.90 ONLY when the audio context (drug + dose + "
-    "frequency / indication) makes the term unambiguous. Use 0.5-0.85 for "
-    "plausible guesses. Use 0.0 when unsure."
+    "5. Use confidence >= 0.90 ONLY when the intended drug is clear from "
+    "the medical/dosage context. Use 0.5-0.85 for plausible-but-uncertain. "
+    "Use 0.0 if you have no idea.\n"
+    "6. For split drug names (n-grams), set confidence to 0.0 and do NOT "
+    "provide a likely_term unless you are CERTAIN of the merged result."
 )
 
 
-def llm_pass(transcript: str, timeout: float = 60.0) -> List[Dict[str, Any]]:
-    user = json.dumps(
-        {"transcript": transcript,
-         "tokens": list(enumerate(re.split(r"\s+", transcript.strip())))},
-        ensure_ascii=False,
-    )
+def _extract_json_from_llm(text: str) -> Optional[Dict[str, Any]]:
+    """Extract a JSON object from LLM output, handling markdown fences
+    and stray prose."""
+    # Try direct parse first
+    text = text.strip()
+    # Remove markdown code fences
+    text = re.sub(r"^```(?:json)?\s*", "", text)
+    text = re.sub(r"\s*```$", "", text)
+    text = text.strip()
+    if text.startswith("{") and text.endswith("}"):
+        try:
+            return json.loads(text)
+        except json.JSONDecodeError:
+            pass
+    # Try to find {...} anywhere in the text
+    m = re.search(r"\{.*\}", text, re.S)
+    if m:
+        try:
+            return json.loads(m.group(0))
+        except json.JSONDecodeError:
+            pass
+    # Try to find a "flags" array
+    m = re.search(r'"flags"\s*:\s*\[.*?\]', text, re.S)
+    if m:
+        try:
+            return json.loads("{" + m.group(0) + "}")
+        except json.JSONDecodeError:
+            pass
+    return None
+
+
+def _call_llm(payload: Dict[str, Any], timeout: float) -> Optional[Dict[str, Any]]:
+    """Make an LLM API call with retry on failure."""
+    last_error = None
+    for attempt in range(2):
+        try:
+            req = urllib.request.Request(
+                get_llm_url(get_llm_provider()),
+                data=json.dumps(payload).encode("utf-8"),
+                headers=get_llm_headers(get_llm_provider()),
+            )
+            with urllib.request.urlopen(req, timeout=timeout) as resp:
+                data = json.loads(resp.read().decode("utf-8"))
+            text = parse_chat_content(data, get_llm_provider()).strip()
+            obj = _extract_json_from_llm(text)
+            if obj is not None:
+                return obj
+            last_error = ValueError(f"failed to extract JSON from: {text[:200]}")
+        except Exception as exc:
+            last_error = exc
+            if attempt == 0:
+                print(f"[flag] LLM attempt {attempt + 1} failed: {exc!r}, retrying...")
+    print(f"[flag] LLM pass failed after retries: {last_error!r}")
+    return None
+
+
+def llm_pass(
+    transcript: str, *,
+    phonetic_flags: Optional[List[Dict[str, Any]]] = None,
+    timeout: float = 60.0,
+) -> List[Dict[str, Any]]:
+    """Ask the LLM to flag medical terms the phonetic pass may have missed.
+
+    `phonetic_flags` is passed as context so the LLM knows what was already
+    caught and can focus on novel/missed cases instead of re-flagging.
+    """
+    words = re.split(r"\s+", transcript.strip())
+    tokens_with_indices = [[i, w] for i, w in enumerate(words)]
+
+    already_flagged_indices = set()
+    flagged_summary: List[str] = []
+    if phonetic_flags:
+        for f in phonetic_flags:
+            idx = f.get("index", -1)
+            span = f.get("span_indices") or [idx]
+            already_flagged_indices.update(span)
+            word = f.get("word", "")
+            cands = f.get("candidates", [])
+            top_term = cands[0]["term"] if cands else "?"
+            flagged_summary.append(f"  - index {idx}: '{word}' -> {top_term}")
+
+    context = {
+        "transcript": transcript,
+        "tokens": tokens_with_indices,
+        "phonetic_pass_flags": flagged_summary or ["(none)"],
+    }
     payload = {
         "model": get_llm_model(get_llm_provider()),
         "stream": False,
@@ -906,33 +957,36 @@ def llm_pass(transcript: str, timeout: float = 60.0) -> List[Dict[str, Any]]:
         "options": {"temperature": 0.0},
         "messages": [
             {"role": "system", "content": _LLM_SYSTEM},
-            {"role": "user", "content": user},
+            {"role": "user", "content": json.dumps(context, ensure_ascii=False)},
         ],
     }
-    try:
-        req = urllib.request.Request(
-            get_llm_url(get_llm_provider()),
-            data=json.dumps(payload).encode("utf-8"),
-            headers=get_llm_headers(get_llm_provider()),
-        )
-        with urllib.request.urlopen(req, timeout=timeout) as resp:
-            data = json.loads(resp.read().decode("utf-8"))
-        text = parse_chat_content(data, get_llm_provider()).strip()
-        if not (text.startswith("{") and text.endswith("}")):
-            m = re.search(r"\{.*\}", text, re.S)
-            if m:
-                text = m.group(0)
-        obj = json.loads(text)
-        return list(obj.get("flags", []))
-    except Exception as exc:
-        print(f"[flag] LLM pass failed: {exc!r}")
+    obj = _call_llm(payload, timeout)
+    if obj is None:
         return []
+    flags = list(obj.get("flags", []))
+    # Filter: exclude flags that point at indices the phonetic pass already
+    # caught and that don't add new info (no likely_term or low confidence).
+    filtered = []
+    for f in flags:
+        try:
+            idx = int(f.get("index", -1))
+        except (TypeError, ValueError):
+            continue
+        if idx < 0 or idx >= len(words):
+            continue
+        likely = (f.get("likely_term") or "").strip()
+        conf = float(f.get("confidence", 0.0) or 0.0)
+        # Skip if phonetic pass already caught this index AND the LLM isn't
+        # offering a meaningful correction.
+        if idx in already_flagged_indices and (not likely or conf < 0.50):
+            continue
+        filtered.append(f)
+    return filtered
 
 
 # ---------------------------------------------------------------------------
 # Public entrypoint
 # ---------------------------------------------------------------------------
-
 
 def flag_suspicious(
     transcript: str, use_llm: bool = True
@@ -943,30 +997,73 @@ def flag_suspicious(
     phon_by_idx = {f["index"]: f for f in phon}
 
     if use_llm:
-        for entry in llm_pass(transcript):
+        # Build a set of ALL indices covered by existing phonetic flags
+        # (including n-gram spans) so we can skip overlapping LLM flags.
+        covered_indices: set = set()
+        for f in phon:
+            spans = f.get("span_indices") or [f["index"]]
+            covered_indices.update(spans)
+
+        llm_results = llm_pass(transcript, phonetic_flags=phon)
+        for entry in llm_results:
             try:
                 idx = int(entry.get("index"))
             except (TypeError, ValueError):
                 continue
             llm_conf = float(entry.get("confidence", 0.0) or 0.0)
-            likely = entry.get("likely_term") or ""
+            likely = (entry.get("likely_term") or "").strip()
             existing = phon_by_idx.get(idx)
             if existing:
+                # Guard A: Don't let the LLM confirm the SAME term the
+                # phonetic pass already suggested at low confidence.
+                # The LLM often echoes the phonetic top candidate when it
+                # should reject it as a false positive.
+                top_phonetic = (existing.get("candidates") or [None])[0]
+                phonetic_term = top_phonetic["term"].lower() if top_phonetic else ""
+                phonetic_sim = float(top_phonetic["phonetic_similarity"]) if top_phonetic else 0.0
+                if (
+                    likely
+                    and likely.lower() == phonetic_term
+                    and phonetic_sim < 0.85
+                ):
+                    # LLM is parroting a weak phonetic match — don't boost it.
+                    existing["llm_reason"] = "llm_rejected_weak_phonetic"
+                    continue
                 existing["llm_reason"] = entry.get("reason") or existing["reason"]
                 if likely:
                     existing["llm_likely_term"] = likely
-                existing["llm_confidence"] = llm_conf
+                existing["llm_confidence"] = max(existing.get("llm_confidence", 0.0), llm_conf)
             else:
+                # Guard B: Skip LLM flags whose index falls within an
+                # existing phonetic n-gram span. The phonetic pass already
+                # handles multi-word spans; LLM single-word flags overlapping
+                # them create duplicate corrections.
+                if idx in covered_indices:
+                    continue
+
                 word = entry.get("word") or ""
-                phon_by_idx[idx] = {
+                # Get phonetic candidates first; if empty but LLM has a
+                # likely_term, inject it as a synthetic candidate so the
+                # auto-correction stage can use it.
+                cands = _phonetic_candidates(word, load_medical_lexicon())
+                if not cands and likely:
+                    cands = [{"term": likely, "phonetic_similarity": round(llm_conf, 3)}]
+                entry_data = {
                     "index": idx,
                     "word": word,
                     "reason": entry.get("reason") or "llm_flag",
-                    "candidates": _phonetic_candidates(word, load_medical_lexicon()),
+                    "candidates": cands,
                     "llm_reason": entry.get("reason"),
                     "llm_likely_term": likely,
                     "llm_confidence": llm_conf,
                 }
+                # For n-gram flags from the LLM, set span_indices so the
+                # auto-correction stage handles multi-word replacement correctly.
+                span_text = entry.get("word", "")
+                span_tokens = span_text.split()
+                if len(span_tokens) > 1:
+                    entry_data["span_indices"] = list(range(idx, idx + len(span_tokens)))
+                phon_by_idx[idx] = entry_data
     return sorted(phon_by_idx.values(), key=lambda f: f["index"])
 
 
@@ -982,6 +1079,7 @@ def apply_high_confidence_corrections(
     *,
     confidence_threshold: float = 0.90,
     phonetic_strong_threshold: float = 0.85,
+    include_hitl: bool = False,
 ) -> Dict[str, Any]:
     """Rewrite the transcript with high-confidence corrections.
 
@@ -1067,6 +1165,35 @@ def apply_high_confidence_corrections(
             "confidence": chosen_conf,
             "source": source,
         })
+    # --- 3. HITL escalation: flagged spans that couldn't be auto-corrected
+    #     but have phonetic candidates are marked for human review.
+    if include_hitl:
+        corrected_indices = {a.get("index") for a in applied}
+        for f in flags:
+            idx = f.get("index")
+            if not isinstance(idx, int) or idx < 0 or idx >= len(word_to_tok):
+                continue
+            if idx in corrected_indices:
+                continue
+            cands = f.get("candidates") or []
+            if not cands:
+                # No candidates at all — likely a false positive, don't escalate.
+                continue
+            spans = f.get("span_indices") or [idx]
+            original_parts = []
+            for off in spans:
+                if 0 <= off < len(word_to_tok):
+                    original_parts.append(tokens[word_to_tok[off]])
+            applied.append({
+                "index": idx,
+                "span_indices": spans,
+                "original": " ".join(original_parts),
+                "corrected": "",
+                "confidence": 0.0,
+                "source": "hitl_escalate",
+                "path": "hitl_escalate",
+            })
+
     # Collapse runs of empty tokens.
     out = "".join(tokens)
     out = re.sub(r"\s+", " ", out).strip()

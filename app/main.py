@@ -48,7 +48,12 @@ from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
 from pydantic import BaseModel, Field
 
-from fastapi.responses import StreamingResponsefrom .services import asr, asr_benchmark, descriptions, lexicon, llm_decide, llm_detect, pipeline_test, tracing, voice_match
+from fastapi.responses import StreamingResponse
+
+from .services import (
+    asr, asr_benchmark, descriptions, drug_normalize, flag, lexicon,
+    llm_decide, llm_detect, tracing, voice_match,
+)
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 
 
@@ -710,27 +715,128 @@ from .services import alignment_v2 as _alignment, flag as _flag
 
 
 # ---------------------------------------------------------------------------
-# /api/test-pipeline — run the curated 30-case test set and return per-stage
-# evaluation results. No audio needed — purely text-input pipeline stages.
+# /api/test-pipeline — run the pipeline on a single text case and return
+# the full response schema for the standalone eval script.
 # ---------------------------------------------------------------------------
+#
+# Expected request:
+#   POST /api/test-pipeline  { "transcript": "...", "case_id": "TC-001" }
+#
+# Expected response:
+#   {
+#     "case_id": "TC-001",
+#     "original": "...",
+#     "corrected": "...",
+#     "corrections": [{ "span_text": "...", "chosen": "...", "path": "auto_fix", "confidence": 0.0 }],
+#     "flagged_spans": [{ "text": "...", "start_index": 0, "end_index": 1, "max_suspicion": 0.0, "reason": "..." }],
+#     "retrieval_candidates": [{ "span_text": "...", "candidates": [{ "term": "...", "phonetic_score": 0.0 }] }]
+#   }
 
 
-@app.get("/api/test-pipeline")
-async def test_pipeline(use_llm: bool = False) -> Dict[str, Any]:
-    """Run all 30 test cases through every pipeline stage and return
-    per-stage accuracy (Scoring & Flagging, Drug Normalization,
-    Auto-Correction). This is the shared endpoint both you and your
-    colleague hit to compare whose pipeline performs better.
+@app.post("/api/test-pipeline")
+async def test_pipeline(req: dict) -> Dict[str, Any]:
+    """Run the pipeline on one text input and return the structured response.
 
-    Query parameters:
-      use_llm (bool, default False) — enable the LLM pass for flagging.
+    The standalone eval_pipeline.py script calls this endpoint for each
+    test case and evaluates the response against expected data across
+    5 stages: scoring & flagging, phonetic retrieval, correction decision,
+    false positive guard, and end-to-end exact match.
     """
+    transcript = (req.get("transcript") or "").strip()
+    case_id = req.get("case_id") or "unknown"
+    # Optional: enable the LLM pass for higher-accuracy correction at the
+    # cost of latency and non-determinism. Default False for reproducibility.
+    use_llm_flag = req.get("use_llm", False)
+    if not isinstance(use_llm_flag, bool):
+        use_llm_flag = False
+    if not transcript:
+        return JSONResponse(status_code=400, content={"error": "transcript is required", "case_id": case_id})
+
     try:
-        result = pipeline_test.evaluate_test_set(use_llm=use_llm)
-        return result
+        # 1) Drug normalization first (Arabic → Latin for known drug variants).
+        normalized_text, drug_fixes = drug_normalize.normalize_drugs(transcript)
+
+        # 2) Flag suspicious spans on the NORMALIZED text.
+        #    The phonetic pass is deterministic and catches phonetic mishearings
+        #    plus split drug names. When use_llm=True, the LLM pass can attach
+        #    likely_term / confidence to help correct borderline cases.
+        flags_out = flag.flag_suspicious(normalized_text, use_llm=use_llm_flag)
+
+        # 3) Apply high-confidence corrections based on phonetic flags.
+        #    include_hitl=True produces escalation entries for spans that
+        #    were flagged but couldn't be auto-corrected (e.g. low-confidence
+        #    phonetic candidates).
+        corr_result = flag.apply_high_confidence_corrections(
+            normalized_text, flags_out,
+            include_hitl=True,
+        )
+        final_text = corr_result["corrected_transcript"]
+        auto_applied = corr_result["applied"]
+
+        # 4) Build the response schema.
+        words = [w for w in re.split(r"\s+", transcript.strip()) if w]
+
+        # flagged_spans: from flag_suspicious output on the normalized text.
+        flagged_spans = []
+        for f in flags_out:
+            idx = f.get("index", 0)
+            span_indices = f.get("span_indices") or [idx]
+            word = f.get("word", "")
+            cands = f.get("candidates", [])
+            top_sim = cands[0]["phonetic_similarity"] if cands else 0.0
+            flagged_spans.append({
+                "text": word,
+                "start_index": span_indices[0],
+                "end_index": span_indices[-1] + 1,
+                "max_suspicion": round(top_sim, 4),
+                "reason": f.get("reason", "phonetic"),
+            })
+
+        # corrections: from apply_high_confidence_corrections (incl. HITL).
+        corrections = []
+        for a in auto_applied:
+            path = a.get("path", "auto_fix")
+            corrections.append({
+                "span_text": a.get("original", ""),
+                "chosen": a.get("corrected", ""),
+                "path": path,
+                "confidence": round(a.get("confidence", 0.0), 4),
+            })
+        # Also add drug_normalize fixes that weren't already applied.
+        for df in drug_fixes:
+            df_from = df.get("from", "")
+            if not any(c["span_text"].strip() == df_from.strip() for c in corrections):
+                corrections.append({
+                    "span_text": df_from,
+                    "chosen": df.get("to", ""),
+                    "path": "auto_fix",
+                    "confidence": 1.0,
+                })
+
+        # retrieval_candidates: for each flag, list the candidates.
+        retrieval_candidates = []
+        for f in flags_out:
+            cands = f.get("candidates", [])
+            retrieval_candidates.append({
+                "span_text": f.get("word", ""),
+                "candidates": [
+                    {"term": c["term"], "phonetic_score": round(c["phonetic_similarity"], 4)}
+                    for c in cands
+                ],
+            })
+
+        return {
+            "case_id": case_id,
+            "original": transcript,
+            "corrected": final_text,
+            "corrections": corrections,
+            "flagged_spans": flagged_spans,
+            "retrieval_candidates": retrieval_candidates,
+        }
+
     except Exception as exc:
         print(f"[test-pipeline] error: {exc!r}")
-        return JSONResponse(status_code=500, content={"error": str(exc)})
+        return JSONResponse(status_code=500, content={"error": str(exc), "case_id": case_id})
 
 
 @app.post("/api/transcribe_debug")
