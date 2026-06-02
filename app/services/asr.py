@@ -1,10 +1,10 @@
-"""Speech-to-text service — Gulf Arabic Qwen3-ASR 900h fine-tune.
+"""Speech-to-text service — Gulf Arabic Qwen3-ASR-1.7B LoRA backend.
 
-HARD-PINNED to runs/qwen3_gulf_merged_base: the Qwen3-ASR model fine-tuned on
-900h of Gulf Arabic, with the LoRA merged into the base weights. There is NO
-env override and NO adapter path — this service will only ever load that one
-model and refuses to fall back to the vanilla Qwen3-ASR-1.7B or any A/B/C
-training arm.
+Uses the fine-tuned Gulf Arabic LoRA adapter on top of Qwen3-ASR-1.7B.
+The adapter path is controlled by the QWEN3_GULF_ADAPTER env var
+(default: runs/qwen3_lora_r6/final_adapter relative to the project root).
+
+Set QWEN3_GULF_ADAPTER to point at any other checkpoint directory.
 """
 
 from __future__ import annotations
@@ -38,12 +38,15 @@ def _load_model():
         return _MODEL, _PROCESSOR
 
     import torch
+    from peft import PeftModel
 
-    # HARD-PINNED to the Qwen3-ASR model fine-tuned on 900h of Gulf Arabic,
-    # merged into the base weights (merge_and_unload). NO env override, NO
-    # vanilla Qwen3-ASR-1.7B base, NO train A/B/C adapters. This is the only
-    # ASR model this service is allowed to load.
-    base_repo = str((PROJECT_ROOT / "runs" / "qwen3_gulf_merged_base").resolve())
+    base_repo = os.environ.get("QWEN3_ASR_BASE", "Qwen/Qwen3-ASR-1.7B")
+    adapter_path = os.environ.get(
+        "QWEN3_GULF_ADAPTER", "runs/qwen3_lora_r6/final_adapter"
+    )
+    adapter_dir = Path(adapter_path)
+    if not adapter_dir.is_absolute():
+        adapter_dir = (PROJECT_ROOT / adapter_dir).resolve()
 
     if torch.cuda.is_available():
         _DEVICE, _DTYPE = "cuda:0", torch.bfloat16
@@ -52,69 +55,45 @@ def _load_model():
     else:
         _DEVICE, _DTYPE = "cpu", torch.float32
 
-    if not Path(base_repo).exists():
-        raise RuntimeError(
-            f"[asr] 900h Gulf Arabic model not found at {base_repo}. "
-            "This service refuses to fall back to any other model."
-        )
-
-    print(f"[asr] loading 900h Gulf Arabic fine-tune: {base_repo} on {_DEVICE} ({_DTYPE})")
+    print(f"[asr] loading {base_repo} on {_DEVICE} ({_DTYPE})")
 
     if _qwen3_asr_in_transformers():
         from transformers import AutoModelForCausalLM, AutoProcessor
         _PROCESSOR = AutoProcessor.from_pretrained(base_repo, trust_remote_code=True)
-        _MODEL = AutoModelForCausalLM.from_pretrained(
+        base = AutoModelForCausalLM.from_pretrained(
             base_repo, torch_dtype=_DTYPE, trust_remote_code=True, low_cpu_mem_usage=True,
         ).to(_DEVICE).eval()
-        return _MODEL, _PROCESSOR
-
-    # Fallback loader: qwen-asr pip wrapper (transformers doesn't register qwen3_asr).
-    # Still loads ONLY the merged 900h Gulf Arabic model — no adapters.
-    try:
-        from qwen_asr import Qwen3ASRModel
-    except ImportError as exc:
-        raise RuntimeError(
-            "qwen3_asr is not registered in transformers and qwen-asr wrapper is not installed. "
-            "Run: pip install qwen-asr"
-        ) from exc
-    print("[asr] using qwen-asr wrapper (transformers too old for qwen3_asr)")
-    try:
+    else:
+        # Fallback: qwen-asr pip wrapper (needed when transformers doesn't register qwen3_asr)
+        try:
+            from qwen_asr import Qwen3ASRModel
+        except ImportError as exc:
+            raise RuntimeError(
+                "qwen3_asr is not registered in transformers and qwen-asr wrapper is not installed. "
+                "Run: pip install qwen-asr"
+            ) from exc
+        print(f"[asr] using qwen-asr wrapper (transformers too old for qwen3_asr)")
         _MODEL = Qwen3ASRModel.from_pretrained(
             base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
         )
-    except NotImplementedError as exc:
-        # "Cannot copy out of meta tensor; no data!" — accelerate placed the
-        # weights on the meta device and the string device_map move failed.
-        # Retry loading onto CPU first, then move the real tensors to the GPU.
-        # This still loads ONLY the 900h Gulf model; it is NOT a fallback to a
-        # different model — same weights, different placement path.
-        if "meta tensor" not in str(exc).lower():
-            raise
-        print(f"[asr] meta-tensor load failed ({exc}); retrying CPU->GPU load")
-        import torch
-        _MODEL = Qwen3ASRModel.from_pretrained(
-            base_repo, dtype=_DTYPE, device_map="cpu", max_new_tokens=1024,
-        )
-        inner = getattr(_MODEL, "model", None)
-        if inner is None:
-            raise RuntimeError(
-                "[asr] could not access the inner module of the 900h model to "
-                "move it to the GPU. Refusing to run a partially-loaded model."
-            )
-        if _DEVICE != "cpu":
-            inner = inner.to(_DEVICE)
-            _MODEL.model = inner
-            # Verify the weights really materialized on the target device — no
-            # silent half-on-CPU model that would degrade transcript quality.
-            for name, p in inner.named_parameters():
-                if p.device.type == "meta":
-                    raise RuntimeError(
-                        f"[asr] 900h model parameter '{name}' is still on the "
-                        "meta device after load. Refusing to transcribe with an "
-                        "incompletely-loaded model (no fallback allowed)."
-                    )
-                break
-    _PROCESSOR = None  # wrapper handles its own processor
+        _PROCESSOR = None  # wrapper handles its own processor
+        if adapter_dir.exists():
+            print(f"[asr] attaching LoRA adapter: {adapter_dir}")
+            inner = getattr(_MODEL, "model", None) or _MODEL
+            peft_model = PeftModel.from_pretrained(inner, str(adapter_dir)).to(_DEVICE).eval()
+            if hasattr(_MODEL, "model"):
+                _MODEL.model = peft_model
+            else:
+                _MODEL = peft_model
+        return _MODEL, _PROCESSOR
+
+    if adapter_dir.exists():
+        print(f"[asr] attaching LoRA adapter: {adapter_dir}")
+        _MODEL = PeftModel.from_pretrained(base, str(adapter_dir)).to(_DEVICE).eval()
+    else:
+        print(f"[asr] WARNING: adapter not found at {adapter_dir}, using base model")
+        _MODEL = base
+
     return _MODEL, _PROCESSOR
 
 
@@ -177,14 +156,9 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     except Exception as exc:
         if tmp_wav and tmp_wav.exists():
             tmp_wav.unlink(missing_ok=True)
-        # Surface the failure instead of silently returning an empty transcript.
-        raise RuntimeError(f"[asr] failed to decode audio {audio_path}: {exc}") from exc
-    # NOTE: do NOT delete tmp_wav here. The qwen-asr wrapper path below
-    # re-reads the audio FILE by path; if we delete the clean 16k mono WAV
-    # now, the wrapper falls back to decoding the original webm/opus via
-    # librosa->audioread ("PySoundFile failed. Trying audioread instead."),
-    # which produces garbled samples and worse transcripts. We hand the
-    # wrapper the clean wav_path and only delete tmp_wav at the very end.
+        return {"text": "", "language": language or "ar", "language_probability": 0.0, "duration": 0.0, "words": [], "error": str(exc)}
+    if tmp_wav and tmp_wav.exists():
+        tmp_wav.unlink(missing_ok=True)
 
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
@@ -206,22 +180,13 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     # qwen_asr wrapper path (older transformers)
     if processor is None:
         t0 = time.time()
-        # Hand the wrapper the CLEAN 16k mono WAV (wav_path), not the raw
-        # webm/opus. Passing the original triggers the librosa->audioread
-        # fallback ("PySoundFile failed") and garbled samples. wav_path is
-        # the ffmpeg-converted file produced above and is still on disk.
-        kwargs = {"audio": str(wav_path), "language": lang_label}
+        kwargs = {"audio": str(audio_path), "language": lang_label}
         if context:
             kwargs["context"] = context
             print(f"[asr] using context bias: {len(context)} chars, "
                   f"{context.count(',') + 1} terms")
-        try:
-            results = model.transcribe(**kwargs)
-            raw_text = getattr(results[0], "text", "").strip() if results else ""
-        finally:
-            # Clean up the temp WAV now that the wrapper is done reading it.
-            if tmp_wav and tmp_wav.exists():
-                tmp_wav.unlink(missing_ok=True)
+        results = model.transcribe(**kwargs)
+        raw_text = getattr(results[0], "text", "").strip() if results else ""
         # Phonetic drug-name canonicalization: map Arabic-script brand names
         # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
         text, drug_fixes = normalize_drugs(raw_text)
@@ -235,10 +200,7 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
             "words": [],
         }
 
-    # transformers path: we already have the decoded `audio` array in memory,
-    # so the temp WAV is no longer needed. Delete it now.
-    if tmp_wav and tmp_wav.exists():
-        tmp_wav.unlink(missing_ok=True)
+    # transformers path
     if sr != 16000:
         import librosa
         audio = librosa.resample(audio, orig_sr=sr, target_sr=16000)

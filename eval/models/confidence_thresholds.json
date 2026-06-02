@@ -1,0 +1,45 @@
+{
+  "auto_apply": 0.8516739503881344,
+  "hitl": 0.3111544926063424,
+  "leave_as_is": 0.0,
+  "features": [
+    "phonetic_score_norm",
+    "score_gap_norm",
+    "llm_confidence",
+    "n_candidates_norm",
+    "is_mixed_script",
+    "span_length_norm",
+    "is_arabic",
+    "best_retrieval_score",
+    "n_tokens_norm",
+    "is_multi_word"
+  ],
+  "train_auc": 0.988923076923077,
+  "n_train_samples": 90,
+  "metrics_at_thresholds": {
+    "auto_apply": {
+      "threshold": 0.8516739503881344,
+      "precision": 1.0,
+      "recall": 0.64,
+      "f1": 0.7804878048780487,
+      "n_applied": 16,
+      "n_total": 90
+    },
+    "hitl": {
+      "threshold": 0.3111544926063424,
+      "precision": 0.8064516129032258,
+      "recall": 1.0,
+      "f1": 0.8928571428571428,
+      "n_applied": 31,
+      "n_total": 90
+    },
+    "permissive": {
+      "threshold": 0.5,
+      "precision": 0.9259259259259259,
+      "recall": 1.0,
+      "f1": 0.9615384615384615,
+      "n_applied": 27,
+      "n_total": 90
+    }
+  }
+}

@@ -135,6 +135,7 @@ button.recording {
   background: var(--bad);
   border-color: var(--bad);
   color: #fff;
+  animation: pulse 1.4s ease-in-out infinite;
 }
 
 @keyframes pulse {
@@ -346,6 +347,12 @@ button.big .square {
   height: 12px;
   background: currentColor;
   border-radius: 2px;
+}
+
+button.recording {
+  background: var(--bad);
+  border-color: var(--bad);
+  color: #fff;
 }
 
 button.recording .dot {
