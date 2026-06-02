@@ -54,3 +54,4 @@ scripts/run_asr_benchmark.py
 .cache/
 .tmp/
 eval/reports.claude/
+.mcp.json
