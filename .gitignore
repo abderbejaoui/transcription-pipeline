@@ -15,7 +15,6 @@ venv/
 env/
 
 # Editor / IDE
-.vscode/
 .idea/
 *.swp
 .DS_Store
@@ -44,7 +43,6 @@ eval/gulf_medical_v1/wavs/
 *.tar.gz
 test_gulf*.wav
 
-.env
 .github/
 PROJECT_DESCRIPTION.md
 app/services/asr_benchmark.py
@@ -65,3 +63,5 @@ eval/reports/
 
 # Ad-hoc manual test scripts
 _test_*.py
+config.bat
+node_modules
