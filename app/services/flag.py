@@ -15,6 +15,7 @@ candidate medical terms phonetically closest to it.
 
 from __future__ import annotations
 
+import functools
 import json
 import os
 import re
@@ -56,6 +57,52 @@ _AR2LAT = {
     "ؤ": "w", "ئ": "y",
 }
 _TASHKEEL_RE = re.compile(r"[\u064b-\u0652\u0670\u0640]")
+
+
+# ---------------------------------------------------------------------------
+# CAMeL Tools morphological analyzers (Gulf Arabic + MSA).
+# Loaded once at import time; silently absent if the DBs aren't downloaded.
+# ---------------------------------------------------------------------------
+
+def _load_morph_analyzers():
+    glf, msa = None, None
+    try:
+        from camel_tools.morphology.database import MorphologyDB
+        from camel_tools.morphology.analyzer import Analyzer
+        try:
+            glf = Analyzer(MorphologyDB.builtin_db("calima-glf-01"))
+        except Exception:
+            pass
+        try:
+            msa = Analyzer(MorphologyDB.builtin_db("calima-msa-r13"))
+        except Exception:
+            pass
+    except ImportError:
+        pass
+    return glf, msa
+
+
+_GLF_ANALYZER, _MSA_ANALYZER = _load_morph_analyzers()
+
+
+@functools.lru_cache(maxsize=8192)
+def _morph_is_real_arabic(word: str) -> bool:
+    """Return True if `word` has at least one valid morphological analysis.
+
+    Gulf Arabic + MSA databases together cover all standard Arabic words,
+    colloquial Gulf forms, and MSA medical vocabulary. Drug mangles
+    (e.g. \u0644\u0627\u064a\u0632\u064a\u0646\u0648 for lisinopril) produce zero analyses; genuine Arabic
+    words always produce at least one.
+    """
+    for analyzer in (_GLF_ANALYZER, _MSA_ANALYZER):
+        if analyzer is None:
+            continue
+        try:
+            if any(a.get("pos") not in ("PUNC", None) for a in analyzer.analyze(word)):
+                return True
+        except Exception:
+            continue
+    return False
 
 
 def _strip_arabic_clitics(word: str) -> str:
@@ -768,7 +815,12 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 consumed.add(i + off)
 
     _try_ngram(3, threshold=0.55, filler_threshold=0.75)
-    _try_ngram(2, threshold=0.50, filler_threshold=0.70)
+    # 2-gram filler_threshold raised 0.70 -> 0.78: a 2-gram that bridges ONE
+    # filler word (e.g. 'الدكتور لايزينو', 'تحليل إيتش') is almost always a
+    # spurious match unless the phonetic score is very high. Real split drugs
+    # that include a filler ('له نيكسيوم', 'له برولوسيك') score ~1.0 and are
+    # unaffected; filler-free splits use the lower base threshold.
+    _try_ngram(2, threshold=0.50, filler_threshold=0.78)
 
     # --- Single-word pass for words not absorbed by an n-gram. Catches
     # both already-correct drug spellings (panadol -> sim 1.0 same word,
@@ -804,136 +856,66 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
 
 
 # ---------------------------------------------------------------------------
-# Arabic filler words: pronouns, prepositions, common verbs, conjunctions.
-# These can sometimes phonetic-match a disease name by accident (e.g.
-# 'الاكل' -> 'flagyl'). We never flag them.
+# Arabic filler detection — principled morphological approach.
+#
+# We keep only a tiny hardcoded set of 1-3 character particles that are
+# too short for reliable morphological analysis. For all longer words,
+# we delegate to the CAMeL Tools Gulf Arabic + MSA morphological analyzers:
+# a word with ≥1 valid analysis is a real Arabic word and is never flagged.
+# Drug mangles (Arabic-script transliterations of drug names) have zero
+# valid analyses in both databases, so they correctly pass through to the
+# phonetic similarity check.
 # ---------------------------------------------------------------------------
 
-_ARABIC_FILLER = {
-    # particles & prepositions
-    "و", "في", "من", "الى", "على", "عن", "مع", "بعد", "قبل", "لو",
-    "له", "لها", "لهم", "لها", "لنا",
-    "اذا", "ان", "انت", "انا", "هو", "هي", "هم", "هذا", "هذه", "ذلك",
-    "كل", "لا", "ما", "لم", "لن", "قد", "ثم", "او", "اي", "كما", "تحت",
-    "فوق", "بين", "حول", "بدون", "غير", "نفس", "بنفس",
-    # common verbs (Gulf imperatives + frequent forms)
-    "خذ", "خذي", "خذو", "خود", "اخذ", "اخذي", "تاخذ", "تاخذي",
-    "قال", "قالت", "قلت", "اعطاني", "اعطته", "اعطيه", "استعمل",
-    "استعملي", "ابي", "اروح", "احس", "تعبان", "وصف", "خليه",
-    "خليني", "روح", "تعال", "اجلس", "ينفع", "يصحى", "يطلب",
-    # body / symptom / anatomy words
-    "صداع", "دوخه", "دوار", "تعب", "حرارة", "الم", "الام", "آلام", "وجع", "ضيق",
-    "نفس", "ربو", "سكر", "ضغط", "ظهر", "ظهري", "حلق", "بطن",
-    "كتف", "كتفي", "رقبه", "رقبتي", "راس", "راسي", "عين", "عيون",
-    "اذن", "اذني", "انف", "فم", "اسنان", "يد", "يدي", "رجل", "رجلي",
-    "قدم", "قدمي", "ركبه", "ركبتي", "مفاصل", "عضلات", "عظام",
-    "قلب", "قلبي", "صدر", "صدري", "المعده", "المعدة", "كبد", "كلى", "كلية",
-    "الكلى", "الكلية", "الكبد",
-    "دم", "بول", "براز", "شعر", "جلد", "الجلد", "النبض", "الضغط",
-    "العين", "الاذن", "النوم", "النوبه", "نوبه", "السعال", "سعال",
-    "العمليه", "العملية", "البلعوم", "الانف", "الاطفال", "العشاء",
-    "الفطور", "الغداء",
-    # broader symptom / body words (suppress false phonetic matches)
-    "ألم", "الالم", "الام", "الآم", "آلام",
-    "صداع", "دوخه", "دوار", "غثيان", "استفراغ",
-    "سعال", "كحة", "كحه", "بلغم", "رشح", "زكام",
-    "حمى", "حراره", "حرارة", "المفاصل", "العظام",
-    "القلب", "الكبد", "الكلى", "الكلية", "المعده", "المعدة",
-    "الرئه", "الرئة", "الرئتين", "القولون", "الدم",
-    "الضغط", "السكر", "السكري", "الربو", "السرطان",
-    "الالتهاب", "التهاب", "الجرح", "الجرعة", "العلاج",
-    "الدواء", "الوصفه", "الوصفة", "الروشته", "الروشتة",
-    # time words
-    "اليوم", "ساعه", "ساعات", "يوم", "اسبوع", "اسبوعي", "اسبوعيه",
-    "شهر", "صباحا", "مساء", "ليل", "نهار", "السبت", "الاحد",
-    "الاثنين", "الثلاثاء", "الاربعاء", "الخميس", "الجمعه",
-    # dosage / form words
-    "مرات", "مرتين", "مره", "حبه", "حبتين", "حبوب", "شراب", "كاسة",
-    "كاسه", "ماي", "ماء", "ابره", "بخاخ", "تحاميل", "جل", "جرعتين",
-    "جرعه", "كبسوله", "كبسولات", "نقطه", "نقاط", "قطره", "قطرات",
-    "ملليجرام", "ميكروجرام", "جرام", "وحده", "وحدات",
-    # numbers (essential to suppress vital-signs false positives)
-    "مية", "مئة", "خمسماية", "خمسميه", "خمسمائه", "مئتين",
-    "واحد", "اثنين", "ثلاثه", "ثلاث", "اربعه", "اربع", "خمسه", "خمس",
-    "ستة", "ست", "سبعه", "سبع", "ثمانيه", "ثمان", "تسعه", "تسع",
-    "عشره", "عشر", "عشرين", "ثلاثين", "اربعين", "خمسين",
-    "ستين", "سبعين", "ثمانين", "تسعين", "وعشرين", "وثلاثين",
-    "ومايه", "ولفين", "ثلث", "ربع", "نصف",
-    # honorifics / roles
-    "الدكتور", "الطبيب", "الصيدلي", "ابني", "امي", "ابي", "اختي",
-    "اخوي", "خالي", "خالتي", "عمي", "عمتي", "جدي", "جدتي",
-    "المريض", "المريضه", "مريضة", "المريضة",
-    "الوصفه", "الوصفة", "الفحص", "تحليل",
-    "اشعه", "اشعة", "صوره", "صورة", "موعد", "اخصائي", "طبيب",
-    # general medical context words (NOT drug names)
-    "علاج", "دواء", "ادويه", "وصفة", "وصفه", "مستشفى", "صيدليه",
-    "صيدلية", "عيادة", "عياده", "نتيجه", "نتيجة", "تحاليل",
-    "التهاب", "التهابات", "مرض", "امراض", "اعراض", "عرض",
-    "حساسيه", "حساسية",
-    # food / drink (frequently appears in dosing instructions)
-    "اكل", "الاكل", "طعام", "الطعام", "اكله", "اكلات", "وجبه",
-    "وجبات", "افطار", "غداء", "عشاء", "سحور", "افطر", "تفطر",
-    "شرب", "شراب", "عصير", "عصائر", "ماء", "ماي", "حليب",
-    # remaining false-positive filter words
-    "المتألمة", "متألمة",
-    "المنطقة", "منطقة",
-    "للتحكم", "التحكم", "تحكم",
-    "الدهون", "دهون",
-    "لازم", "نعدّل",
-    "مستوى",
-    "بدل", "لأنه", "يناسبه",
-    "حبوبه", "حبوب",
-    # common Arabic first names (suppress 'الدكتور <name>' false flags)
-    "محمد", "احمد", "علي", "حسن", "حسين", "ابراهيم", "اسماعيل",
-    "يوسف", "ادم", "موسى", "عيسى", "نوح", "خالد", "سعد", "سعيد",
-    "سالم", "سلمان", "سليمان", "صالح", "ناصر", "فهد", "فيصل",
-    "بدر", "ماجد", "طلال", "عبدالله", "عبدالرحمن", "عبدالعزيز",
-    "عبدالكريم", "عبدالمجيد", "عمر", "عثمان", "ابوبكر", "بكر",
-    "زيد", "ياسر", "فؤاد", "فواد", "كريم", "نبيل", "وليد", "هاني",
-    "طارق", "ايمن", "سامي", "اسامه", "اسامة", "حمد", "حمدان",
-    "راشد", "سيف", "زايد", "منصور", "سلطان", "حربي", "مطلق",
-    "فاطمه", "فاطمة", "عائشه", "عائشة", "خديجه", "خديجة", "مريم",
-    "زينب", "هدى", "نوره", "نورة", "موضي", "نوف", "ساره", "سارة",
-    "هند", "ريم", "لمى", "شهد", "غلا", "العنود", "الجوهره",
-    # Tribal/family-name particles (al-, ibn-, abu-, umm-)
-    "ابو", "أبو", "ام", "أم", "ابن", "بنت", "بن", "بنت",
-    # identity / possession words
-    "اسم", "اسمي", "اسمك", "اسمه", "اسمها", "عمري", "عمرك", "عمره",
-    "بلدي", "بلدك", "جنسيتي", "رقمي", "هاتفي", "تلفوني",
-    # dosage units (suppress 'ملغ' matching 'malaria')
-    "ملغ", "ملجم", "مجم",
-    # other commonly-flagged false positives
-    "بانتظام", "انتظام",
-    "بروتوكول", "البروتوكول",
-    "الدموية", "دموية",
-    "للرأس", "الرأس", "رأس",
-    "عندنا", "عنده", "عندك", "عند",
-    "الأوتار", "الاوتار", "أوتار", "اوتار",
-    "المحيطة", "المحيطه", "محاط",
-    "بالركبة", "الركبة", "ركبة", "ركبه",
-    "حساس", "حساسية", "حساسيه",
-    "البنسلين", "بنسلين",
-    # common imperative verbs (suppress 'خليه' matching 'klacid')
-    "خليه", "خليني", "خل", "دع", "دعه",
-    "يأخذ", "ياخذ", "خذ", "خدي", "اخذ",
-    "وصفت", "وصف", "وصفنا", "وصفوا", "يوصف",
-    # lab/test words
-    "الكرياتينين", "كرياتينين",
-    "تحليل", "تحاليل",
-    # anatomy
-    "الرئتين", "الرئة", "الرئه",
+_ARABIC_SHORT_PARTICLES = {
+    # 1-3 char structural particles too short for reliable morphology
+    "و", "أو", "او", "إذ",
+    "في", "من", "إلى", "الى", "على", "عن", "مع", "لو",
+    "لا", "ما", "لم", "لن", "قد", "ثم", "هو", "هي",
+    "له", "لها", "لهم", "لنا", "به", "بها", "بهم",
+    "ان", "إن", "أن",
+    # very short dosage / unit abbreviations
+    "ملغ", "مجم",
+    # pure conjunction/preposition single chars
+    "ف", "ب", "ل", "ك",
+}
+
+# Fallback for when morphology DBs are unavailable: a compact set covering
+# the most common Arabic words that phonetically collide with drug skeletons.
+_ARABIC_FILLER_FALLBACK = {
+    "صداع", "دوخه", "دوار", "تعب", "حرارة", "الم", "وجع",
+    "نفس", "ربو", "سكر", "ضغط", "التهاب", "مستشفى",
+    "يحتاج", "عشان", "الحين", "استمر", "النتائج", "نتائج",
+    "عدوى", "حمية", "كوليسترول", "الكوليسترول",
+    "الدكتور", "الطبيب", "علاج", "دواء", "تحليل",
+    "اليوم", "ساعه", "يوم", "شهر", "مرات", "حبوب",
 }
 
 
 def _is_arabic_filler(word: str) -> bool:
-    # Strip definite article + waw conjunction for matching, then compare.
-    w = word
-    for pre in ("و", "ال", "وال", "بال", "كال", "فال", "لل", "ف", "ب", "ل", "ك"):
+    """Return True if `word` is a real Arabic word that should never be flagged.
+
+    Strategy (in order):
+    1. Empty string → skip.
+    2. Short particles (≤3 chars or in _ARABIC_SHORT_PARTICLES) → always skip.
+    3. Morphological check (Gulf Arabic + MSA): ≥1 valid analysis → real word.
+    4. Fallback if no morphology DB: compact hardcoded set.
+    """
+    w = _TASHKEEL_RE.sub("", unicodedata.normalize("NFKC", word))
+    if not w:
+        return True
+    if len(w) <= 3 or w in _ARABIC_SHORT_PARTICLES:
+        return True
+    if _GLF_ANALYZER is not None or _MSA_ANALYZER is not None:
+        return _morph_is_real_arabic(w)
+    # Fallback: compact hardcoded set
+    if w in _ARABIC_FILLER_FALLBACK:
+        return True
+    for pre in ("ال", "وال", "بال", "كال", "فال", "لل"):
         if w.startswith(pre) and len(w) > len(pre):
-            stripped = w[len(pre):]
-            if stripped in _ARABIC_FILLER:
+            if w[len(pre):] in _ARABIC_FILLER_FALLBACK:
                 return True
-    return word in _ARABIC_FILLER
+    return False
 
 
 # Latin-only words (no Arabic letters) or pure digits / Arabic-Indic digits.

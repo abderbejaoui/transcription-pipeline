@@ -953,7 +953,9 @@ def main() -> None:
     print_report(reports, args.endpoint, total_elapsed)
 
     # Write JSON output
-    output_path = args.output or f"eval_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    output_dir = Path("eval_results")
+    output_dir.mkdir(exist_ok=True)
+    output_path = args.output or str(output_dir / f"eval_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
     output_data = {
         "meta": {
             "endpoint": args.endpoint,

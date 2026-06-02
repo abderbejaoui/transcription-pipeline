@@ -833,6 +833,35 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
                     "confidence": 1.0,
                 })
 
+        # A span that drug_normalize / HITL already corrected was, by
+        # definition, suspicious — surface it in flagged_spans too so the
+        # flagging metric credits it (otherwise pre-normalized drugs like
+        # 'فولتران'->voltaren vanish before flag_suspicious runs).
+        orig_words = [w for w in re.split(r"\s+", transcript.strip()) if w]
+
+        def _locate(span_from: str) -> tuple:
+            toks = span_from.split()
+            if toks:
+                for i in range(len(orig_words) - len(toks) + 1):
+                    if orig_words[i:i + len(toks)] == toks:
+                        return i, i + len(toks)
+            return 0, 1
+
+        covered = {fs["text"].strip() for fs in flagged_spans}
+        for fx in list(taught_fixes) + list(drug_fixes):
+            frm = (fx.get("from") or "").strip()
+            if not frm or any(frm in c or c in frm for c in covered if c):
+                continue
+            i0, i1 = _locate(frm)
+            flagged_spans.append({
+                "text": frm,
+                "start_index": i0,
+                "end_index": i1,
+                "max_suspicion": 1.0,
+                "reason": "normalized",
+            })
+            covered.add(frm)
+
         # retrieval_candidates: for each flag, list the candidates.
         retrieval_candidates = []
         for f in flags_out:
