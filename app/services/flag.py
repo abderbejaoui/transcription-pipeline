@@ -35,6 +35,10 @@ from .llm_config import (
 
 PROJECT_ROOT = Path(__file__).resolve().parents[2]
 MEDICAL_TERMS_PATH = PROJECT_ROOT / "medical_terms.txt"
+# Dedicated store for clinician-confirmed alias->term mappings taught at
+# runtime via the HITL loop. Kept separate from the seed lexicon so only
+# explicit human teachings are ever auto-applied.
+HITL_ALIASES_PATH = PROJECT_ROOT / "data" / "hitl_aliases.json"
 
 
 # ---------------------------------------------------------------------------
@@ -132,9 +136,18 @@ def _phonetic_skeleton(s: str) -> str:
 # ---------------------------------------------------------------------------
 
 _lex_cache: Optional[List[str]] = None
+# Exact clinician-confirmed alias -> canonical term (normalised key).
+_alias_cache: Optional[Dict[str, str]] = None
 
 
 def load_medical_lexicon() -> List[str]:
+    """Return the candidate-retrieval lexicon (medical_terms.txt).
+
+    HITL-taught terms are appended to this very file by add_retrieval_term(),
+    so anything a clinician teaches becomes retrievable on the next run.
+    Result is cached; invalidate_lexicon_cache() clears it after a teach so
+    no server restart is needed.
+    """
     global _lex_cache
     if _lex_cache is not None:
         return _lex_cache
@@ -148,6 +161,141 @@ def load_medical_lexicon() -> List[str]:
             terms.append(line)
     _lex_cache = terms
     return _lex_cache
+
+
+def add_retrieval_term(term: str) -> bool:
+    """Append a canonical term to the candidate-retrieval dataset.
+
+    Used by the HITL / teach feedback loop: the clinician-confirmed term is
+    written into medical_terms.txt so it can be retrieved as a candidate for
+    future similar-sounding mishearings. Returns True if newly added.
+    Only Latin canonical terms are useful (the retrieval matcher folds Arabic
+    needles against Latin skeletons), so non-Latin terms are skipped.
+    """
+    term = (term or "").strip()
+    if not term or not re.search(r"[A-Za-z]", term):
+        return False
+    existing = {t.lower() for t in load_medical_lexicon()}
+    if term.lower() in existing:
+        return False
+    with MEDICAL_TERMS_PATH.open("a", encoding="utf-8") as fh:
+        fh.write(term + "\n")
+    invalidate_lexicon_cache()
+    return True
+
+
+def _norm_alias(s: str) -> str:
+    """Normalise an alias/span for exact HITL matching: NFKC, drop tashkeel
+    and all whitespace, lowercase. So 'ريزيدرونيك اسيد' (two tokens) and the
+    flagged span match regardless of spacing."""
+    s = unicodedata.normalize("NFKC", s)
+    s = _TASHKEEL_RE.sub("", s)
+    s = re.sub(r"\s+", "", s)
+    return s.lower()
+
+
+def _load_taught_alias_map() -> Dict[str, str]:
+    """Map normalised clinician-taught aliases -> canonical term.
+
+    Sourced ONLY from the dedicated HITL file (data/hitl_aliases.json), which
+    /api/teach writes to. This is kept separate from the seed corrector
+    lexicon so only mappings a human explicitly confirmed at runtime are
+    auto-applied — the seed vocabulary never silently rewrites text."""
+    global _alias_cache
+    if _alias_cache is not None:
+        return _alias_cache
+    amap: Dict[str, str] = {}
+    if HITL_ALIASES_PATH.exists():
+        try:
+            raw = json.loads(HITL_ALIASES_PATH.read_text(encoding="utf-8"))
+            if isinstance(raw, dict):
+                for key, term in raw.items():
+                    if isinstance(key, str) and isinstance(term, str) and len(key) >= 4:
+                        amap[key] = term
+        except Exception:
+            pass
+    _alias_cache = amap
+    return amap
+
+
+def record_taught_aliases(term: str, aliases: List[str]) -> int:
+    """Persist clinician-confirmed alias -> term mappings for auto-apply.
+
+    Called by the HITL / teach feedback loop. Returns the number of new
+    mappings written. Keys are normalised for spacing/diacritic-insensitive
+    exact matching."""
+    term = (term or "").strip()
+    if not term:
+        return 0
+    amap: Dict[str, str] = {}
+    if HITL_ALIASES_PATH.exists():
+        try:
+            loaded = json.loads(HITL_ALIASES_PATH.read_text(encoding="utf-8"))
+            if isinstance(loaded, dict):
+                amap = {str(k): str(v) for k, v in loaded.items()}
+        except Exception:
+            amap = {}
+    added = 0
+    for a in aliases or []:
+        key = _norm_alias(str(a))
+        if len(key) >= 4 and key not in amap:
+            amap[key] = term
+            added += 1
+    if added:
+        HITL_ALIASES_PATH.parent.mkdir(parents=True, exist_ok=True)
+        HITL_ALIASES_PATH.write_text(
+            json.dumps(amap, ensure_ascii=False, indent=2), encoding="utf-8"
+        )
+        invalidate_lexicon_cache()
+    return added
+
+
+def apply_taught_aliases(text: str) -> Tuple[str, List[Dict[str, str]]]:
+    """Replace any clinician-taught alias occurrence with its canonical term.
+
+    Deterministic exact-match pass (1-3 token windows) that runs before
+    flagging. This is the auto-apply arm of the HITL loop: a mapping a human
+    already confirmed is applied with full confidence. Returns
+    (new_text, [{"from":..., "to":...}, ...])."""
+    amap = _load_taught_alias_map()
+    if not amap:
+        return text, []
+    tokens = re.split(r"(\s+)", text)
+    word_pos = [i for i, t in enumerate(tokens) if t.strip()]
+    replacements: List[Dict[str, str]] = []
+    n = len(word_pos)
+    i = 0
+    while i < n:
+        matched = False
+        for size in (3, 2, 1):
+            if i + size > n:
+                continue
+            positions = word_pos[i:i + size]
+            key = _norm_alias("".join(tokens[p] for p in positions))
+            if key in amap:
+                canonical = amap[key]
+                original = " ".join(tokens[p].strip() for p in positions)
+                tokens[positions[0]] = canonical
+                for p in positions[1:]:
+                    tokens[p] = ""
+                    if p - 1 >= 0:
+                        tokens[p - 1] = ""
+                replacements.append({"from": original, "to": canonical})
+                i += size
+                matched = True
+                break
+        if not matched:
+            i += 1
+    out = re.sub(r"\s+", " ", "".join(tokens)).strip()
+    return out, replacements
+
+
+def invalidate_lexicon_cache() -> None:
+    """Drop cached lexicon + alias map so newly-taught terms take effect
+    immediately (no restart). Called by /api/teach and /api/learn_from_edit."""
+    global _lex_cache, _alias_cache
+    _lex_cache = None
+    _alias_cache = None
 
 
 def _lev_sim(a: str, b: str) -> float:

@@ -200,6 +200,12 @@ def teach(req: TeachRequest) -> Dict[str, Any]:
     entry = lexicon.add_term(
         term=req.term, type_=req.type, aliases=req.aliases, priority=req.priority
     )
+    # Close the HITL feedback loop: add the clinician-confirmed term to the
+    # candidate-retrieval dataset (medical_terms.txt) and invalidate the
+    # caches so it (and its aliases) take effect on the next run — no restart.
+    flag.add_retrieval_term(req.term)
+    flag.record_taught_aliases(req.term, req.aliases)
+    flag.invalidate_lexicon_cache()
     # Pre-cache description so the next /transcribe DECIDE has it.
     threading.Thread(
         target=lambda: descriptions.get_or_generate(req.term, type_hint=req.type),
@@ -756,6 +762,10 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
         # 1) Drug normalization first (Arabic → Latin for known drug variants).
         normalized_text, drug_fixes = drug_normalize.normalize_drugs(transcript)
 
+        # 1b) HITL feedback: apply any clinician-confirmed alias mappings
+        #     (exact matches a human taught) deterministically before flagging.
+        normalized_text, taught_fixes = flag.apply_taught_aliases(normalized_text)
+
         # 2) Flag suspicious spans on the NORMALIZED text.
         #    The phonetic pass is deterministic and catches phonetic mishearings
         #    plus split drug names. When use_llm=True, the LLM pass can attach
@@ -802,6 +812,16 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
                 "path": path,
                 "confidence": round(a.get("confidence", 0.0), 4),
             })
+        # Add HITL-taught alias fixes (clinician-confirmed exact mappings).
+        for tf in taught_fixes:
+            tf_from = tf.get("from", "")
+            if not any(c["span_text"].strip() == tf_from.strip() for c in corrections):
+                corrections.append({
+                    "span_text": tf_from,
+                    "chosen": tf.get("to", ""),
+                    "path": "hitl_applied",
+                    "confidence": 1.0,
+                })
         # Also add drug_normalize fixes that weren't already applied.
         for df in drug_fixes:
             df_from = df.get("from", "")
@@ -1115,4 +1135,7 @@ def learn_from_edit(req: LearnFromEditRequest) -> Dict[str, Any]:
                     except Exception as exc:
                         print(f"[learn] voice register failed: {exc!r}")
 
+    if learned_text:
+        # Newly-learned terms must enter the candidate-retrieval dataset.
+        flag.invalidate_lexicon_cache()
     return {"ok": True, "learned_text": learned_text, "learned_voices": learned_voices}
