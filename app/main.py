@@ -744,26 +744,39 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
     """
     transcript = (req.get("transcript") or "").strip()
     case_id = req.get("case_id") or "unknown"
+    # Optional: enable the LLM pass for higher-accuracy correction at the
+    # cost of latency and non-determinism. Default False for reproducibility.
+    use_llm_flag = req.get("use_llm", False)
+    if not isinstance(use_llm_flag, bool):
+        use_llm_flag = False
     if not transcript:
         return JSONResponse(status_code=400, content={"error": "transcript is required", "case_id": case_id})
 
     try:
-        # 1) Flag suspicious spans (phonetic pass only — deterministic).
-        flags_out = flag.flag_suspicious(transcript, use_llm=False)
-
-        # 2) Drug normalization (Arabic → Latin).
+        # 1) Drug normalization first (Arabic → Latin for known drug variants).
         normalized_text, drug_fixes = drug_normalize.normalize_drugs(transcript)
 
-        # 3) Auto-correction on the normalized text.
-        corr_flags = flag.flag_suspicious(normalized_text, use_llm=False)
-        corr_result = flag.apply_high_confidence_corrections(normalized_text, corr_flags)
+        # 2) Flag suspicious spans on the NORMALIZED text.
+        #    The phonetic pass is deterministic and catches phonetic mishearings
+        #    plus split drug names. When use_llm=True, the LLM pass can attach
+        #    likely_term / confidence to help correct borderline cases.
+        flags_out = flag.flag_suspicious(normalized_text, use_llm=use_llm_flag)
+
+        # 3) Apply high-confidence corrections based on phonetic flags.
+        #    include_hitl=True produces escalation entries for spans that
+        #    were flagged but couldn't be auto-corrected (e.g. low-confidence
+        #    phonetic candidates).
+        corr_result = flag.apply_high_confidence_corrections(
+            normalized_text, flags_out,
+            include_hitl=True,
+        )
         final_text = corr_result["corrected_transcript"]
         auto_applied = corr_result["applied"]
 
         # 4) Build the response schema.
         words = [w for w in re.split(r"\s+", transcript.strip()) if w]
 
-        # flagged_spans: from flag_suspicious output.
+        # flagged_spans: from flag_suspicious output on the normalized text.
         flagged_spans = []
         for f in flags_out:
             idx = f.get("index", 0)
@@ -779,13 +792,14 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
                 "reason": f.get("reason", "phonetic"),
             })
 
-        # corrections: from apply_high_confidence_corrections.
+        # corrections: from apply_high_confidence_corrections (incl. HITL).
         corrections = []
         for a in auto_applied:
+            path = a.get("path", "auto_fix")
             corrections.append({
                 "span_text": a.get("original", ""),
                 "chosen": a.get("corrected", ""),
-                "path": "auto_fix",
+                "path": path,
                 "confidence": round(a.get("confidence", 0.0), 4),
             })
         # Also add drug_normalize fixes that weren't already applied.

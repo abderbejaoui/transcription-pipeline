@@ -1,36 +1,1083 @@
-{"id": 1, "transcript": "اعطيني بنادول للصداع", "description": "Arabic-script drug name → should normalize to panadol", "expected": {"flags": [{"index": 1, "word": "بنادول", "top_candidate": "panadol", "min_similarity": 0.85}], "drug_corrections": [{"from": "بنادول", "to": "panadol"}], "corrected": "اعطيني panadol للصداع"}}
-{"id": 2, "transcript": "عندها حرارة اعطيتها دوليبران", "description": "Arabic-script doliprane → normalize to Latin", "expected": {"flags": [{"index": 2, "word": "دوليبران", "top_candidate": "doliprane", "min_similarity": 0.80}], "drug_corrections": [{"from": "دوليبران", "to": "doliprane"}], "corrected": "عندها حرارة اعطيتها doliprane"}}
-{"id": 3, "transcript": "يحتاج فولتارين للمفاصل كل اثني عشر ساعة", "description": "Arabic voltaren → Latin normalization with dosage time", "expected": {"flags": [{"index": 1, "word": "فولتارين", "top_candidate": "voltaren", "min_similarity": 0.80}], "drug_corrections": [{"from": "فولتارين", "to": "voltaren"}], "corrected": "يحتاج voltaren للمفاصل كل اثني عشر ساعة"}}
-{"id": 4, "transcript": "الدكتور وصف اوجمنتين للالتهاب", "description": "Arabic augmentin → Latin, with doctor context", "expected": {"flags": [{"index": 2, "word": "اوجمنتين", "top_candidate": "augmentin", "min_similarity": 0.80}], "drug_corrections": [{"from": "اوجمنتين", "to": "augmentin"}], "corrected": "الدكتور وصف augmentin للالتهاب"}}
-{"id": 5, "transcript": "ياخذ ميتفورمين للسكر و ضغطه مرتفع", "description": "Arabic metformin + medical context, two issues", "expected": {"flags": [{"index": 1, "word": "ميتفورمين", "top_candidate": "metformin", "min_similarity": 0.75}], "drug_corrections": [{"from": "ميتفورمين", "to": "metformin"}], "corrected": "ياخذ metformin للسكر و ضغطه مرتفع"}}
-{"id": 6, "transcript": "اعطوه ترامادول للالم بعد العملية", "description": "Arabic tramadol → Latin, post-surgery pain context", "expected": {"flags": [{"index": 1, "word": "ترامادول", "top_candidate": "tramadol", "min_similarity": 0.80}], "drug_corrections": [{"from": "ترامادول", "to": "tramadol"}], "corrected": "اعطوه tramadol للالم بعد العملية"}}
-{"id": 7, "transcript": "عنده ربو يستعمل فينتولين و بخاخ", "description": "Arabic ventolin → Latin, asthma patient context", "expected": {"flags": [{"index": 3, "word": "فينتولين", "top_candidate": "ventolin", "min_similarity": 0.80}], "drug_corrections": [{"from": "فينتولين", "to": "ventolin"}], "corrected": "عنده ربو يستعمل ventolin و بخاخ"}}
-{"id": 8, "transcript": "السكري يحتاج انسولين كل يوم", "description": "Arabic insulin → Latin, diabetes context", "expected": {"flags": [{"index": 2, "word": "انسولين", "top_candidate": "insulin", "min_similarity": 0.85}], "drug_corrections": [{"from": "انسولين", "to": "insulin"}], "corrected": "السكري يحتاج insulin كل يوم"}}
-{"id": 9, "transcript": "نوفادول للصداع النصفي", "description": "Arabic novadol → Latin normalization", "expected": {"flags": [{"index": 0, "word": "نوفادول", "top_candidate": "novadol", "min_similarity": 0.80}], "drug_corrections": [{"from": "نوفادول", "to": "novadol"}], "corrected": "novadol للصداع النصفي"}}
-{"id": 10, "transcript": "وصف فلاجيل للمعدة", "description": "Arabic flagyl → Latin normalization", "expected": {"flags": [{"index": 1, "word": "فلاجيل", "top_candidate": "flagyl", "min_similarity": 0.80}], "drug_corrections": [{"from": "فلاجيل", "to": "flagyl"}], "corrected": "وصف flagyl للمعدة"}}
-{"id": 11, "transcript": "اعطوه برسي تمر للصداع و الحرارة", "description": "Split drug name 'برسي تمر' → should merge to paracetamol as bigram", "expected": {"flags": [{"index": 1, "word": "برسي تمر", "top_candidate": "paracetamol", "min_similarity": 0.50, "span_indices": [1, 2]}], "drug_corrections": [], "corrected": "اعطوه paracetamol للصداع و الحرارة"}}
-{"id": 12, "transcript": "اوغ من تين للالتهاب قوي", "description": "Split drug name 'اوغ من تين' → should merge to augmentin as trigram", "expected": {"flags": [{"index": 0, "word": "اوغ من تين", "top_candidate": "augmentin", "min_similarity": 0.50, "span_indices": [0, 1, 2]}], "drug_corrections": [], "corrected": "augmentin للالتهاب قوي"}}
-{"id": 13, "transcript": "افرلجان للحرارة بعد العملية", "description": "Phonetic mangle 'افرلجان' → efferalgan", "expected": {"flags": [{"index": 0, "word": "افرلجان", "top_candidate": "efferalgan", "min_similarity": 0.75}], "drug_corrections": [{"from": "افرلجان", "to": "efferalgan"}], "corrected": "efferalgan للحرارة بعد العملية"}}
-{"id": 14, "transcript": "كلاسيد للالتهاب يعطي مرتين باليوم", "description": "Arabic klacid → Latin normalization", "expected": {"flags": [{"index": 0, "word": "كلاسيد", "top_candidate": "klacid", "min_similarity": 0.80}], "drug_corrections": [{"from": "كلاسيد", "to": "klacid"}], "corrected": "klacid للالتهاب يعطي مرتين باليوم"}}
-{"id": 15, "transcript": "زيثروماكس للصدر و الكحة", "description": "Arabic zithromax → Latin, chest infection context", "expected": {"flags": [{"index": 0, "word": "زيثروماكس", "top_candidate": "zithromax", "min_similarity": 0.75}], "drug_corrections": [{"from": "زيثروماكس", "to": "zithromax"}], "corrected": "zithromax للصدر و الكحة"}}
-{"id": 16, "transcript": "the patient's fever is not going down with if all gone", "description": "English mishearing 'if all gone' → should flag phonetic alias for efferalgan", "expected": {"flags": [{"index": 9, "word": "if all gone", "top_candidate": "efferalgan", "min_similarity": 0.80}], "drug_corrections": [], "corrected": "the patient's fever is not going down with efferalgan"}}
-{"id": 17, "transcript": "she needs augmentin twice daily for the infection", "description": "Already correct English drug name → should pass through unchanged", "expected": {"flags": [{"index": 2, "word": "augmentin", "top_candidate": "augmentin", "min_similarity": 0.99}], "drug_corrections": [], "corrected": "she needs augmentin twice daily for the infection"}}
-{"id": 18, "transcript": "take panadol for the headache every six hours", "description": "Already correct English panadol → should pass through", "expected": {"flags": [{"index": 1, "word": "panadol", "top_candidate": "panadol", "min_similarity": 0.99}], "drug_corrections": [], "corrected": "take panadol for the headache every six hours"}}
-{"id": 19, "transcript": "the patient needs insulin injection before meals", "description": "Correct English insulin → should pass through", "expected": {"flags": [{"index": 3, "word": "insulin", "top_candidate": "insulin", "min_similarity": 0.99}], "drug_corrections": [], "corrected": "the patient needs insulin injection before meals"}}
-{"id": 20, "transcript": "كيف حالك اليوم", "description": "Normal Arabic conversation → NO false flags", "expected": {"flags": [], "drug_corrections": [], "corrected": "كيف حالك اليوم"}}
-{"id": 21, "transcript": "عندي صداع من الصباح ما ادري ليش", "description": "Normal Arabic 'I have a headache' → NO false flags on common words", "expected": {"flags": [], "drug_corrections": [], "corrected": "عندي صداع من الصباح ما ادري ليش"}}
-{"id": 22, "transcript": "الدكتور قال لازم ترتاح و تشرب ماء كثير", "description": "Normal doctor advice → NO false flags", "expected": {"flags": [], "drug_corrections": [], "corrected": "الدكتور قال لازم ترتاح و تشرب ماء كثير"}}
-{"id": 23, "transcript": "اعطني panadol للصداع و motilium للغثيان", "description": "Mixed Arabic + English drug names, two drugs", "expected": {"flags": [{"index": 1, "word": "panadol", "top_candidate": "panadol", "min_similarity": 0.99}, {"index": 4, "word": "motilium", "top_candidate": "motilium", "min_similarity": 0.70}], "drug_corrections": [], "corrected": "اعطني panadol للصداع و motilium للغثيان"}}
-{"id": 24, "transcript": "الطفل عنده التهاب يحتاج augmentin و بروفين للالم", "description": "Mixed Arabic + English, augmentin + brufen", "expected": {"flags": [{"index": 3, "word": "augmentin", "top_candidate": "augmentin", "min_similarity": 0.99}, {"index": 5, "word": "بروفين", "top_candidate": "brufen", "min_similarity": 0.80}], "drug_corrections": [{"from": "بروفين", "to": "brufen"}], "corrected": "الطفل عنده التهاب يحتاج augmentin و brufen للالم"}}
-{"id": 25, "transcript": "دور على دوليبران في الصيدلية و جبلي اياه", "description": "Arabic doliprane with instruction context", "expected": {"flags": [{"index": 2, "word": "دوليبران", "top_candidate": "doliprane", "min_similarity": 0.80}], "drug_corrections": [{"from": "دوليبران", "to": "doliprane"}], "corrected": "دور على doliprane في الصيدلية و جبلي اياه"}}
-{"id": 26, "transcript": "ودوليبران للحرارة", "description": "Arabic doliprane with wa- conjunction prefix → should still match", "expected": {"flags": [{"index": 0, "word": "ودوليبران", "top_candidate": "doliprane", "min_similarity": 0.70}], "drug_corrections": [{"from": "ودوليبران", "to": "doliprane"}], "corrected": "doliprane للحرارة"}}
-{"id": 27, "transcript": "البنادول بعد الأكل", "description": "Arabic panadol with al- definite article prefix", "expected": {"flags": [{"index": 0, "word": "البنادول", "top_candidate": "panadol", "min_similarity": 0.70}], "drug_corrections": [{"from": "البنادول", "to": "panadol"}], "corrected": "panadol بعد الأكل"}}
-{"id": 28, "transcript": "بدها ليريكا للام الظهر", "description": "Arabic Lyrica → Latin, back pain context", "expected": {"flags": [{"index": 1, "word": "ليريكا", "top_candidate": "lyrica", "min_similarity": 0.80}], "drug_corrections": [{"from": "ليريكا", "to": "lyrica"}], "corrected": "بدها lyrica للام الظهر"}}
-{"id": 29, "transcript": "يحتاج كلاسيد للالتهاب و نيورونتين للاعصاب", "description": "Two Arabic drug names: klacid + neurontin", "expected": {"flags": [{"index": 1, "word": "كلاسيد", "top_candidate": "klacid", "min_similarity": 0.80}, {"index": 4, "word": "نيورونتين", "top_candidate": "neurontin", "min_similarity": 0.75}], "drug_corrections": [{"from": "كلاسيد", "to": "klacid"}, {"from": "نيورونتين", "to": "neurontin"}], "corrected": "يحتاج klacid للالتهاب و neurontin للاعصاب"}}
-{"id": 30, "transcript": "our patient was given if all gone and augmentin for the infection", "description": "English mishearing + correct drug mixed: 'if all gone' + augmentin", "expected": {"flags": [{"index": 5, "word": "if all gone", "top_candidate": "efferalgan", "min_similarity": 0.80}, {"index": 9, "word": "augmentin", "top_candidate": "augmentin", "min_similarity": 0.99}], "drug_corrections": [], "corrected": "our patient was given efferalgan and augmentin for the infection"}}
-{"id": 31, "transcript": "المريضة عمرها خمسين سنة تشتكي من صداع نصفي و الم في الظهر. اعطيتها بنادول للصداع و فولتارين للمفاصل. قالت انها تاخذ ميتفورمين للسكر من خمس سنوات و الحمدلله السكر مضبوط. طلبت منها تراجع العيادة بعد اسبوع", "description": "Long Arabic consultation: patient history + 3 drugs (panadol, voltaren, metformin) + filler medical vocab", "expected": {"flags": [{"index": 13, "word": "بنادول", "top_candidate": "panadol", "min_similarity": 0.85}, {"index": 16, "word": "فولتارين", "top_candidate": "voltaren", "min_similarity": 0.80}, {"index": 21, "word": "ميتفورمين", "top_candidate": "metformin", "min_similarity": 0.75}], "drug_corrections": [{"from": "بنادول", "to": "panadol"}, {"from": "فولتارين", "to": "voltaren"}, {"from": "ميتفورمين", "to": "metformin"}], "corrected": "المريضة عمرها خمسين سنة تشتكي من صداع نصفي و الم في الظهر. اعطيتها panadol للصداع و voltaren للمفاصل. قالت انها تاخذ metformin للسكر من خمس سنوات و الحمدلله السكر مضبوط. طلبت منها تراجع العيادة بعد اسبوع"}}
-{"id": 32, "transcript": "the patient came in with fever and cough for three days. I prescribed augmentin and told him to take panadol for fever. he also mentioned he uses ventolin when his asthma acts up. I increased his metformin to twice a day because his blood sugar was high at 180. follow up in two weeks", "description": "Full English consultation with 4 drugs: augmentin, panadol, ventolin, metformin", "expected": {"flags": [{"index": 13, "word": "augmentin", "top_candidate": "augmentin", "min_similarity": 0.99}, {"index": 19, "word": "panadol", "top_candidate": "panadol", "min_similarity": 0.99}, {"index": 27, "word": "ventolin", "top_candidate": "ventolin", "min_similarity": 0.99}, {"index": 36, "word": "metformin", "top_candidate": "metformin", "min_similarity": 0.99}], "drug_corrections": [], "corrected": "the patient came in with fever and cough for three days. I prescribed augmentin and told him to take panadol for fever. he also mentioned he uses ventolin when his asthma acts up. I increased his metformin to twice a day because his blood sugar was high at 180. follow up in two weeks"}}
-{"id": 33, "transcript": "عندي مريض عنده التهاب في الصدر و كحة شديدة. وصفت له اوجمنتين قوي و زيثروماكس للصدر. بعد يومين رجع قال احس بحرارة فاعطيته افرلجان. لكن بعد اسبوع صار عنده الم في المعده، يمكن من كثر الادوية. قلت له يوقف الادوية و يراجع", "description": "Arabic consultation: 3 drugs (augmentin, zithromax, efferalgan) + clinical timeline, tests pipeline sequencing", "expected": {"flags": [{"index": 11, "word": "اوجمنتين", "top_candidate": "augmentin", "min_similarity": 0.80}, {"index": 14, "word": "زيثروماكس", "top_candidate": "zithromax", "min_similarity": 0.75}, {"index": 23, "word": "افرلجان", "top_candidate": "efferalgan", "min_similarity": 0.75}], "drug_corrections": [{"from": "اوجمنتين", "to": "augmentin"}, {"from": "زيثروماكس", "to": "zithromax"}, {"from": "افرلجان", "to": "efferalgan"}], "corrected": "عندي مريض عنده التهاب في الصدر و كحة شديدة. وصفت له augmentin قوي و zithromax للصدر. بعد يومين رجع قال احس بحرارة فاعطيته efferalgan. لكن بعد اسبوع صار عنده الم في المعده، يمكن من كثر الادوية. قلت له يوقف الادوية و يراجع"}}
-{"id": 34, "transcript": "الطفل عمره سنتين عنده حرارة و الم في الاذن. الام قالت انها عطته برسي تمر من الصيدلية بس ما نفع. فحصت الاذن لقيت فيها التهاب. وصفت له كلاسيد للالتهاب لمدة سبع ايام و دوليبران للحرارة كل ست ساعات. قلت للام اذا ما تحسن خلال يومين ترجع", "description": "Long Arabic: split drug 'برسي تمر' (paracetamol) + klacid + doliprane with full clinical context", "expected": {"flags": [{"index": 13, "word": "برسي تمر", "top_candidate": "paracetamol", "min_similarity": 0.50, "span_indices": [13, 14]}, {"index": 27, "word": "كلاسيد", "top_candidate": "klacid", "min_similarity": 0.80}, {"index": 33, "word": "دوليبران", "top_candidate": "doliprane", "min_similarity": 0.80}], "drug_corrections": [{"from": "كلاسيد", "to": "klacid"}, {"from": "دوليبران", "to": "doliprane"}], "corrected": "الطفل عمره سنتين عنده حرارة و الم في الاذن. الام قالت انها عطته paracetamol من الصيدلية بس ما نفع. فحصت الاذن لقيت فيها التهاب. وصفت له klacid للالتهاب لمدة سبع ايام و doliprane للحرارة كل ست ساعات. قلت للام اذا ما تحسن خلال يومين ترجع"}}
-{"id": 35, "transcript": "the patient is a 55 year old male with diabetes and hypertension. he takes glucophage and amaryl for sugar control and his bp medications include concor. three days ago he developed chest infection so I started him on augmentin and told him to take novadol for pain. he also has a history of asthma and uses ventolin as needed. his kidney function is normal so I am not worried about the metformin dose. I asked him to monitor his sugar closely and come back if fever persists", "description": "Full English paragraph: 6 drugs (glucophage, amaryl, concor, augmentin, novadol, ventolin) + chronic conditions", "expected": {"flags": [{"index": 14, "word": "glucophage", "top_candidate": "glucophage", "min_similarity": 0.70}, {"index": 16, "word": "amaryl", "top_candidate": "amaryl", "min_similarity": 0.70}, {"index": 25, "word": "concor", "top_candidate": "concor", "min_similarity": 0.70}, {"index": 38, "word": "augmentin", "top_candidate": "augmentin", "min_similarity": 0.99}, {"index": 44, "word": "novadol", "top_candidate": "novadol", "min_similarity": 0.70}, {"index": 56, "word": "ventolin", "top_candidate": "ventolin", "min_similarity": 0.99}, {"index": 71, "word": "metformin", "top_candidate": "metformin", "min_similarity": 0.99}], "drug_corrections": [], "corrected": "the patient is a 55 year old male with diabetes and hypertension. he takes glucophage and amaryl for sugar control and his bp medications include concor. three days ago he developed chest infection so I started him on augmentin and told him to take novadol for pain. he also has a history of asthma and uses ventolin as needed. his kidney function is normal so I am not worried about the metformin dose. I asked him to monitor his sugar closely and come back if fever persists"}}
-{"id": 36, "transcript": "سبعين سنة يعاني من الم في المفاصل من سنين. جرب فولتارين و نوبه مرتين بس ما نفعت. الدكتور كتب له اوغ من تين للالتهاب و قال ياخذ دوليبران بس للالم الشديد. بعد فحص الدم طلع عنده نقص فيتامين د، كتب له كالسيوم و فيتامين د. قلت له يراجع بعد شهر و يسوي تحاليل", "description": "Long Arabic complex case: split drug 'اوغ من تين' (augmentin) + voltaren + doliprane + calcium/vitamin d", "expected": {"flags": [{"index": 10, "word": "فولتارين", "top_candidate": "voltaren", "min_similarity": 0.80}, {"index": 20, "word": "اوغ من تين", "top_candidate": "augmentin", "min_similarity": 0.50, "span_indices": [20, 21, 22]}, {"index": 27, "word": "دوليبران", "top_candidate": "doliprane", "min_similarity": 0.80}], "drug_corrections": [{"from": "فولتارين", "to": "voltaren"}, {"from": "اوغ من تين", "to": "augmentin"}, {"from": "دوليبران", "to": "doliprane"}], "corrected": "سبعين سنة يعاني من الم في المفاصل من سنين. جرب voltaren و نوبه مرتين بس ما نفعت. الدكتور كتب له augmentin للالتهاب و قال ياخذ doliprane بس للالم الشديد. بعد فحص الدم طلع عنده نقص فيتامين د، كتب له كالسيوم و فيتامين د. قلت له يراجع بعد شهر و يسوي تحاليل"}}
+{
+  "version": "1.0.0",
+  "description": "Gulf Arabic medical ASR correction pipeline — 30-case evaluation set. All transcripts are Gulf Arabic (Saudi/Emirati) with natural Arabic-English code-switching as heard in real clinic settings. Errors are ASR-realistic: phonetic splits, mishearings, Arabic phoneme substitutions, and spelling corruptions of medical terms.",
+  "evaluation_stages": [
+    "scoring_and_flagging",
+    "phonetic_retrieval",
+    "correction_decision",
+    "false_positive_guard",
+    "end_to_end"
+  ],
+  "cases": [
+    {
+      "id": "TC-001",
+      "category": "drug_brand_phonetic_split",
+      "dialect": "saudi",
+      "description": "Drug brand name 'Augmentin' phonetically split by ASR into two nonsense tokens",
+      "input": "المريض عنده حساسية بس الدكتور وصف له أوق منتين مرتين في اليوم للعدوى البكتيرية",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "أوق منتين",
+              "start_index": 6,
+              "end_index": 7,
+              "max_suspicion": 0.88,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["المريض", "عنده", "حساسية", "الدكتور", "وصف", "مرتين", "اليوم", "للعدوى", "البكتيرية"]
+        },
+        "phonetic_retrieval": {
+          "span": "أوق منتين",
+          "top_candidate": "Augmentin",
+          "top_candidate_score_min": 0.72,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "أوق منتين",
+          "chosen": "Augmentin",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "المريض عنده حساسية بس الدكتور وصف له Augmentin مرتين في اليوم للعدوى البكتيرية",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-002",
+      "category": "device_spelling_corruption",
+      "dialect": "emirati",
+      "description": "Medical device 'glucometer' corrupted through Arabic phoneme substitution",
+      "input": "قياس السكر الحين بالقلوكوميتر طلع عالي، لازم نعدّل الجرعة",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "بالقلوكوميتر",
+              "start_index": 3,
+              "end_index": 3,
+              "max_suspicion": 0.81,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["قياس", "السكر", "الحين", "طلع", "عالي", "لازم", "نعدّل", "الجرعة"]
+        },
+        "phonetic_retrieval": {
+          "span": "بالقلوكوميتر",
+          "top_candidate": "glucometer",
+          "top_candidate_score_min": 0.68,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "بالقلوكوميتر",
+          "chosen": "glucometer",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "قياس السكر الحين بالـglucometerطلع عالي، لازم نعدّل الجرعة",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-003",
+      "category": "symptom_correct_no_change",
+      "dialect": "saudi",
+      "description": "All-correct transcript — no errors. Tests false-positive guard. Zero corrections must be applied.",
+      "input": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["المريضة", "تشكو", "صداع", "وارتفاع", "الضغط", "وتأخذ", "الدواء", "بانتظام"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-004",
+      "category": "drug_generic_arabic_split",
+      "dialect": "saudi",
+      "description": "'Metformin' split into two phonetic tokens by ASR in Gulf Arabic context",
+      "input": "وصفنا للمريض ميت فورمين للسكري من النوع الثاني مع الحمية",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "ميت فورمين",
+              "start_index": 2,
+              "end_index": 3,
+              "max_suspicion": 0.85,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["وصفنا", "للمريض", "للسكري", "النوع", "الثاني", "مع", "الحمية"]
+        },
+        "phonetic_retrieval": {
+          "span": "ميت فورمين",
+          "top_candidate": "metformin",
+          "top_candidate_score_min": 0.82,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "ميت فورمين",
+          "chosen": "metformin",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "وصفنا للمريض metformin للسكري من النوع الثاني مع الحمية",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-005",
+      "category": "procedure_name_corruption",
+      "dialect": "emirati",
+      "description": "'Echocardiogram' corrupted to a phonetically close but wrong sequence",
+      "input": "المريض يحتاج إيكو كارديو غرام عشان نشوف وظيفة القلب قبل العملية",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "إيكو كارديو غرام",
+              "start_index": 2,
+              "end_index": 4,
+              "max_suspicion": 0.83,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["المريض", "يحتاج", "عشان", "نشوف", "وظيفة", "القلب", "قبل", "العملية"]
+        },
+        "phonetic_retrieval": {
+          "span": "إيكو كارديو غرام",
+          "top_candidate": "echocardiogram",
+          "top_candidate_score_min": 0.76,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "إيكو كارديو غرام",
+          "chosen": "echocardiogram",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "المريض يحتاج echocardiogram عشان نشوف وظيفة القلب قبل العملية",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-006",
+      "category": "drug_dosage_correct_no_change",
+      "dialect": "saudi",
+      "description": "Fully correct transcript with a drug dose and frequency — zero corrections.",
+      "input": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["الجرعة", "مرتين", "يومياً", "حاجة", "لتعديل", "البروتوكول", "الحالي"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-007",
+      "category": "drug_brand_single_token_corruption",
+      "dialect": "emirati",
+      "description": "'Voltaren' distorted by ASR dropping a syllable",
+      "input": "ارسل له فولتران للألم وقل له يحط على المنطقة المتألمة بس",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "فولتران",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.79,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["ارسل", "للألم", "وقل", "يحط", "على", "المنطقة", "المتألمة", "بس"]
+        },
+        "phonetic_retrieval": {
+          "span": "فولتران",
+          "top_candidate": "Voltaren",
+          "top_candidate_score_min": 0.80,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "فولتران",
+          "chosen": "Voltaren",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "ارسل له Voltaren للألم وقل له يحط على المنطقة المتألمة بس",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-008",
+      "category": "multi_error_two_drugs",
+      "dialect": "saudi",
+      "description": "Two drug errors in the same sentence: 'Lisinopril' and 'Amlodipine' both corrupted",
+      "input": "وصف الدكتور لايزينو بريل مع أمل وديبين لضغط الدم المرتفع",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "لايزينو بريل",
+              "start_index": 2,
+              "end_index": 3,
+              "max_suspicion": 0.90,
+              "reason": "both"
+            },
+            {
+              "text": "أمل وديبين",
+              "start_index": 5,
+              "end_index": 6,
+              "max_suspicion": 0.86,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["وصف", "الدكتور", "لضغط", "الدم", "المرتفع"]
+        },
+        "phonetic_retrieval": {
+          "spans": [
+            {
+              "span": "لايزينو بريل",
+              "top_candidate": "lisinopril",
+              "top_candidate_score_min": 0.74
+            },
+            {
+              "span": "أمل وديبين",
+              "top_candidate": "amlodipine",
+              "top_candidate_score_min": 0.71
+            }
+          ]
+        },
+        "correction_decision": {
+          "decisions": [
+            {"span": "لايزينو بريل", "chosen": "lisinopril", "path": "llm"},
+            {"span": "أمل وديبين", "chosen": "amlodipine", "path": "llm"}
+          ]
+        },
+        "end_to_end": {
+          "corrected": "وصف الدكتور lisinopril مع amlodipine لضغط الدم المرتفع",
+          "corrections_count": 2,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-009",
+      "category": "correct_arabic_medical_term",
+      "dialect": "emirati",
+      "description": "Correct native Arabic medical terms — should NOT be flagged",
+      "input": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["المريض", "عنده", "قصور", "كلوي", "مزمن", "ونحتاج", "نراقب", "مستوى", "الكرياتينين", "أسبوع"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-010",
+      "category": "drug_generic_one_letter_error",
+      "dialect": "saudi",
+      "description": "'Atorvastatin' with one phoneme dropped — single token error",
+      "input": "خليه يأخذ أتورفاستاتن للكوليسترول مع الفطور",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "أتورفاستاتن",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.73,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["خليه", "يأخذ", "للكوليسترول", "مع", "الفطور"]
+        },
+        "phonetic_retrieval": {
+          "span": "أتورفاستاتن",
+          "top_candidate": "atorvastatin",
+          "top_candidate_score_min": 0.86,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "أتورفاستاتن",
+          "chosen": "atorvastatin",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "خليه يأخذ atorvastatin للكوليسترول مع الفطور",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-011",
+      "category": "lab_test_name_corruption",
+      "dialect": "emirati",
+      "description": "'HbA1c' (glycated haemoglobin lab test) verbalized and corrupted by ASR",
+      "input": "طلبنا تحليل إيتش بي إيه وان سي عشان نشوف متوسط السكر",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "إيتش بي إيه وان سي",
+              "start_index": 2,
+              "end_index": 6,
+              "max_suspicion": 0.87,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["طلبنا", "تحليل", "عشان", "نشوف", "متوسط", "السكر"]
+        },
+        "phonetic_retrieval": {
+          "span": "إيتش بي إيه وان سي",
+          "top_candidate": "HbA1c",
+          "top_candidate_score_min": 0.70,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "إيتش بي إيه وان سي",
+          "chosen": "HbA1c",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "طلبنا تحليل HbA1c عشان نشوف متوسط السكر",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-012",
+      "category": "correct_code_switch_sentence",
+      "dialect": "saudi",
+      "description": "Correctly code-switched sentence with real English medical term — no correction needed",
+      "input": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["المريض", "عنده", "asthma", "وجبنا", "inhaler", "للطوارئ"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-013",
+      "category": "drug_brand_arabic_phoneme_substitution",
+      "dialect": "saudi",
+      "description": "'Nexium' written phonetically with Arabic ن substituting for N sound",
+      "input": "حطيت له نيكسيوم للحموضة قبل الوجبة بساعة",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "نيكسيوم",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.78,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["حطيت", "للحموضة", "قبل", "الوجبة", "بساعة"]
+        },
+        "phonetic_retrieval": {
+          "span": "نيكسيوم",
+          "top_candidate": "Nexium",
+          "top_candidate_score_min": 0.81,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "نيكسيوم",
+          "chosen": "Nexium",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "حطيت له Nexium للحموضة قبل الوجبة بساعة",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-014",
+      "category": "anatomy_term_correct",
+      "dialect": "emirati",
+      "description": "Correct Arabic anatomy terms — must not be flagged",
+      "input": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["فيه", "التهاب", "الأوتار", "المحيطة", "بالركبة", "اليمنى"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-015",
+      "category": "drug_generic_split_three_tokens",
+      "dialect": "saudi",
+      "description": "'Carbamazepine' split into three tokens by ASR",
+      "input": "المريض يأخذ كار با مازيبين للصرع من سنتين",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "كار با مازيبين",
+              "start_index": 2,
+              "end_index": 4,
+              "max_suspicion": 0.91,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["المريض", "يأخذ", "للصرع", "سنتين"]
+        },
+        "phonetic_retrieval": {
+          "span": "كار با مازيبين",
+          "top_candidate": "carbamazepine",
+          "top_candidate_score_min": 0.75,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "كار با مازيبين",
+          "chosen": "carbamazepine",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "المريض يأخذ carbamazepine للصرع من سنتين",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-016",
+      "category": "procedure_name_split",
+      "dialect": "emirati",
+      "description": "'Colonoscopy' split into two tokens by ASR",
+      "input": "المريض محتاج كولون وسكوبي بعد النتائج هذي",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "كولون وسكوبي",
+              "start_index": 2,
+              "end_index": 3,
+              "max_suspicion": 0.84,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["المريض", "محتاج", "بعد", "النتائج", "هذي"]
+        },
+        "phonetic_retrieval": {
+          "span": "كولون وسكوبي",
+          "top_candidate": "colonoscopy",
+          "top_candidate_score_min": 0.73,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "كولون وسكوبي",
+          "chosen": "colonoscopy",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "المريض محتاج colonoscopy بعد النتائج هذي",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-017",
+      "category": "correct_vital_signs_sentence",
+      "dialect": "saudi",
+      "description": "Vital signs dictation with numbers — all correct, zero corrections",
+      "input": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["الضغط", "والنبض", "الدقيقة", "والحرارة", "طبيعية"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-018",
+      "category": "drug_brand_vowel_swap",
+      "dialect": "emirati",
+      "description": "'Crestor' with vowel transposition from Emirati accent",
+      "input": "أضف كريستور 10 ملغ للروشتة للتحكم في الدهون",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "كريستور",
+              "start_index": 1,
+              "end_index": 1,
+              "max_suspicion": 0.76,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["أضف", "للروشتة", "للتحكم", "الدهون"]
+        },
+        "phonetic_retrieval": {
+          "span": "كريستور",
+          "top_candidate": "Crestor",
+          "top_candidate_score_min": 0.83,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "كريستور",
+          "chosen": "Crestor",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "أضف Crestor 10 ملغ للروشتة للتحكم في الدهون",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-019",
+      "category": "hitl_escalation_unknown_term",
+      "dialect": "saudi",
+      "description": "Completely unrecognized drug name that should escalate to HITL — no candidate scores above 0.60",
+      "input": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "ريزيدرونيك اسيد",
+              "start_index": 3,
+              "end_index": 4,
+              "max_suspicion": 0.89,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["المريض", "يحتاج", "دواء", "للعظام", "ما", "عندنا", "معلومات", "عنه"]
+        },
+        "phonetic_retrieval": {
+          "span": "ريزيدرونيك اسيد",
+          "top_candidate": "risedronic acid",
+          "top_candidate_score_min": 0.0,
+          "top_candidate_score_max": 0.55,
+          "expected_path": "hitl_escalate"
+        },
+        "correction_decision": {
+          "span": "ريزيدرونيك اسيد",
+          "chosen": null,
+          "path": "hitl_escalate"
+        },
+        "end_to_end": {
+          "corrected": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+          "corrections_count": 0,
+          "hitl_escalations": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-020",
+      "category": "drug_generic_arabic_prefix_attached",
+      "dialect": "saudi",
+      "description": "'Omeprazole' written with Arabic prefix للـ attached — ASR merged prefix with drug name",
+      "input": "الحين أكتب له أوميبرازول للحموضة قبل الفطور",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "أوميبرازول",
+              "start_index": 3,
+              "end_index": 3,
+              "max_suspicion": 0.72,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["الحين", "أكتب", "للحموضة", "قبل", "الفطور"]
+        },
+        "phonetic_retrieval": {
+          "span": "أوميبرازول",
+          "top_candidate": "omeprazole",
+          "top_candidate_score_min": 0.85,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "أوميبرازول",
+          "chosen": "omeprazole",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "الحين أكتب له omeprazole للحموضة قبل الفطور",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-021",
+      "category": "multi_error_drug_and_device",
+      "dialect": "emirati",
+      "description": "One drug error and one device error in the same dictation",
+      "input": "قاسنا الضغط بالسفيجموميتر وطلع مرتفع فوصفنا أملوديبين",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "بالسفيجموميتر",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.88,
+              "reason": "both"
+            },
+            {
+              "text": "أملوديبين",
+              "start_index": 6,
+              "end_index": 6,
+              "max_suspicion": 0.75,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["قاسنا", "الضغط", "وطلع", "مرتفع", "فوصفنا"]
+        },
+        "phonetic_retrieval": {
+          "spans": [
+            {
+              "span": "بالسفيجموميتر",
+              "top_candidate": "sphygmomanometer",
+              "top_candidate_score_min": 0.67
+            },
+            {
+              "span": "أملوديبين",
+              "top_candidate": "amlodipine",
+              "top_candidate_score_min": 0.80
+            }
+          ]
+        },
+        "correction_decision": {
+          "decisions": [
+            {"span": "بالسفيجموميتر", "chosen": "sphygmomanometer", "path": "llm"},
+            {"span": "أملوديبين", "chosen": "amlodipine", "path": "llm"}
+          ]
+        },
+        "end_to_end": {
+          "corrected": "قاسنا الضغط بالـsphygmomanometerوطلع مرتفع فوصفنا amlodipine",
+          "corrections_count": 2,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-022",
+      "category": "correct_discharge_summary",
+      "dialect": "saudi",
+      "description": "Correct discharge summary sentence — all Arabic medical terms valid",
+      "input": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["خرج", "المريض", "بحالة", "مستقرة", "بعد", "علاج", "الالتهاب", "الرئوي", "الحاد"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-023",
+      "category": "drug_brand_split_emirati_accent",
+      "dialect": "emirati",
+      "description": "'Lantus' (insulin brand) split into two syllable tokens due to Emirati vowel elongation",
+      "input": "غيّر الأنسولين من NPH إلى لان توس طويل المفعول",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "لان توس",
+              "start_index": 4,
+              "end_index": 5,
+              "max_suspicion": 0.86,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["غيّر", "الأنسولين", "NPH", "إلى", "طويل", "المفعول"]
+        },
+        "phonetic_retrieval": {
+          "span": "لان توس",
+          "top_candidate": "Lantus",
+          "top_candidate_score_min": 0.79,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "لان توس",
+          "chosen": "Lantus",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "غيّر الأنسولين من NPH إلى Lantus طويل المفعول",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-024",
+      "category": "lab_result_correct",
+      "dialect": "saudi",
+      "description": "Lab result dictation with correct terms — no correction",
+      "input": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["مستوى", "الهيموغلوبين", "والصفائح", "الدموية", "ألف"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-025",
+      "category": "drug_generic_silent_letter_drop",
+      "dialect": "emirati",
+      "description": "'Clopidogrel' with last syllable dropped by ASR",
+      "input": "استمر على كلوبيدوجريل لمنع تجلط الدم بعد الدعامة",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "كلوبيدوجريل",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.74,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["استمر", "على", "لمنع", "تجلط", "الدم", "بعد", "الدعامة"]
+        },
+        "phonetic_retrieval": {
+          "span": "كلوبيدوجريل",
+          "top_candidate": "clopidogrel",
+          "top_candidate_score_min": 0.82,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "كلوبيدوجريل",
+          "chosen": "clopidogrel",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "استمر على clopidogrel لمنع تجلط الدم بعد الدعامة",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-026",
+      "category": "drug_brand_and_correct_generic_same_sentence",
+      "dialect": "saudi",
+      "description": "One corrupted brand name alongside a correctly spelled generic — only the brand gets corrected",
+      "input": "وصفت له برولوسيك بدل الإيبوبروفين لأنه ما يناسبه",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "برولوسيك",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.81,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["وصفت", "بدل", "الإيبوبروفين", "لأنه", "ما", "يناسبه"]
+        },
+        "phonetic_retrieval": {
+          "span": "برولوسيك",
+          "top_candidate": "Prilosec",
+          "top_candidate_score_min": 0.72,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "برولوسيك",
+          "chosen": "Prilosec",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "وصفت له Prilosec بدل الإيبوبروفين لأنه ما يناسبه",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-027",
+      "category": "procedure_abbreviated_correct",
+      "dialect": "emirati",
+      "description": "Correctly abbreviated procedure — MRI, ECG used correctly, must not be touched",
+      "input": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["طلبنا", "MRI", "للرأس", "ECG", "قبل", "عملية", "التخدير", "العام"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-028",
+      "category": "drug_generic_two_phoneme_swap",
+      "dialect": "saudi",
+      "description": "'Furosemide' with two phonemes transposed — common in fast dictation",
+      "input": "أعطيه فوروسيمايد وريدي لتفريغ الماء من الرئتين",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "فوروسيمايد",
+              "start_index": 1,
+              "end_index": 1,
+              "max_suspicion": 0.77,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["أعطيه", "وريدي", "لتفريغ", "الماء", "الرئتين"]
+        },
+        "phonetic_retrieval": {
+          "span": "فوروسيمايد",
+          "top_candidate": "furosemide",
+          "top_candidate_score_min": 0.84,
+          "match_type": "phonetic"
+        },
+        "correction_decision": {
+          "span": "فوروسيمايد",
+          "chosen": "furosemide",
+          "path": "llm"
+        },
+        "end_to_end": {
+          "corrected": "أعطيه furosemide وريدي لتفريغ الماء من الرئتين",
+          "corrections_count": 1,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-029",
+      "category": "correct_allergy_note",
+      "dialect": "emirati",
+      "description": "Allergy documentation — all terms correct, including drug name 'penicillin' written in Arabic script correctly",
+      "input": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [],
+          "clean_tokens_not_flagged": ["المريض", "حساس", "البنسلين", "وكل", "مشتقاته", "سجّل", "هذا", "الملف"]
+        },
+        "phonetic_retrieval": {
+          "spans_processed": 0
+        },
+        "correction_decision": {
+          "decisions": []
+        },
+        "end_to_end": {
+          "corrected": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+          "corrections_count": 0,
+          "false_positives": 0
+        }
+      }
+    },
+    {
+      "id": "TC-030",
+      "category": "multi_error_three_drugs",
+      "dialect": "saudi",
+      "description": "Complex multi-drug dictation with three ASR errors — stress test for the pipeline",
+      "input": "الروشتة تشمل ريزيبريل للضغط وسيمفاستاتن للكوليسترول وميتوبرولول لتنظيم النبض",
+      "expected": {
+        "scoring_and_flagging": {
+          "flagged_spans": [
+            {
+              "text": "ريزيبريل",
+              "start_index": 2,
+              "end_index": 2,
+              "max_suspicion": 0.84,
+              "reason": "both"
+            },
+            {
+              "text": "سيمفاستاتن",
+              "start_index": 4,
+              "end_index": 4,
+              "max_suspicion": 0.86,
+              "reason": "both"
+            },
+            {
+              "text": "ميتوبرولول",
+              "start_index": 6,
+              "end_index": 6,
+              "max_suspicion": 0.78,
+              "reason": "both"
+            }
+          ],
+          "clean_tokens_not_flagged": ["الروشتة", "تشمل", "للضغط", "للكوليسترول", "لتنظيم", "النبض"]
+        },
+        "phonetic_retrieval": {
+          "spans": [
+            {
+              "span": "ريزيبريل",
+              "top_candidate": "ramipril",
+              "top_candidate_score_min": 0.68
+            },
+            {
+              "span": "سيمفاستاتن",
+              "top_candidate": "simvastatin",
+              "top_candidate_score_min": 0.76
+            },
+            {
+              "span": "ميتوبرولول",
+              "top_candidate": "metoprolol",
+              "top_candidate_score_min": 0.82
+            }
+          ]
+        },
+        "correction_decision": {
+          "decisions": [
+            {"span": "ريزيبريل", "chosen": "ramipril", "path": "llm"},
+            {"span": "سيمفاستاتن", "chosen": "simvastatin", "path": "llm"},
+            {"span": "ميتوبرولول", "chosen": "metoprolol", "path": "llm"}
+          ]
+        },
+        "end_to_end": {
+          "corrected": "الروشتة تشمل ramipril للضغط وsimvastatin للكوليسترول وmetoprolol لتنظيم النبض",
+          "corrections_count": 3,
+          "false_positives": 0
+        }
+      }
+    }
+  ],
+  "summary": {
+    "total_cases": 30,
+    "categories": {
+      "drug_brand_phonetic_split": 2,
+      "drug_generic_arabic_split": 3,
+      "drug_brand_single_token_corruption": 3,
+      "drug_generic_one_letter_error": 2,
+      "drug_generic_two_phoneme_swap": 1,
+      "drug_generic_silent_letter_drop": 1,
+      "device_spelling_corruption": 2,
+      "procedure_name_corruption": 1,
+      "procedure_name_split": 1,
+      "lab_test_name_corruption": 1,
+      "multi_error_two_drugs": 2,
+      "multi_error_drug_and_device": 1,
+      "multi_error_three_drugs": 1,
+      "hitl_escalation_unknown_term": 1,
+      "correct_no_change": 9
+    },
+    "dialects": {
+      "saudi": 17,
+      "emirati": 13
+    },
+    "total_errors_to_correct": 25,
+    "total_clean_cases": 9,
+    "total_hitl_escalations": 1
+  }
+}

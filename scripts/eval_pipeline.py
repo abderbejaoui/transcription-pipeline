@@ -59,7 +59,21 @@ def _load_test_set(path: Path) -> list[dict]:
     * .jsonl — old format: one JSON object per line, each with
       { "id": N, "transcript": "...", "expected": { "flags": [...], ... } }
       which is auto-converted to the new 5-stage expected format.
+
+    If the .jsonl file is actually a single JSON object (new format),
+    it is parsed as JSON directly.
     """
+    raw = path.read_text(encoding="utf-8").strip()
+    # Detect new-format JSON regardless of file extension.
+    if raw.startswith("{"):
+        try:
+            data = json.loads(raw)
+            if isinstance(data, dict):
+                cases = data.get("cases", [])
+                if isinstance(cases, list):
+                    return cases
+        except json.JSONDecodeError:
+            pass
     if path.suffix.lower() == ".jsonl":
         return _load_jsonl(path)
     # Default: .json
@@ -244,11 +258,14 @@ class StageReport:
 # ---------------------------------------------------------------------------
 
 
-def call_pipeline(endpoint: str, transcript: str, case_id: str, timeout: int = 120) -> dict:
+def call_pipeline(
+    endpoint: str, transcript: str, case_id: str,
+    timeout: int = 120, use_llm: bool = False,
+) -> dict:
     """POST to /test-pipeline and return the JSON response.
 
     Expected request schema:
-        { "transcript": "<text>", "case_id": "<id>" }
+        { "transcript": "<text>", "case_id": "<id>", "use_llm": false }
 
     Expected response schema (your pipeline must return this from /test-pipeline):
         {
@@ -283,10 +300,13 @@ def call_pipeline(endpoint: str, transcript: str, case_id: str, timeout: int = 1
         }
     """
     url = endpoint.rstrip("/") + "/api/test-pipeline"
+    body = {"transcript": transcript, "case_id": case_id}
+    if use_llm:
+        body["use_llm"] = True
     try:
         resp = requests.post(
             url,
-            json={"transcript": transcript, "case_id": case_id},
+            json=body,
             timeout=timeout,
         )
         resp.raise_for_status()
@@ -854,6 +874,11 @@ def main() -> None:
         default=None,
         help="Only run specific case IDs, e.g. --filter-ids TC-001 TC-008",
     )
+    parser.add_argument(
+        "--use-llm",
+        action="store_true",
+        help="Enable the LLM pass for higher-accuracy correction (non-deterministic)",
+    )
     args = parser.parse_args()
 
     # Load test set (supports .jsonl and .json)
@@ -894,7 +919,10 @@ def main() -> None:
         transcript = case["input"]
         print(f"  [{i:02d}/{len(cases)}] {cid} ...", end=" ", flush=True)
         t0 = time.time()
-        resp = call_pipeline(args.endpoint, transcript, cid, timeout=args.timeout)
+        resp = call_pipeline(
+            args.endpoint, transcript, cid,
+            timeout=args.timeout, use_llm=args.use_llm,
+        )
         elapsed_case = time.time() - t0
 
         if "error" in resp:
