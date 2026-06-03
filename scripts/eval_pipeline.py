@@ -258,48 +258,27 @@ class StageReport:
 # ---------------------------------------------------------------------------
 
 
+_PIPELINE_ENDPOINTS = {
+    "flag": "/api/test-pipeline",
+    "corrector": "/api/test-pipeline-corrector",
+    "staged": "/api/test-pipeline-staged",
+}
+
+
 def call_pipeline(
     endpoint: str, transcript: str, case_id: str,
     timeout: int = 120, use_llm: bool = False,
+    pipeline: str = "flag",
 ) -> dict:
-    """POST to /test-pipeline and return the JSON response.
+    """POST to the selected pipeline endpoint and return the JSON response.
 
-    Expected request schema:
-        { "transcript": "<text>", "case_id": "<id>", "use_llm": false }
+    pipeline="flag"      → /api/test-pipeline      (flag.py: phonetic + LLM select)
+    pipeline="corrector" → /api/test-pipeline-corrector  (correction.py: MedicalCorrector)
 
-    Expected response schema (your pipeline must return this from /test-pipeline):
-        {
-          "case_id": "TC-001",
-          "original": "<input text>",
-          "corrected": "<corrected text>",
-          "corrections": [
-            {
-              "span_text": "...",
-              "chosen": "...",
-              "path": "llm|auto_fix|hitl_escalate|no_change",
-              "confidence": 0.0
-            }
-          ],
-          "flagged_spans": [
-            {
-              "text": "...",
-              "start_index": 0,
-              "end_index": 0,
-              "max_suspicion": 0.0,
-              "reason": "both|low_score|not_in_lexicon"
-            }
-          ],
-          "retrieval_candidates": [
-            {
-              "span_text": "...",
-              "candidates": [
-                {"term": "...", "phonetic_score": 0.0}
-              ]
-            }
-          ]
-        }
+    Both endpoints return the same schema so all 5 eval stages work identically.
     """
-    url = endpoint.rstrip("/") + "/api/test-pipeline"
+    path = _PIPELINE_ENDPOINTS.get(pipeline, _PIPELINE_ENDPOINTS["flag"])
+    url = endpoint.rstrip("/") + path
     body = {"transcript": transcript, "case_id": case_id}
     if use_llm:
         body["use_llm"] = True
@@ -788,11 +767,12 @@ def evaluate_end_to_end(
 # ---------------------------------------------------------------------------
 
 
-def print_report(reports: list[StageReport], endpoint: str, elapsed: float) -> None:
+def print_report(reports: list[StageReport], endpoint: str, elapsed: float, pipeline: str = "flag") -> None:
     width = 72
     print()
     print("=" * width)
     print(f"  PIPELINE EVALUATION REPORT")
+    print(f"  Pipeline : {pipeline}")
     print(f"  Endpoint : {endpoint}")
     print(f"  Date     : {datetime.now().strftime('%Y-%m-%d %H:%M:%S')}")
     print(f"  Duration : {elapsed:.1f}s")
@@ -879,6 +859,17 @@ def main() -> None:
         action="store_true",
         help="Enable the LLM pass for higher-accuracy correction (non-deterministic)",
     )
+    parser.add_argument(
+        "--pipeline",
+        choices=["flag", "corrector", "staged"],
+        default="flag",
+        help=(
+            "Which correction pipeline to evaluate: "
+            "'flag' (flag.py — phonetic + LLM select, default), "
+            "'corrector' (correction.py — MedicalCorrector span-level pipeline), or "
+            "'staged' (pipeline/ package — same logic as flag but split into stage modules)"
+        ),
+    )
     args = parser.parse_args()
 
     # Load test set (supports .jsonl and .json)
@@ -907,8 +898,9 @@ def main() -> None:
         return
 
     # Run inference
-    print(f"\nCalling endpoint: {args.endpoint.rstrip('/')}/test-pipeline")
-    print(f"Timeout: {args.timeout}s  |  Inter-request delay: {args.delay}s\n")
+    pipeline_path = _PIPELINE_ENDPOINTS.get(args.pipeline, _PIPELINE_ENDPOINTS["flag"])
+    print(f"\nCalling endpoint: {args.endpoint.rstrip('/')}{pipeline_path}")
+    print(f"Pipeline: {args.pipeline}  |  Timeout: {args.timeout}s  |  Inter-request delay: {args.delay}s\n")
 
     pipeline_responses: dict[str, dict] = {}
     errors = 0
@@ -922,6 +914,7 @@ def main() -> None:
         resp = call_pipeline(
             args.endpoint, transcript, cid,
             timeout=args.timeout, use_llm=args.use_llm,
+            pipeline=args.pipeline,
         )
         elapsed_case = time.time() - t0
 
@@ -950,15 +943,18 @@ def main() -> None:
     ]
 
     # Print report
-    print_report(reports, args.endpoint, total_elapsed)
+    print_report(reports, args.endpoint, total_elapsed, pipeline=args.pipeline)
 
     # Write JSON output
     output_dir = Path("eval_results")
     output_dir.mkdir(exist_ok=True)
-    output_path = args.output or str(output_dir / f"eval_results_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json")
+    output_path = args.output or str(
+        output_dir / f"eval_results_{args.pipeline}_{datetime.now().strftime('%Y%m%d_%H%M%S')}.json"
+    )
     output_data = {
         "meta": {
             "endpoint": args.endpoint,
+            "pipeline": args.pipeline,
             "test_set_path": str(test_set_path),
             "cases_run": len(cases),
             "errors": errors,

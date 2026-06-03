@@ -54,6 +54,7 @@ from .services import (
     asr, asr_benchmark, asr_dual, descriptions, drug_normalize, flag, lexicon,
     llm_decide, llm_detect, tracing, voice_match,
 )
+from .services import pipeline as _pipeline
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
 
 
@@ -954,6 +955,253 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
 
     except Exception as exc:
         print(f"[test-pipeline] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc), "case_id": case_id})
+
+
+# ---------------------------------------------------------------------------
+# /api/test-pipeline-corrector — same eval schema but using MedicalCorrector
+# (correction.py) instead of flag.py.  Lets eval_pipeline.py --pipeline
+# corrector compare the two systems on identical test cases.
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/test-pipeline-corrector")
+async def test_pipeline_corrector(req: dict) -> Dict[str, Any]:
+    """Run MedicalCorrector on one text input, returning the same schema as
+    /api/test-pipeline so eval_pipeline.py can compare both systems."""
+    transcript = (req.get("transcript") or "").strip()
+    case_id = req.get("case_id") or "unknown"
+    use_llm_flag = req.get("use_llm", False)
+    if not isinstance(use_llm_flag, bool):
+        use_llm_flag = False
+    if not transcript:
+        return JSONResponse(status_code=400, content={"error": "transcript is required", "case_id": case_id})
+
+    try:
+        corrector = _get_text_corrector()
+        result = corrector.correct_transcript(transcript, use_llm=use_llm_flag)
+
+        corrected_text = result["corrected_text"]
+        suspicious_spans = result.get("suspicious_spans", [])
+
+        # Phase 3 calibrated thresholds (from correction.py _get_effective_thresholds)
+        AUTO_APPLY_THRESHOLD = 0.808
+        HITL_THRESHOLD = 0.386
+
+        # Build word → character-start map for word-index approximation.
+        words = [w for w in re.split(r"\s+", transcript.strip()) if w]
+        word_char_starts: List[int] = []
+        pos = 0
+        for w in words:
+            idx = transcript.find(w, pos)
+            word_char_starts.append(idx if idx >= 0 else pos)
+            pos = (idx + len(w)) if idx >= 0 else pos + len(w)
+
+        def _char_to_word_idx(char_start: int, n_span_words: int) -> tuple:
+            """Approximate the word-index range for a character offset."""
+            wi = 0
+            for i, cs in enumerate(word_char_starts):
+                if cs <= char_start:
+                    wi = i
+            return wi, wi + max(1, n_span_words)
+
+        corrections = []
+        flagged_spans = []
+        retrieval_candidates = []
+
+        for span in suspicious_spans:
+            original_text = span.get("original_text", "")
+            confidence = span.get("confidence", 0.0)
+            possible_correction = span.get("possible_correction", "")
+            score_100 = span.get("score", 0.0)
+            char_start = span.get("start", 0)
+            source = span.get("source", "rule")
+            issue_type = span.get("issue_type", "rule_based")
+
+            # LLM path: source is set when the local/API LLM ran at high confidence.
+            if source in ("llm", "openrouter", "local_llm"):
+                path = "auto_fix"
+                chosen = possible_correction
+            elif confidence >= AUTO_APPLY_THRESHOLD:
+                path = "auto_fix"
+                chosen = possible_correction
+            elif confidence >= HITL_THRESHOLD:
+                path = "hitl_escalate"
+                chosen = ""
+            else:
+                path = "no_change"
+                chosen = ""
+
+            corrections.append({
+                "span_text": original_text,
+                "chosen": chosen,
+                "path": path,
+                "confidence": round(confidence, 4),
+            })
+
+            span_word_count = len(original_text.split())
+            start_wi, end_wi = _char_to_word_idx(char_start, span_word_count)
+            flagged_spans.append({
+                "text": original_text,
+                "start_index": start_wi,
+                "end_index": end_wi,
+                "max_suspicion": round(min(1.0, score_100 / 100.0), 4),
+                "reason": issue_type,
+            })
+
+            # correction.py picks a single best candidate per span; expose it
+            # in the retrieval_candidates slot so Stage 2 can be scored.
+            retrieval_candidates.append({
+                "span_text": original_text,
+                "candidates": [
+                    {
+                        "term": possible_correction,
+                        "phonetic_score": round(min(1.0, score_100 / 100.0), 4),
+                    }
+                ] if possible_correction else [],
+            })
+
+        return {
+            "case_id": case_id,
+            "original": transcript,
+            "corrected": corrected_text,
+            "corrections": corrections,
+            "flagged_spans": flagged_spans,
+            "retrieval_candidates": retrieval_candidates,
+        }
+
+    except Exception as exc:
+        print(f"[test-pipeline-corrector] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc), "case_id": case_id})
+
+
+# ---------------------------------------------------------------------------
+# /api/test-pipeline-staged — same eval schema, uses the pipeline package
+# (app/services/pipeline/) instead of flag.py directly.
+# ---------------------------------------------------------------------------
+
+
+@app.post("/api/test-pipeline-staged")
+async def test_pipeline_staged(req: dict) -> Dict[str, Any]:
+    """Run the staged pipeline package on one text input.
+
+    Identical response schema to /api/test-pipeline so eval_pipeline.py
+    --pipeline staged can compare results directly.
+    """
+    transcript = (req.get("transcript") or "").strip()
+    case_id = req.get("case_id") or "unknown"
+    use_llm_flag = req.get("use_llm", False)
+    if not isinstance(use_llm_flag, bool):
+        use_llm_flag = False
+    if not transcript:
+        return JSONResponse(status_code=400, content={"error": "transcript is required", "case_id": case_id})
+
+    try:
+        normalized_text, drug_fixes = drug_normalize.normalize_drugs(transcript)
+        normalized_text, taught_fixes = _pipeline.apply_taught_aliases(normalized_text)
+
+        flags_out = _pipeline.flag_suspicious(normalized_text, use_llm=use_llm_flag)
+
+        corr_result = _pipeline.apply_high_confidence_corrections(
+            normalized_text, flags_out,
+            include_hitl=True,
+            use_llm=use_llm_flag,
+        )
+        final_text = corr_result["corrected_transcript"]
+        auto_applied = corr_result["applied"]
+
+        words = [w for w in re.split(r"\s+", transcript.strip()) if w]
+
+        flagged_spans = []
+        for f in flags_out:
+            idx = f.get("index", 0)
+            span_indices = f.get("span_indices") or [idx]
+            word = f.get("word", "")
+            cands = f.get("candidates", [])
+            top_sim = cands[0]["phonetic_similarity"] if cands else 0.0
+            flagged_spans.append({
+                "text": word,
+                "start_index": span_indices[0],
+                "end_index": span_indices[-1] + 1,
+                "max_suspicion": round(top_sim, 4),
+                "reason": f.get("reason", "phonetic"),
+            })
+
+        corrections = []
+        for a in auto_applied:
+            path = a.get("path", "auto_fix")
+            corrections.append({
+                "span_text": a.get("original", ""),
+                "chosen": a.get("corrected", ""),
+                "path": path,
+                "confidence": round(a.get("confidence", 0.0), 4),
+            })
+        for tf in taught_fixes:
+            tf_from = tf.get("from", "")
+            if not any(c["span_text"].strip() == tf_from.strip() for c in corrections):
+                corrections.append({
+                    "span_text": tf_from,
+                    "chosen": tf.get("to", ""),
+                    "path": "hitl_applied",
+                    "confidence": 1.0,
+                })
+        for df in drug_fixes:
+            df_from = df.get("from", "")
+            if not any(c["span_text"].strip() == df_from.strip() for c in corrections):
+                corrections.append({
+                    "span_text": df_from,
+                    "chosen": df.get("to", ""),
+                    "path": "auto_fix",
+                    "confidence": 1.0,
+                })
+
+        orig_words = [w for w in re.split(r"\s+", transcript.strip()) if w]
+
+        def _locate(span_from: str) -> tuple:
+            toks = span_from.split()
+            if toks:
+                for i in range(len(orig_words) - len(toks) + 1):
+                    if orig_words[i:i + len(toks)] == toks:
+                        return i, i + len(toks)
+            return 0, 1
+
+        covered = {fs["text"].strip() for fs in flagged_spans}
+        for fx in list(taught_fixes) + list(drug_fixes):
+            frm = (fx.get("from") or "").strip()
+            if not frm or any(frm in c or c in frm for c in covered if c):
+                continue
+            i0, i1 = _locate(frm)
+            flagged_spans.append({
+                "text": frm,
+                "start_index": i0,
+                "end_index": i1,
+                "max_suspicion": 1.0,
+                "reason": "normalized",
+            })
+            covered.add(frm)
+
+        retrieval_candidates = []
+        for f in flags_out:
+            cands = f.get("candidates", [])
+            retrieval_candidates.append({
+                "span_text": f.get("word", ""),
+                "candidates": [
+                    {"term": c["term"], "phonetic_score": round(c["phonetic_similarity"], 4)}
+                    for c in cands
+                ],
+            })
+
+        return {
+            "case_id": case_id,
+            "original": transcript,
+            "corrected": final_text,
+            "corrections": corrections,
+            "flagged_spans": flagged_spans,
+            "retrieval_candidates": retrieval_candidates,
+        }
+
+    except Exception as exc:
+        print(f"[test-pipeline-staged] error: {exc!r}")
         return JSONResponse(status_code=500, content={"error": str(exc), "case_id": case_id})
 
 
