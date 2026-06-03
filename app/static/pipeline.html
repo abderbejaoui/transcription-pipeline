@@ -1,0 +1,219 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Correction Pipeline — Standalone (no ASR)</title>
+  <style>
+    :root { --bg:#0f1419; --panel:#1a2230; --line:#2a3547; --txt:#e6edf3;
+            --muted:#8b9bb0; --green:#3fb950; --red:#f85149; --amber:#d29922; --accent:#388bfd; }
+    * { box-sizing: border-box; }
+    body { margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+           background:var(--bg); color:var(--txt); line-height:1.5; }
+    .wrap { max-width: 980px; margin: 0 auto; padding: 24px 20px 60px; }
+    h1 { font-size: 1.3rem; margin: 0 0 4px; }
+    .sub { color:var(--muted); font-size:.9rem; margin-bottom:20px; }
+    .sub a { color: var(--accent); }
+    textarea { width:100%; min-height:120px; background:var(--panel); color:var(--txt);
+               border:1px solid var(--line); border-radius:8px; padding:12px; font-size:1rem; resize:vertical; }
+    .row { display:flex; gap:10px; align-items:center; margin:12px 0; flex-wrap:wrap; }
+    button { background:var(--accent); color:#fff; border:0; border-radius:8px; padding:10px 18px;
+             font-size:.95rem; cursor:pointer; }
+    button:disabled { opacity:.5; cursor:default; }
+    .chip { font-size:.8rem; color:var(--muted); }
+    .panel { background:var(--panel); border:1px solid var(--line); border-radius:8px; padding:14px 16px; margin-top:16px; }
+    .panel h2 { font-size:.8rem; text-transform:uppercase; letter-spacing:.05em; color:var(--muted); margin:0 0 10px; }
+    .txtblock { font-size:1.1rem; white-space:pre-wrap; word-break:break-word; }
+    .ar { direction:rtl; text-align:right; }
+    table { width:100%; border-collapse:collapse; font-size:.9rem; }
+    th, td { text-align:left; padding:7px 8px; border-bottom:1px solid var(--line); vertical-align:top; }
+    th { color:var(--muted); font-weight:600; }
+    .orig { color:var(--red); text-decoration:line-through; }
+    .corr { color:var(--green); font-weight:600; }
+    .arrow { color:var(--muted); }
+    .reason { color:var(--amber); font-size:.82rem; }
+    .cand { color:var(--muted); font-size:.82rem; }
+    .empty { color:var(--muted); font-style:italic; }
+    .err { color:var(--red); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <h1>Correction Pipeline</h1>
+    <div class="sub">Transcribe audio with the Qwen3-ASR Gulf LoRA model, then run the
+      lexical/semantic correction pipeline. ASR posts to <code>/api/asr</code>,
+      correction posts to <code>/api/correct</code>. &nbsp;·&nbsp; <a href="/">← full app</a></div>
+
+    <div class="panel">
+      <h2>Audio → transcript</h2>
+      <div class="row">
+        <input type="file" id="audioFile" accept="audio/*" />
+        <button id="recordBtn" type="button">● Record</button>
+        <select id="lang">
+          <option value="">Auto-detect</option>
+          <option value="ar">Arabic</option>
+          <option value="en">English</option>
+        </select>
+        <button id="transcribeBtn" type="button">Transcribe</button>
+        <span class="chip" id="asrStatus"></span>
+      </div>
+      <audio id="player" controls style="width:100%;margin-top:8px;display:none"></audio>
+    </div>
+
+    <textarea id="input" dir="auto" spellcheck="false"></textarea>
+    <div class="row">
+      <button id="run">Run correction</button>
+      <span class="chip" id="status"></span>
+    </div>
+
+    <div class="panel">
+      <h2>Corrected text</h2>
+      <div class="txtblock" id="corrected"><span class="empty">Run to see output.</span></div>
+    </div>
+
+    <div class="panel">
+      <h2>Corrections applied (<span id="nfix">0</span>)</h2>
+      <table><thead><tr><th>Original</th><th></th><th>Corrected</th><th>Type</th></tr></thead>
+      <tbody id="fixes"></tbody></table>
+    </div>
+
+    <div class="panel">
+      <h2>Flags / suspicious spans (<span id="nflag">0</span>)</h2>
+      <table><thead><tr><th>Word</th><th>Reason</th><th>Top candidates (score)</th></tr></thead>
+      <tbody id="flags"></tbody></table>
+    </div>
+  </div>
+
+  <script>
+    const $ = (id) => document.getElementById(id);
+    const esc = (s) => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+    const isAr = (s) => /[؀-ۿ]/.test(s || "");
+
+    // Prefill with a mixed sample exercising all three error classes.
+    $("input").value =
+      "المريض عنده اتريل فيبريليشن ومسجل عنده من زمان، وياخذ bisoprlol و digoxine بشكل يومي. " +
+      "اليوم جاء يشتكي من تشيست بين وصعال جاف من ثلاث ايام. الفحوصات بينت عنده hypokalimia خفيف. " +
+      "وصفت له esomeprazol للمعده وطلبت اعادة تخطيط القلب بعد اسبوع.";
+
+    async function run() {
+      const text = $("input").value.trim();
+      if (!text) return;
+      $("run").disabled = true;
+      $("status").textContent = "running…";
+      try {
+        const t0 = performance.now();
+        const res = await fetch("/api/correct", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ text }),
+        });
+        if (!res.ok) throw new Error("HTTP " + res.status + " — " + (await res.text()).slice(0, 200));
+        const data = await res.json();
+        render(data);
+        $("status").textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s · " + (data.pipeline || "");
+      } catch (e) {
+        $("corrected").innerHTML = '<span class="err">' + esc(e.message) + "</span>";
+        $("status").textContent = "error";
+      } finally {
+        $("run").disabled = false;
+      }
+    }
+
+    function render(data) {
+      const ct = data.corrected_text || "";
+      $("corrected").className = "txtblock" + (isAr(ct) ? " ar" : "");
+      $("corrected").textContent = ct;
+
+      const fixes = data.auto_corrections || [];
+      $("nfix").textContent = fixes.length;
+      $("fixes").innerHTML = fixes.length
+        ? fixes.map(f =>
+            `<tr><td class="orig ${isAr(f.original)?'ar':''}">${esc(f.original)}</td>` +
+            `<td class="arrow">→</td>` +
+            `<td class="corr ${isAr(f.corrected)?'ar':''}">${esc(f.corrected)}</td>` +
+            `<td class="reason">${esc(f.type || "")}</td></tr>`).join("")
+        : '<tr><td colspan="4" class="empty">No corrections applied.</td></tr>';
+
+      const flags = data.flags || [];
+      $("nflag").textContent = flags.length;
+      $("flags").innerHTML = flags.length
+        ? flags.map(f => {
+            const cands = (f.candidates || [])
+              .map(c => `${esc(c.term)} (${(c.phonetic_similarity ?? 0).toFixed(2)})`).join(", ");
+            return `<tr><td class="${isAr(f.word)?'ar':''}">${esc(f.word)}</td>` +
+                   `<td class="reason">${esc(f.reason || "")}</td>` +
+                   `<td class="cand">${cands || "—"}</td></tr>`;
+          }).join("")
+        : '<tr><td colspan="3" class="empty">No flags.</td></tr>';
+    }
+
+    // ---- ASR: transcribe audio using the same model as the main app ----
+    let selectedBlob = null;
+
+    async function transcribe() {
+      const blob = selectedBlob || ($("audioFile").files[0] || null);
+      if (!blob) { $("asrStatus").textContent = "pick or record audio first"; return; }
+      $("transcribeBtn").disabled = true;
+      $("asrStatus").textContent = "transcribing…";
+      try {
+        const t0 = performance.now();
+        const fd = new FormData();
+        fd.append("audio", blob, blob.name || "audio.webm");
+        const lang = $("lang").value;
+        if (lang) fd.append("language", lang);
+        const res = await fetch("/api/asr", { method: "POST", body: fd });
+        if (!res.ok) throw new Error("HTTP " + res.status + " — " + (await res.text()).slice(0, 200));
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        $("input").value = data.text || "";
+        $("asrStatus").textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s · transcribed";
+        if ($("input").value.trim()) run();  // auto-run the correction pipeline
+      } catch (e) {
+        $("asrStatus").textContent = "error";
+        $("corrected").innerHTML = '<span class="err">' + esc(e.message) + "</span>";
+      } finally {
+        $("transcribeBtn").disabled = false;
+      }
+    }
+
+    $("audioFile").addEventListener("change", () => {
+      selectedBlob = null;
+      const f = $("audioFile").files[0];
+      if (f) { $("player").src = URL.createObjectURL(f); $("player").style.display = "block"; }
+    });
+
+    // ---- Microphone recording ----
+    let mediaRecorder = null, chunks = [];
+    $("recordBtn").addEventListener("click", async () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        chunks = [];
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          selectedBlob = new Blob(chunks, { type: "audio/webm" });
+          selectedBlob.name = "recording.webm";
+          $("player").src = URL.createObjectURL(selectedBlob);
+          $("player").style.display = "block";
+          $("recordBtn").textContent = "● Record";
+          $("recordBtn").style.background = "var(--accent)";
+        };
+        mediaRecorder.start();
+        $("recordBtn").textContent = "■ Stop";
+        $("recordBtn").style.background = "var(--red)";
+      } catch (e) {
+        $("asrStatus").textContent = "mic error: " + e.message;
+      }
+    });
+
+    $("transcribeBtn").addEventListener("click", transcribe);
+    $("run").addEventListener("click", run);
+    $("input").addEventListener("keydown", (e) => { if (e.ctrlKey && e.key === "Enter") run(); });
+  </script>
+</body>
+</html>

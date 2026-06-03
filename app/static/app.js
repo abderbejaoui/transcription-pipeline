@@ -326,12 +326,9 @@ async function startRecording(mode = "debug") {
       }
       $("record-status").textContent = "Done.";
     } catch (err) {
-        clearInterval(progressInterval);
-        $("benchmark-status").innerHTML = "❌ " + escapeHtml(err.message);
-    } finally {
-        $("btn-upload").disabled = false;
+      $("record-status").textContent = "❌ " + err.message;
     }
-};
+  };
 
   mediaRecorder.onerror = (e) => {
     $("record-status").textContent =

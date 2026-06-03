@@ -1,0 +1,12 @@
+{"original": "Patient has هستوري of دايابيتس and هايبرتنشن", "corrected": "Patient has history of diabetes and hypertension", "context": "Gulf Arabic medical transcript showing common transliterations", "timestamp": "2026-05-01T10:00:00Z"}
+{"original": "hyperglacymia", "corrected": "hyperglycemia", "context": "English misspelling of hyperglycemia", "timestamp": "2026-05-01T10:01:00Z"}
+{"original": "wheezeng", "corrected": "wheezing", "context": "ASR misspelling of wheezing", "timestamp": "2026-05-01T10:02:00Z"}
+{"original": "creptations", "corrected": "crepitations", "context": "ASR misspelling of crepitations", "timestamp": "2026-05-01T10:03:00Z"}
+{"original": "troponen", "corrected": "troponin", "context": "ASR misspelling of troponin", "timestamp": "2026-05-01T10:04:00Z"}
+{"original": "عنده هستوري مرض السكر", "corrected": "عنده history of diabetes", "context": "Gulf Arabic mixed transcript", "timestamp": "2026-05-01T10:05:00Z"}
+{"original": "يعاني من شورتنس اوف بريث", "corrected": "suffers from shortness of breath", "context": "Multi-word Arabic transliteration", "timestamp": "2026-05-01T10:06:00Z"}
+{"original": "بلاد شوجر مرتفع", "corrected": "blood sugar is high", "context": "Arabic transliteration of blood sugar", "timestamp": "2026-05-01T10:07:00Z"}
+{"original": "clopidogr 75 mg daily", "corrected": "clopidogrel 75 mg daily", "context": "English drug misspelling", "timestamp": "2026-05-01T10:08:00Z"}
+{"original": "amoxicilin 500 mg", "corrected": "amoxicillin 500 mg", "context": "English drug misspelling", "timestamp": "2026-05-01T10:09:00Z"}
+{"original": "possble ischemic chenges", "corrected": "possible ischemic changes", "context": "ASR misspelling in ECG report", "timestamp": "2026-05-01T10:10:00Z"}
+{"original": "نيتروغلسرين واسبرين", "corrected": "nitroglycerin and aspirin", "context": "Arabic transliterations of drug names", "timestamp": "2026-05-01T10:11:00Z"}

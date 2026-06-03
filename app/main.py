@@ -51,7 +51,7 @@ from pydantic import BaseModel, Field
 from fastapi.responses import StreamingResponse
 
 from .services import (
-    asr, asr_benchmark, descriptions, drug_normalize, flag, lexicon,
+    asr, asr_benchmark, asr_dual, descriptions, drug_normalize, flag, lexicon,
     llm_decide, llm_detect, tracing, voice_match,
 )
 from .services.correction import MedicalCorrector, LexiconEntry as _LexiconEntry, compact
@@ -116,6 +116,22 @@ AUDIO_AUTOFIX_THRESHOLD = 0.85  # short-circuit when very strong USER match
 
 _LEARN_TOKEN_RE = re.compile(r"[A-Za-z][A-Za-z0-9'-]+")
 
+# When 1, run both Gulf LoRA and base Qwen3 in parallel then merge via LLM judge.
+# Only affects the /api/transcribe path; the /api/test-pipeline (eval) does not
+# use ASR and is unaffected.
+USE_DUAL_ASR = os.environ.get("USE_DUAL_ASR", "0") == "1"
+
+# Lazy-loading globals for the /pipeline page (optional front-end features).
+# Independent of the main /api/transcribe pipeline.
+_TEXT_CORRECTOR: Optional[MedicalCorrector] = None
+
+
+def _get_text_corrector() -> MedicalCorrector:
+    global _TEXT_CORRECTOR
+    if _TEXT_CORRECTOR is None:
+        _TEXT_CORRECTOR = _build_corrector()
+    return _TEXT_CORRECTOR
+
 
 # ---------------------------------------------------------------------------
 # Schemas
@@ -170,6 +186,12 @@ def _prewarm() -> None:
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
     return FileResponse(STATIC_DIR / "index.html")
+
+
+@app.get("/pipeline", include_in_schema=False)
+def pipeline_tester() -> FileResponse:
+    """Standalone page to test the correction pipeline on text, without ASR."""
+    return FileResponse(STATIC_DIR / "pipeline.html")
 
 
 @app.get("/api/healthz")
@@ -348,7 +370,12 @@ def _run_transcribe_pipeline(
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
     })
-    asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
+    if USE_DUAL_ASR:
+        asr_result = asr_dual.transcribe_and_merge(
+            session_path, language=language
+        )
+    else:
+        asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
     raw_text = asr_result["text"]
     words = list(asr_result["words"])
     tracing.emit("asr.done", {
@@ -707,6 +734,41 @@ async def transcribe_stream(
         media_type="application/x-ndjson",
         headers={"Cache-Control": "no-cache", "X-Accel-Buffering": "no"},
     )
+
+
+# ---------------------------------------------------------------------------
+# /api/asr — ASR-only endpoint for the /pipeline page
+# ---------------------------------------------------------------------------
+#
+# Just ASR (Qwen3-ASR-1.7B Gulf LoRA), no correction pipeline. Used by the
+# standalone /pipeline page to get a raw transcript for manual correction.
+
+
+@app.post("/api/asr")
+async def asr_only(
+    audio: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+    model_size: str = Form(DEFAULT_WHISPER_SIZE),
+) -> Dict[str, Any]:
+    """ASR-only: transcribe audio without the correction pipeline."""
+    session_id, session_path, size = _save_upload(audio)
+    effective_lang = language or DEFAULT_LANGUAGE
+    if size < 200:
+        return JSONResponse(
+            status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
+        )
+    try:
+        result = asr.transcribe(session_path, model_size=model_size, language=effective_lang)
+        return {
+            "text": result["text"],
+            "raw_text": result["text"],
+            "language": result["language"],
+            "duration": result["duration"],
+            "session_id": session_id,
+        }
+    except Exception as exc:
+        print(f"[asr] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc)})
 
 
 # ---------------------------------------------------------------------------

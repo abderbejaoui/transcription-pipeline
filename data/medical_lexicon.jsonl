@@ -139,7 +139,7 @@
 {"term": "linagliptin", "type": "drug", "aliases": ["tradjenta"], "priority": 0.7}
 {"term": "loratadine", "type": "drug", "aliases": ["claritin"], "priority": 0.9}
 {"term": "magnesium sulfate", "type": "drug", "aliases": [], "priority": 0.7}
-{"term": "metformin", "type": "drug", "aliases": ["glucophage"], "priority": 1.0}
+{"term": "metformin", "type": "drug", "aliases": ["glucophage", "metformina"], "priority": 1.0}
 {"term": "methadone", "type": "drug", "aliases": ["dolophine"], "priority": 0.9}
 {"term": "methotrexate", "type": "drug", "aliases": [], "priority": 1.0}
 {"term": "methylprednisolone", "type": "drug", "aliases": ["solu-medrol", "solumedrol", "medrol"], "priority": 1.0}
@@ -179,9 +179,6 @@
 {"term": "remdesivir", "type": "drug", "aliases": ["veklury"], "priority": 0.9}
 {"term": "risperidone", "type": "drug", "aliases": ["risperdal"], "priority": 0.9}
 {"term": "sacubitril-valsartan", "type": "drug", "aliases": ["entresto"], "priority": 0.9}
-{"term": "Salem aalaykom", "type": "drug", "aliases": ["Selim alakal"], "priority": 1.0}
-{"term": "salem aleykom", "type": "drug", "aliases": ["Selam naleyk"], "priority": 1.0}
-{"term": "salemou aalaykom", "type": "drug", "aliases": [], "priority": 1.0}
 {"term": "sotalol", "type": "drug", "aliases": ["betapace"], "priority": 0.7}
 {"term": "sulfasalazine", "type": "drug", "aliases": ["azulfidine"], "priority": 0.7}
 {"term": "tacrolimus", "type": "drug", "aliases": ["prograf", "fk506"], "priority": 0.9}
@@ -244,3 +241,47 @@
 {"term": "nervous system", "type": "anatomy", "aliases": [], "priority": 1.0}
 {"term": "respiration", "type": "anatomy", "aliases": [], "priority": 1.0}
 {"term": "Efferalgan", "type": "drug", "aliases": ["Effiralgon", "Effiralgan", "Eferalgon"], "priority": 1.0}
+{"term": "testadrug", "type": "drug", "aliases": ["testadrg"], "priority": 1.0}
+{"term": "hyperglycemia", "type": "diagnosis", "aliases": ["hyperglacymia", "hyperglycaemia", "high blood sugar"], "priority": 0.9}
+{"term": "diabetes", "type": "diagnosis", "aliases": ["DM", "diabetes mellitus"], "priority": 1.0}
+{"term": "hypertension", "type": "diagnosis", "aliases": ["HTN", "high blood pressure"], "priority": 1.0}
+{"term": "history", "type": "term", "aliases": ["hx", "Hx"], "priority": 0.5}
+{"term": "nitroglycerin", "type": "drug", "aliases": ["NTG", "nitro"], "priority": 0.9}
+{"term": "antiplatelet", "type": "drug", "aliases": [], "priority": 1.0}
+{"term": "oxygen", "type": "term", "aliases": ["O2"], "priority": 0.5}
+{"term": "saturation", "type": "term", "aliases": ["sat", "sats", "O2 sat"], "priority": 0.5}
+{"term": "temperature", "type": "term", "aliases": ["temp"], "priority": 0.5}
+{"term": "dizziness", "type": "symptom", "aliases": ["dizzy", "vertigo"], "priority": 0.8}
+{"term": "shortness of breath", "type": "symptom", "aliases": ["SOB", "dyspnea"], "priority": 0.8}
+{"term": "wheezing", "type": "symptom", "aliases": ["wheeze"], "priority": 0.8}
+{"term": "crepitations", "type": "finding", "aliases": ["crackles", "rales"], "priority": 0.8}
+{"term": "troponin", "type": "lab", "aliases": ["trop", "cTn"], "priority": 0.9}
+{"term": "symptoms", "type": "term", "aliases": ["sx", "symptom"], "priority": 0.5}
+{"term": "therapy", "type": "term", "aliases": ["treatment"], "priority": 0.5}
+{"term": "cardiac", "type": "term", "aliases": ["cardio", "heart"], "priority": 0.5}
+{"term": "enzymes", "type": "lab", "aliases": ["enzyme", "cardiac enzymes"], "priority": 0.5}
+{"term": "dose", "type": "term", "aliases": ["dosage"], "priority": 0.5}
+{"term": "doses", "type": "term", "aliases": [], "priority": 0.5}
+{"term": "ischemic", "type": "diagnosis", "aliases": ["ischaemic"], "priority": 0.8}
+{"term": "changes", "type": "term", "aliases": [], "priority": 0.5}
+{"term": "blood sugar", "type": "lab", "aliases": ["glucose", "BG", "blood glucose"], "priority": 0.8}
+{"term": "blood pressure", "type": "vital", "aliases": ["BP"], "priority": 0.8}
+{"term": "severe", "type": "term", "aliases": [], "priority": 0.3}
+{"term": "vital sign", "type": "term", "aliases": ["vitals"], "priority": 0.5}
+{"term": "heart", "type": "anatomy", "aliases": ["cardiac"], "priority": 0.5}
+{"term": "heart rate", "type": "vital", "aliases": ["HR", "pulse"], "priority": 0.8}
+{"term": "rate", "type": "term", "aliases": [], "priority": 0.3}
+{"term": "results", "type": "term", "aliases": ["labs"], "priority": 0.3}
+{"term": "nausea", "type": "symptom", "aliases": ["nauseous"], "priority": 0.8}
+{"term": "shiver", "type": "symptom", "aliases": ["shivering", "rigors"], "priority": 0.5}
+{"term": "mild", "type": "descriptor", "aliases": [], "priority": 0.2}
+{"term": "ecg", "type": "test", "aliases": ["EKG", "electrocardiogram"], "priority": 0.6}
+{"term": "echocardiogram", "type": "test", "aliases": ["echo", "cardiac echo"], "priority": 0.6}
+{"term": "severe", "type": "descriptor", "aliases": [], "priority": 0.3}
+{"term": "bilateral", "type": "descriptor", "aliases": ["both sides"], "priority": 0.5}
+{"term": "breath", "type": "vital", "aliases": ["breathing", "respiration"], "priority": 0.8}
+{"term": "vital", "type": "descriptor", "aliases": ["vitals"], "priority": 0.5}
+{"term": "continue", "type": "term", "aliases": ["continuing", "continued", "resume"], "priority": 0.3}
+{"term": "physical", "type": "descriptor", "aliases": ["phys", "physical exam", "physical examination"], "priority": 0.5}
+{"term": "chest", "type": "anatomy", "aliases": ["thorax"], "priority": 0.6}
+{"term": "Gastritis", "type": "term", "aliases": ["gastreitis"], "priority": 1.0}
