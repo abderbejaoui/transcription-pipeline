@@ -102,11 +102,13 @@ def _load_model():
 
 
 def _to_wav(audio_path: Path) -> Path:
-    """Convert any audio format to a 16kHz mono WAV using ffmpeg.
-    Returns a temp WAV path (caller must delete it). If already WAV, returns as-is."""
-    suffix = audio_path.suffix.lower()
-    if suffix in (".wav",):
-        return audio_path
+    """Convert any audio input to a 16kHz mono WAV using ffmpeg.
+
+    Always re-encodes (even existing .wav files) so the audio handed to Qwen3-ASR
+    is guaranteed 16kHz mono. A 48kHz browser recording — WebM or WAV — fed to the
+    model at the wrong sample rate produces catastrophically bad transcripts.
+    Returns a temp WAV path (caller must delete it).
+    """
     import subprocess, tempfile
     tmp = Path(tempfile.mktemp(suffix=".wav"))
     subprocess.run(
@@ -153,6 +155,8 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     audio_path = Path(audio_path)
     tmp_wav = None
     try:
+        # Always convert to 16kHz mono WAV first. Qwen3-ASR was trained on 16kHz
+        # audio; feeding it raw browser WebM/Opus (typically 48kHz) wrecks accuracy.
         wav_path = _to_wav(audio_path)
         if wav_path != audio_path:
             tmp_wav = wav_path
@@ -161,8 +165,8 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
         if tmp_wav and tmp_wav.exists():
             tmp_wav.unlink(missing_ok=True)
         return {"text": "", "language": language or "ar", "language_probability": 0.0, "duration": 0.0, "words": [], "error": str(exc)}
-    if tmp_wav and tmp_wav.exists():
-        tmp_wav.unlink(missing_ok=True)
+    # NOTE: do NOT delete tmp_wav yet — the qwen_asr wrapper path below re-reads
+    # this 16kHz WAV from disk. It is deleted after transcription completes.
 
     if audio.ndim > 1:
         audio = audio.mean(axis=1)
@@ -184,12 +188,19 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
     # qwen_asr wrapper path (older transformers)
     if processor is None:
         t0 = time.time()
-        kwargs = {"audio": str(audio_path), "language": lang_label}
+        # Feed the converted 16kHz WAV, NOT the raw upload. The wrapper loads the
+        # file from disk with librosa at its native rate, so passing the original
+        # 48kHz WebM here would feed the LoRA wrong-rate audio → garbage output.
+        kwargs = {"audio": str(wav_path), "language": lang_label}
         if context:
             kwargs["context"] = context
             print(f"[asr] using context bias: {len(context)} chars, "
                   f"{context.count(',') + 1} terms")
-        results = model.transcribe(**kwargs)
+        try:
+            results = model.transcribe(**kwargs)
+        finally:
+            if tmp_wav and tmp_wav.exists():
+                tmp_wav.unlink(missing_ok=True)
         raw_text = getattr(results[0], "text", "").strip() if results else ""
         # Phonetic drug-name canonicalization: map Arabic-script brand names
         # (بنادول، دوليبران …) back to their Latin spelling. Drug-only, deterministic.
@@ -203,6 +214,11 @@ def transcribe(audio_path: str | Path, model_size: str = "large-v3", language: O
             "duration": duration,
             "words": [],
         }
+
+    # transformers path operates on the in-memory `audio` array, so the temp WAV
+    # is no longer needed once we reach here.
+    if tmp_wav and tmp_wav.exists():
+        tmp_wav.unlink(missing_ok=True)
 
     # transformers path
     if sr != 16000:
