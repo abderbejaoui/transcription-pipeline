@@ -1,0 +1,3816 @@
+{
+  "meta": {
+    "endpoint": "http://localhost:8000",
+    "test_set_path": "eval\\pipeline_testset.jsonl",
+    "cases_run": 36,
+    "errors": 0,
+    "timestamp": "2026-06-02T03:59:09.649618",
+    "elapsed_seconds": 86.05
+  },
+  "stage_reports": [
+    {
+      "stage_name": "scoring_and_flagging",
+      "precision": 0.4746,
+      "recall": 0.5185,
+      "f1": 0.4956,
+      "accuracy": 0.0,
+      "notes": "gold_spans=54 tp=28 fp=31",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "gold_spans": [
+            "بنادول"
+          ],
+          "pred_spans": [
+            "اعطيني بنادول"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-002",
+          "gold_spans": [
+            "دوليبران"
+          ],
+          "pred_spans": [
+            "اعطيتها دوليبران"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-003",
+          "gold_spans": [
+            "فولتارين"
+          ],
+          "pred_spans": [
+            "يحتاج فولتارين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-004",
+          "gold_spans": [
+            "اوجمنتين"
+          ],
+          "pred_spans": [
+            "اوجمنتين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-005",
+          "gold_spans": [
+            "ميتفورمين"
+          ],
+          "pred_spans": [
+            "ميتفورمين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-006",
+          "gold_spans": [
+            "ترامادول"
+          ],
+          "pred_spans": [
+            "ترامادول"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-007",
+          "gold_spans": [
+            "فينتولين"
+          ],
+          "pred_spans": [
+            "يستعمل",
+            "فينتولين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-008",
+          "gold_spans": [
+            "انسولين"
+          ],
+          "pred_spans": [
+            "السكري يحتاج انسولين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-009",
+          "gold_spans": [
+            "نوفادول"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 1,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-010",
+          "gold_spans": [
+            "فلاجيل"
+          ],
+          "pred_spans": [
+            "فلاجيل"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-011",
+          "gold_spans": [
+            "برسي تمر"
+          ],
+          "pred_spans": [
+            "اعطوه برسي"
+          ],
+          "tp": 0,
+          "fn": 1,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-012",
+          "gold_spans": [
+            "اوغ من تين"
+          ],
+          "pred_spans": [
+            "اوغ من تين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-013",
+          "gold_spans": [
+            "افرلجان"
+          ],
+          "pred_spans": [
+            "افرلجان"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-014",
+          "gold_spans": [
+            "كلاسيد"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 1,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-015",
+          "gold_spans": [
+            "زيثروماكس"
+          ],
+          "pred_spans": [
+            "زيثروماكس"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-016",
+          "gold_spans": [
+            "if all gone"
+          ],
+          "pred_spans": [
+            "patient's"
+          ],
+          "tp": 0,
+          "fn": 1,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-017",
+          "gold_spans": [
+            "augmentin"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 1,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-018",
+          "gold_spans": [
+            "panadol"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 1,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-019",
+          "gold_spans": [
+            "insulin"
+          ],
+          "pred_spans": [
+            "meals"
+          ],
+          "tp": 0,
+          "fn": 1,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-020",
+          "gold_spans": [],
+          "pred_spans": [
+            "كيف حالك اليوم"
+          ],
+          "tp": 0,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-021",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-022",
+          "gold_spans": [],
+          "pred_spans": [
+            "لازم ترتاح"
+          ],
+          "tp": 0,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-023",
+          "gold_spans": [
+            "panadol",
+            "motilium"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 2,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-024",
+          "gold_spans": [
+            "augmentin",
+            "بروفين"
+          ],
+          "pred_spans": [
+            "الطفل عنده",
+            "بروفين"
+          ],
+          "tp": 1,
+          "fn": 1,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-025",
+          "gold_spans": [
+            "دوليبران"
+          ],
+          "pred_spans": [
+            "دوليبران"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-026",
+          "gold_spans": [
+            "ودوليبران"
+          ],
+          "pred_spans": [
+            "ودوليبران"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-027",
+          "gold_spans": [
+            "البنادول"
+          ],
+          "pred_spans": [
+            "البنادول",
+            "بعد الأكل"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-028",
+          "gold_spans": [
+            "ليريكا"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 1,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-029",
+          "gold_spans": [
+            "كلاسيد",
+            "نيورونتين"
+          ],
+          "pred_spans": [
+            "يحتاج كلاسيد",
+            "نيورونتين"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-030",
+          "gold_spans": [
+            "if all gone",
+            "augmentin"
+          ],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 2,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-031",
+          "gold_spans": [
+            "بنادول",
+            "فولتارين",
+            "ميتفورمين"
+          ],
+          "pred_spans": [
+            "سنة تشتكي",
+            "اعطيتها بنادول",
+            "فولتارين",
+            "ميتفورمين",
+            "طلبت منها"
+          ],
+          "tp": 3,
+          "fn": 0,
+          "fp": 2
+        },
+        {
+          "case_id": "TC-032",
+          "gold_spans": [
+            "augmentin",
+            "panadol",
+            "ventolin",
+            "metformin"
+          ],
+          "pred_spans": [
+            "mentioned",
+            "follow"
+          ],
+          "tp": 0,
+          "fn": 4,
+          "fp": 2
+        },
+        {
+          "case_id": "TC-033",
+          "gold_spans": [
+            "اوجمنتين",
+            "زيثروماكس",
+            "افرلجان"
+          ],
+          "pred_spans": [
+            "عندي مريض عنده",
+            "له اوجمنتين",
+            "زيثروماكس",
+            "بعد يومين",
+            "فاعطيته افرلجان.",
+            "لكن",
+            "يمكن"
+          ],
+          "tp": 3,
+          "fn": 0,
+          "fp": 4
+        },
+        {
+          "case_id": "TC-034",
+          "gold_spans": [
+            "برسي تمر",
+            "كلاسيد",
+            "دوليبران"
+          ],
+          "pred_spans": [
+            "الاذن.",
+            "عطته برسي",
+            "دوليبران"
+          ],
+          "tp": 1,
+          "fn": 2,
+          "fp": 2
+        },
+        {
+          "case_id": "TC-035",
+          "gold_spans": [
+            "glucophage",
+            "amaryl",
+            "concor",
+            "augmentin",
+            "novadol",
+            "ventolin",
+            "metformin"
+          ],
+          "pred_spans": [
+            "hypertension.",
+            "started",
+            "kidney",
+            "monitor",
+            "persists"
+          ],
+          "tp": 0,
+          "fn": 7,
+          "fp": 5
+        },
+        {
+          "case_id": "TC-036",
+          "gold_spans": [
+            "فولتارين",
+            "اوغ من تين",
+            "دوليبران"
+          ],
+          "pred_spans": [
+            "سنة يعاني من",
+            "سنين.",
+            "فولتارين",
+            "الدكتور كتب",
+            "اوغ من تين",
+            "ياخذ دوليبران",
+            "طلع عنده نقص",
+            "فيتامين",
+            "د، كتب له",
+            "كالسيوم",
+            "فيتامين د."
+          ],
+          "tp": 3,
+          "fn": 0,
+          "fp": 8
+        }
+      ]
+    },
+    {
+      "stage_name": "phonetic_retrieval",
+      "precision": 0.4444,
+      "recall": 0.4444,
+      "f1": 0.4444,
+      "accuracy": 0.4444,
+      "notes": "retrieval_cases=54 top1_correct=24 topk_correct=24 hitl_cases_excluded=0",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "span": "بنادول",
+          "gold_term": "panadol",
+          "top_1_candidate": "panadol",
+          "all_candidates": [
+            "panadol",
+            "itraconazole",
+            "haloperidol"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-002",
+          "span": "دوليبران",
+          "gold_term": "doliprane",
+          "top_1_candidate": "doliprane",
+          "all_candidates": [
+            "doliprane",
+            "metoclopramide",
+            "nitroglycerin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-003",
+          "span": "فولتارين",
+          "gold_term": "voltaren",
+          "top_1_candidate": "voltaren",
+          "all_candidates": [
+            "voltaren",
+            "atorvastatin",
+            "nitroglycerin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-004",
+          "span": "اوجمنتين",
+          "gold_term": "augmentin",
+          "top_1_candidate": "augmentin",
+          "all_candidates": [
+            "augmentin",
+            "augmentin",
+            "gabapentin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-005",
+          "span": "ميتفورمين",
+          "gold_term": "metformin",
+          "top_1_candidate": "metformin",
+          "all_candidates": [
+            "metformin",
+            "azithromycin",
+            "mupirocin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-006",
+          "span": "ترامادول",
+          "gold_term": "tramadol",
+          "top_1_candidate": "tramadol",
+          "all_candidates": [
+            "tramadol",
+            "tamiflu",
+            "metronidazole"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-007",
+          "span": "فينتولين",
+          "gold_term": "ventolin",
+          "top_1_candidate": "ventolin",
+          "all_candidates": [
+            "ventolin",
+            "insulin",
+            "voltaren"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-008",
+          "span": "انسولين",
+          "gold_term": "insulin",
+          "top_1_candidate": "prednisolone",
+          "all_candidates": [
+            "prednisolone",
+            "sertraline",
+            "hypertension"
+          ],
+          "top_1_correct": false,
+          "top_k_correct": false
+        },
+        {
+          "case_id": "TC-009",
+          "span": "نوفادول",
+          "gold_term": "novadol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-010",
+          "span": "فلاجيل",
+          "gold_term": "flagyl",
+          "top_1_candidate": "flagyl",
+          "all_candidates": [
+            "flagyl",
+            "fluconazole"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-011",
+          "span": "برسي تمر",
+          "gold_term": "paracetamol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-012",
+          "span": "اوغ من تين",
+          "gold_term": "augmentin",
+          "top_1_candidate": "augmentin",
+          "all_candidates": [
+            "augmentin",
+            "augmentin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-013",
+          "span": "افرلجان",
+          "gold_term": "efferalgan",
+          "top_1_candidate": "efferalgan",
+          "all_candidates": [
+            "efferalgan"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-014",
+          "span": "كلاسيد",
+          "gold_term": "klacid",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-015",
+          "span": "زيثروماكس",
+          "gold_term": "zithromax",
+          "top_1_candidate": "zithromax",
+          "all_candidates": [
+            "zithromax",
+            "azithromycin",
+            "tramadol"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-016",
+          "span": "if all gone",
+          "gold_term": "efferalgan",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-017",
+          "span": "augmentin",
+          "gold_term": "augmentin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-018",
+          "span": "panadol",
+          "gold_term": "panadol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-019",
+          "span": "insulin",
+          "gold_term": "insulin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-023",
+          "span": "panadol",
+          "gold_term": "panadol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-023",
+          "span": "motilium",
+          "gold_term": "motilium",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-024",
+          "span": "augmentin",
+          "gold_term": "augmentin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-024",
+          "span": "بروفين",
+          "gold_term": "brufen",
+          "top_1_candidate": "ibuprofen",
+          "all_candidates": [
+            "ibuprofen",
+            "warfarin",
+            "propofol"
+          ],
+          "top_1_correct": false,
+          "top_k_correct": false
+        },
+        {
+          "case_id": "TC-025",
+          "span": "دوليبران",
+          "gold_term": "doliprane",
+          "top_1_candidate": "doliprane",
+          "all_candidates": [
+            "doliprane",
+            "domperidone",
+            "voltaren"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-026",
+          "span": "ودوليبران",
+          "gold_term": "doliprane",
+          "top_1_candidate": "doliprane",
+          "all_candidates": [
+            "doliprane",
+            "domperidone",
+            "enalapril"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-027",
+          "span": "البنادول",
+          "gold_term": "panadol",
+          "top_1_candidate": "panadol",
+          "all_candidates": [
+            "panadol",
+            "haloperidol",
+            "spondylitis"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-028",
+          "span": "ليريكا",
+          "gold_term": "lyrica",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-029",
+          "span": "كلاسيد",
+          "gold_term": "klacid",
+          "top_1_candidate": "tuberculosis",
+          "all_candidates": [
+            "tuberculosis",
+            "scoliosis"
+          ],
+          "top_1_correct": false,
+          "top_k_correct": false
+        },
+        {
+          "case_id": "TC-029",
+          "span": "نيورونتين",
+          "gold_term": "neurontin",
+          "top_1_candidate": "augmentin",
+          "all_candidates": [
+            "augmentin",
+            "augmentin",
+            "nystatin"
+          ],
+          "top_1_correct": false,
+          "top_k_correct": false
+        },
+        {
+          "case_id": "TC-030",
+          "span": "if all gone",
+          "gold_term": "efferalgan",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-030",
+          "span": "augmentin",
+          "gold_term": "augmentin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-031",
+          "span": "بنادول",
+          "gold_term": "panadol",
+          "top_1_candidate": "panadol",
+          "all_candidates": [
+            "panadol",
+            "metronidazole",
+            "itraconazole"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-031",
+          "span": "فولتارين",
+          "gold_term": "voltaren",
+          "top_1_candidate": "voltaren",
+          "all_candidates": [
+            "voltaren",
+            "losartan",
+            "ventolin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-031",
+          "span": "ميتفورمين",
+          "gold_term": "metformin",
+          "top_1_candidate": "metformin",
+          "all_candidates": [
+            "metformin",
+            "azithromycin",
+            "mupirocin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-032",
+          "span": "augmentin",
+          "gold_term": "augmentin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-032",
+          "span": "panadol",
+          "gold_term": "panadol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-032",
+          "span": "ventolin",
+          "gold_term": "ventolin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-032",
+          "span": "metformin",
+          "gold_term": "metformin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-033",
+          "span": "اوجمنتين",
+          "gold_term": "augmentin",
+          "top_1_candidate": "augmentin",
+          "all_candidates": [
+            "augmentin",
+            "augmentin",
+            "gabapentin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-033",
+          "span": "زيثروماكس",
+          "gold_term": "zithromax",
+          "top_1_candidate": "zithromax",
+          "all_candidates": [
+            "zithromax",
+            "azithromycin",
+            "tramadol"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-033",
+          "span": "افرلجان",
+          "gold_term": "efferalgan",
+          "top_1_candidate": "efferalgan",
+          "all_candidates": [
+            "efferalgan",
+            "metformin",
+            "sertraline"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-034",
+          "span": "برسي تمر",
+          "gold_term": "paracetamol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-034",
+          "span": "كلاسيد",
+          "gold_term": "klacid",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-034",
+          "span": "دوليبران",
+          "gold_term": "doliprane",
+          "top_1_candidate": "doliprane",
+          "all_candidates": [
+            "doliprane",
+            "domperidone",
+            "voltaren"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-035",
+          "span": "glucophage",
+          "gold_term": "glucophage",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-035",
+          "span": "amaryl",
+          "gold_term": "amaryl",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-035",
+          "span": "concor",
+          "gold_term": "concor",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-035",
+          "span": "augmentin",
+          "gold_term": "augmentin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-035",
+          "span": "novadol",
+          "gold_term": "novadol",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-035",
+          "span": "ventolin",
+          "gold_term": "ventolin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-035",
+          "span": "metformin",
+          "gold_term": "metformin",
+          "top_1_correct": false,
+          "top_k_correct": false,
+          "note": "no candidates returned for this span"
+        },
+        {
+          "case_id": "TC-036",
+          "span": "فولتارين",
+          "gold_term": "voltaren",
+          "top_1_candidate": "voltaren",
+          "all_candidates": [
+            "voltaren",
+            "losartan",
+            "ventolin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-036",
+          "span": "اوغ من تين",
+          "gold_term": "augmentin",
+          "top_1_candidate": "augmentin",
+          "all_candidates": [
+            "augmentin",
+            "augmentin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-036",
+          "span": "دوليبران",
+          "gold_term": "doliprane",
+          "top_1_candidate": "doliprane",
+          "all_candidates": [
+            "doliprane"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        }
+      ]
+    },
+    {
+      "stage_name": "correction_decision",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.4737,
+      "accuracy": 0.4737,
+      "notes": "total_decisions=57 correct=27",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "gold_span": "بنادول",
+          "gold_chosen": "panadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": "panadol",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-002",
+          "gold_span": "دوليبران",
+          "gold_chosen": "doliprane",
+          "gold_path": "auto_fix",
+          "pred_chosen": "doliprane",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-003",
+          "gold_span": "فولتارين",
+          "gold_chosen": "voltaren",
+          "gold_path": "auto_fix",
+          "pred_chosen": "voltaren",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-004",
+          "gold_span": "اوجمنتين",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": "augmentin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-005",
+          "gold_span": "ميتفورمين",
+          "gold_chosen": "metformin",
+          "gold_path": "auto_fix",
+          "pred_chosen": "metformin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-006",
+          "gold_span": "ترامادول",
+          "gold_chosen": "tramadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": "tramadol",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-007",
+          "gold_span": "فينتولين",
+          "gold_chosen": "ventolin",
+          "gold_path": "auto_fix",
+          "pred_chosen": "ventolin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-008",
+          "gold_span": "انسولين",
+          "gold_chosen": "insulin",
+          "gold_path": "auto_fix",
+          "pred_chosen": "insulin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-009",
+          "gold_span": "نوفادول",
+          "gold_chosen": "novadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": "novadol",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-010",
+          "gold_span": "فلاجيل",
+          "gold_chosen": "flagyl",
+          "gold_path": "auto_fix",
+          "pred_chosen": "flagyl",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-011",
+          "gold_span": "برسي تمر",
+          "gold_chosen": "paracetamol",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-012",
+          "gold_span": "اوغ من تين",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-013",
+          "gold_span": "افرلجان",
+          "gold_chosen": "efferalgan",
+          "gold_path": "auto_fix",
+          "pred_chosen": "efferalgan",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-014",
+          "gold_span": "كلاسيد",
+          "gold_chosen": "klacid",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-015",
+          "gold_span": "زيثروماكس",
+          "gold_chosen": "zithromax",
+          "gold_path": "auto_fix",
+          "pred_chosen": "zithromax",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-016",
+          "gold_span": "if all gone",
+          "gold_chosen": "efferalgan",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-017",
+          "gold_span": "augmentin",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-018",
+          "gold_span": "panadol",
+          "gold_chosen": "panadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-019",
+          "gold_span": "insulin",
+          "gold_chosen": "insulin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-020",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-021",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-022",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-023",
+          "gold_span": "panadol",
+          "gold_chosen": "panadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-023",
+          "gold_span": "motilium",
+          "gold_chosen": "motilium",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-024",
+          "gold_span": "augmentin",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-024",
+          "gold_span": "بروفين",
+          "gold_chosen": "brufen",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-025",
+          "gold_span": "دوليبران",
+          "gold_chosen": "doliprane",
+          "gold_path": "auto_fix",
+          "pred_chosen": "doliprane",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-026",
+          "gold_span": "ودوليبران",
+          "gold_chosen": "doliprane",
+          "gold_path": "auto_fix",
+          "pred_chosen": "doliprane",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-027",
+          "gold_span": "البنادول",
+          "gold_chosen": "panadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": "panadol",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-028",
+          "gold_span": "ليريكا",
+          "gold_chosen": "lyrica",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-029",
+          "gold_span": "كلاسيد",
+          "gold_chosen": "klacid",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-029",
+          "gold_span": "نيورونتين",
+          "gold_chosen": "neurontin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-030",
+          "gold_span": "if all gone",
+          "gold_chosen": "efferalgan",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-030",
+          "gold_span": "augmentin",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-031",
+          "gold_span": "بنادول",
+          "gold_chosen": "panadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": "panadol",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-031",
+          "gold_span": "فولتارين",
+          "gold_chosen": "voltaren",
+          "gold_path": "auto_fix",
+          "pred_chosen": "voltaren",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-031",
+          "gold_span": "ميتفورمين",
+          "gold_chosen": "metformin",
+          "gold_path": "auto_fix",
+          "pred_chosen": "metformin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-032",
+          "gold_span": "augmentin",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-032",
+          "gold_span": "panadol",
+          "gold_chosen": "panadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-032",
+          "gold_span": "ventolin",
+          "gold_chosen": "ventolin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-032",
+          "gold_span": "metformin",
+          "gold_chosen": "metformin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-033",
+          "gold_span": "اوجمنتين",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": "augmentin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-033",
+          "gold_span": "زيثروماكس",
+          "gold_chosen": "zithromax",
+          "gold_path": "auto_fix",
+          "pred_chosen": "zithromax",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-033",
+          "gold_span": "افرلجان",
+          "gold_chosen": "efferalgan",
+          "gold_path": "auto_fix",
+          "pred_chosen": "efferalgan",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-034",
+          "gold_span": "برسي تمر",
+          "gold_chosen": "paracetamol",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-034",
+          "gold_span": "كلاسيد",
+          "gold_chosen": "klacid",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-034",
+          "gold_span": "دوليبران",
+          "gold_chosen": "doliprane",
+          "gold_path": "auto_fix",
+          "pred_chosen": "doliprane",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "glucophage",
+          "gold_chosen": "glucophage",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "amaryl",
+          "gold_chosen": "amaryl",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "concor",
+          "gold_chosen": "concor",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "augmentin",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "novadol",
+          "gold_chosen": "novadol",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "ventolin",
+          "gold_chosen": "ventolin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "metformin",
+          "gold_chosen": "metformin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-036",
+          "gold_span": "فولتارين",
+          "gold_chosen": "voltaren",
+          "gold_path": "auto_fix",
+          "pred_chosen": "voltaren",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-036",
+          "gold_span": "اوغ من تين",
+          "gold_chosen": "augmentin",
+          "gold_path": "auto_fix",
+          "pred_chosen": null,
+          "pred_path": null,
+          "correct": false,
+          "note": "span not found in predictions"
+        },
+        {
+          "case_id": "TC-036",
+          "gold_span": "دوليبران",
+          "gold_chosen": "doliprane",
+          "gold_path": "auto_fix",
+          "pred_chosen": "doliprane",
+          "pred_path": "auto_fix",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "stage_name": "false_positive_guard",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "notes": "clean_cases=3 correct_clean=3",
+      "raw": [
+        {
+          "case_id": "TC-020",
+          "input": "كيف حالك اليوم",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-021",
+          "input": "عندي صداع من الصباح ما ادري ليش",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-022",
+          "input": "الدكتور قال لازم ترتاح و تشرب ماء كثير",
+          "corrections_applied": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "stage_name": "end_to_end",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.6667,
+      "accuracy": 0.6667,
+      "notes": "total=36 exact_matches=24 count_matches=3 correction_count_acc=0.0833",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "gold_corrected": "اعطيني panadol للصداع",
+          "pred_corrected": "اعطيني panadol للصداع",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-002",
+          "gold_corrected": "عندها حرارة اعطيتها doliprane",
+          "pred_corrected": "عندها حرارة اعطيتها doliprane",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-003",
+          "gold_corrected": "يحتاج voltaren للمفاصل كل اثني عشر ساعة",
+          "pred_corrected": "يحتاج voltaren للمفاصل كل اثني عشر ساعة",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-004",
+          "gold_corrected": "الدكتور وصف augmentin للالتهاب",
+          "pred_corrected": "الدكتور وصف augmentin للالتهاب",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-005",
+          "gold_corrected": "ياخذ metformin للسكر و ضغطه مرتفع",
+          "pred_corrected": "ياخذ metformin للسكر و ضغطه مرتفع",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-006",
+          "gold_corrected": "اعطوه tramadol للالم بعد العملية",
+          "pred_corrected": "اعطوه tramadol للالم بعد العملية",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-007",
+          "gold_corrected": "عنده ربو يستعمل ventolin و بخاخ",
+          "pred_corrected": "عنده ربو يستعمل ventolin و بخاخ",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-008",
+          "gold_corrected": "السكري يحتاج insulin كل يوم",
+          "pred_corrected": "السكري يحتاج insulin كل يوم",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-009",
+          "gold_corrected": "novadol للصداع النصفي",
+          "pred_corrected": "novadol للصداع النصفي",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-010",
+          "gold_corrected": "وصف flagyl للمعدة",
+          "pred_corrected": "وصف flagyl للمعدة",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-011",
+          "gold_corrected": "اعطوه paracetamol للصداع و الحرارة",
+          "pred_corrected": "اعطوه برسي تمر للصداع و الحرارة",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-012",
+          "gold_corrected": "augmentin للالتهاب قوي",
+          "pred_corrected": "اوغ من تين للالتهاب قوي",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-013",
+          "gold_corrected": "efferalgan للحرارة بعد العملية",
+          "pred_corrected": "efferalgan للحرارة بعد العملية",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-014",
+          "gold_corrected": "klacid للالتهاب يعطي مرتين باليوم",
+          "pred_corrected": "كلاسيد للالتهاب يعطي مرتين باليوم",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-015",
+          "gold_corrected": "zithromax للصدر و الكحة",
+          "pred_corrected": "zithromax للصدر و الكحة",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-016",
+          "gold_corrected": "the patient's fever is not going down with efferalgan",
+          "pred_corrected": "the patient's fever is not going down with if all gone",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-017",
+          "gold_corrected": "she needs augmentin twice daily for the infection",
+          "pred_corrected": "she needs augmentin twice daily for the infection",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-018",
+          "gold_corrected": "take panadol for the headache every six hours",
+          "pred_corrected": "take panadol for the headache every six hours",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-019",
+          "gold_corrected": "the patient needs insulin injection before meals",
+          "pred_corrected": "the patient needs insulin injection before meals",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-020",
+          "gold_corrected": "كيف حالك اليوم",
+          "pred_corrected": "كيف حالك اليوم",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-021",
+          "gold_corrected": "عندي صداع من الصباح ما ادري ليش",
+          "pred_corrected": "عندي صداع من الصباح ما ادري ليش",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-022",
+          "gold_corrected": "الدكتور قال لازم ترتاح و تشرب ماء كثير",
+          "pred_corrected": "الدكتور قال لازم ترتاح و تشرب ماء كثير",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-023",
+          "gold_corrected": "اعطني panadol للصداع و motilium للغثيان",
+          "pred_corrected": "اعطني panadol للصداع و motilium للغثيان",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-024",
+          "gold_corrected": "الطفل عنده التهاب يحتاج augmentin و brufen للالم",
+          "pred_corrected": "الطفل عنده التهاب يحتاج augmentin و بروفين للالم",
+          "exact_match": false,
+          "gold_count": 3,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-025",
+          "gold_corrected": "دور على doliprane في الصيدلية و جبلي اياه",
+          "pred_corrected": "دور على doliprane في الصيدلية و جبلي اياه",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-026",
+          "gold_corrected": "doliprane للحرارة",
+          "pred_corrected": "doliprane للحرارة",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-027",
+          "gold_corrected": "panadol بعد الأكل",
+          "pred_corrected": "panadol بعد الأكل",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-028",
+          "gold_corrected": "بدها lyrica للام الظهر",
+          "pred_corrected": "بدها ليريكا للام الظهر",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-029",
+          "gold_corrected": "يحتاج klacid للالتهاب و neurontin للاعصاب",
+          "pred_corrected": "يحتاج كلاسيد للالتهاب و نيورونتين للاعصاب",
+          "exact_match": false,
+          "gold_count": 4,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-030",
+          "gold_corrected": "our patient was given efferalgan and augmentin for the infection",
+          "pred_corrected": "our patient was given if all gone and augmentin for the infection",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-031",
+          "gold_corrected": "المريضة عمرها خمسين سنة تشتكي من صداع نصفي و الم في الظهر. اعطيتها panadol للصداع و voltaren للمفاصل. قالت انها تاخذ metformin للسكر من خمس سنوات و الحمدلله السكر مضبوط. طلبت منها تراجع العيادة بعد اسبوع",
+          "pred_corrected": "المريضة عمرها خمسين سنة تشتكي من صداع نصفي و الم في الظهر. اعطيتها panadol للصداع و voltaren للمفاصل. قالت انها تاخذ metformin للسكر من خمس سنوات و الحمدلله السكر مضبوط. طلبت منها تراجع العيادة بعد اسبوع",
+          "exact_match": true,
+          "gold_count": 6,
+          "pred_count": 3,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-032",
+          "gold_corrected": "the patient came in with fever and cough for three days. I prescribed augmentin and told him to take panadol for fever. he also mentioned he uses ventolin when his asthma acts up. I increased his metformin to twice a day because his blood sugar was high at 180. follow up in two weeks",
+          "pred_corrected": "the patient came in with fever and cough for three days. I prescribed augmentin and told him to take panadol for fever. he also mentioned he uses ventolin when his asthma acts up. I increased his metformin to twice a day because his blood sugar was high at 180. follow up in two weeks",
+          "exact_match": true,
+          "gold_count": 4,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-033",
+          "gold_corrected": "عندي مريض عنده التهاب في الصدر و كحة شديدة. وصفت له augmentin قوي و zithromax للصدر. بعد يومين رجع قال احس بحرارة فاعطيته efferalgan. لكن بعد اسبوع صار عنده الم في المعده، يمكن من كثر الادوية. قلت له يوقف الادوية و يراجع",
+          "pred_corrected": "عندي مريض عنده التهاب في الصدر و كحة شديدة. وصفت له augmentin قوي و zithromax للصدر. بعد يومين رجع قال احس بحرارة فاعطيته efferalgan لكن بعد اسبوع صار عنده الم في المعده، يمكن من كثر الادوية. قلت له يوقف الادوية و يراجع",
+          "exact_match": false,
+          "gold_count": 6,
+          "pred_count": 3,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-034",
+          "gold_corrected": "الطفل عمره سنتين عنده حرارة و الم في الاذن. الام قالت انها عطته paracetamol من الصيدلية بس ما نفع. فحصت الاذن لقيت فيها التهاب. وصفت له klacid للالتهاب لمدة سبع ايام و doliprane للحرارة كل ست ساعات. قلت للام اذا ما تحسن خلال يومين ترجع",
+          "pred_corrected": "الطفل عمره سنتين عنده حرارة و الم في الاذن. الام قالت انها عطته برسي تمر من الصيدلية بس ما نفع. فحصت الاذن لقيت فيها التهاب. وصفت له كلاسيد للالتهاب لمدة سبع ايام و doliprane للحرارة كل ست ساعات. قلت للام اذا ما تحسن خلال يومين ترجع",
+          "exact_match": false,
+          "gold_count": 5,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-035",
+          "gold_corrected": "the patient is a 55 year old male with diabetes and hypertension. he takes glucophage and amaryl for sugar control and his bp medications include concor. three days ago he developed chest infection so I started him on augmentin and told him to take novadol for pain. he also has a history of asthma and uses ventolin as needed. his kidney function is normal so I am not worried about the metformin dose. I asked him to monitor his sugar closely and come back if fever persists",
+          "pred_corrected": "the patient is a 55 year old male with diabetes and hypertension he takes glucophage and amaryl for sugar control and his bp medications include concor. three days ago he developed chest infection so I started him on augmentin and told him to take novadol for pain. he also has a history of asthma and uses ventolin as needed. his codeine function is normal so I am not worried about the metformin dose. I asked him to monitor his sugar closely and come back if fever persists",
+          "exact_match": false,
+          "gold_count": 7,
+          "pred_count": 2,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-036",
+          "gold_corrected": "سبعين سنة يعاني من الم في المفاصل من سنين. جرب voltaren و نوبه مرتين بس ما نفعت. الدكتور كتب له augmentin للالتهاب و قال ياخذ doliprane بس للالم الشديد. بعد فحص الدم طلع عنده نقص فيتامين د، كتب له كالسيوم و فيتامين د. قلت له يراجع بعد شهر و يسوي تحاليل",
+          "pred_corrected": "سبعين سنة يعاني من الم في المفاصل من سنين. جرب voltaren و نوبه مرتين بس ما نفعت. الدكتور كتب له اوغ من تين للالتهاب و قال ياخذ doliprane بس للالم الشديد. بعد فحص الدم طلع عنده نقص فيتامين د، كتب له كالسيوم و فيتامين د. قلت له يراجع بعد شهر و يسوي تحاليل",
+          "exact_match": false,
+          "gold_count": 6,
+          "pred_count": 2,
+          "count_match": false
+        }
+      ]
+    }
+  ],
+  "overall_mean_f1": 0.6161,
+  "raw_responses": {
+    "TC-001": {
+      "case_id": "TC-001",
+      "original": "اعطيني بنادول للصداع",
+      "corrected": "اعطيني panadol للصداع",
+      "corrections": [
+        {
+          "span_text": "بنادول",
+          "chosen": "panadol",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "اعطيني بنادول",
+          "start_index": 0,
+          "end_index": 2,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "اعطيني بنادول",
+          "candidates": [
+            {
+              "term": "panadol",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "itraconazole",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "haloperidol",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-002": {
+      "case_id": "TC-002",
+      "original": "عندها حرارة اعطيتها دوليبران",
+      "corrected": "عندها حرارة اعطيتها doliprane",
+      "corrections": [
+        {
+          "span_text": "دوليبران",
+          "chosen": "doliprane",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "اعطيتها دوليبران",
+          "start_index": 2,
+          "end_index": 4,
+          "max_suspicion": 0.714,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "اعطيتها دوليبران",
+          "candidates": [
+            {
+              "term": "doliprane",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "metoclopramide",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "nitroglycerin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-003": {
+      "case_id": "TC-003",
+      "original": "يحتاج فولتارين للمفاصل كل اثني عشر ساعة",
+      "corrected": "يحتاج voltaren للمفاصل كل اثني عشر ساعة",
+      "corrections": [
+        {
+          "span_text": "فولتارين",
+          "chosen": "voltaren",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "يحتاج فولتارين",
+          "start_index": 0,
+          "end_index": 2,
+          "max_suspicion": 0.714,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "يحتاج فولتارين",
+          "candidates": [
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "atorvastatin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "nitroglycerin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-004": {
+      "case_id": "TC-004",
+      "original": "الدكتور وصف اوجمنتين للالتهاب",
+      "corrected": "الدكتور وصف augmentin للالتهاب",
+      "corrections": [
+        {
+          "span_text": "اوجمنتين",
+          "chosen": "augmentin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "اوجمنتين",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "اوجمنتين",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "gabapentin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-005": {
+      "case_id": "TC-005",
+      "original": "ياخذ ميتفورمين للسكر و ضغطه مرتفع",
+      "corrected": "ياخذ metformin للسكر و ضغطه مرتفع",
+      "corrections": [
+        {
+          "span_text": "ميتفورمين",
+          "chosen": "metformin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ميتفورمين",
+          "start_index": 1,
+          "end_index": 2,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ميتفورمين",
+          "candidates": [
+            {
+              "term": "metformin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "azithromycin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "mupirocin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-006": {
+      "case_id": "TC-006",
+      "original": "اعطوه ترامادول للالم بعد العملية",
+      "corrected": "اعطوه tramadol للالم بعد العملية",
+      "corrections": [
+        {
+          "span_text": "ترامادول",
+          "chosen": "tramadol",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ترامادول",
+          "start_index": 1,
+          "end_index": 2,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ترامادول",
+          "candidates": [
+            {
+              "term": "tramadol",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "tamiflu",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "metronidazole",
+              "phonetic_score": 0.571
+            }
+          ]
+        }
+      ]
+    },
+    "TC-007": {
+      "case_id": "TC-007",
+      "original": "عنده ربو يستعمل فينتولين و بخاخ",
+      "corrected": "عنده ربو يستعمل ventolin و بخاخ",
+      "corrections": [
+        {
+          "span_text": "فينتولين",
+          "chosen": "ventolin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "يستعمل",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "فينتولين",
+          "start_index": 3,
+          "end_index": 4,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "يستعمل",
+          "candidates": [
+            {
+              "term": "salbutamol",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "nystatin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "ketamine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "فينتولين",
+          "candidates": [
+            {
+              "term": "ventolin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "insulin",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-008": {
+      "case_id": "TC-008",
+      "original": "السكري يحتاج انسولين كل يوم",
+      "corrected": "السكري يحتاج insulin كل يوم",
+      "corrections": [
+        {
+          "span_text": "انسولين",
+          "chosen": "insulin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "السكري يحتاج انسولين",
+          "start_index": 0,
+          "end_index": 3,
+          "max_suspicion": 0.556,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "السكري يحتاج انسولين",
+          "candidates": [
+            {
+              "term": "prednisolone",
+              "phonetic_score": 0.556
+            },
+            {
+              "term": "sertraline",
+              "phonetic_score": 0.556
+            },
+            {
+              "term": "hypertension",
+              "phonetic_score": 0.556
+            }
+          ]
+        }
+      ]
+    },
+    "TC-009": {
+      "case_id": "TC-009",
+      "original": "نوفادول للصداع النصفي",
+      "corrected": "novadol للصداع النصفي",
+      "corrections": [
+        {
+          "span_text": "نوفادول",
+          "chosen": "novadol",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-010": {
+      "case_id": "TC-010",
+      "original": "وصف فلاجيل للمعدة",
+      "corrected": "وصف flagyl للمعدة",
+      "corrections": [
+        {
+          "span_text": "فلاجيل",
+          "chosen": "flagyl",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "فلاجيل",
+          "start_index": 1,
+          "end_index": 2,
+          "max_suspicion": 0.833,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "فلاجيل",
+          "candidates": [
+            {
+              "term": "flagyl",
+              "phonetic_score": 0.833
+            },
+            {
+              "term": "fluconazole",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-011": {
+      "case_id": "TC-011",
+      "original": "اعطوه برسي تمر للصداع و الحرارة",
+      "corrected": "اعطوه برسي تمر للصداع و الحرارة",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "اعطوه برسي",
+          "start_index": 0,
+          "end_index": 2,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "اعطوه برسي",
+          "candidates": [
+            {
+              "term": "osteoporosis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "aspirin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "heparin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-012": {
+      "case_id": "TC-012",
+      "original": "اوغ من تين للالتهاب قوي",
+      "corrected": "اوغ من تين للالتهاب قوي",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "اوغ من تين",
+          "start_index": 0,
+          "end_index": 3,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "اوغ من تين",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            }
+          ]
+        }
+      ]
+    },
+    "TC-013": {
+      "case_id": "TC-013",
+      "original": "افرلجان للحرارة بعد العملية",
+      "corrected": "efferalgan للحرارة بعد العملية",
+      "corrections": [
+        {
+          "span_text": "افرلجان",
+          "chosen": "efferalgan",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "افرلجان",
+          "start_index": 0,
+          "end_index": 1,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "افرلجان",
+          "candidates": [
+            {
+              "term": "efferalgan",
+              "phonetic_score": 0.667
+            }
+          ]
+        }
+      ]
+    },
+    "TC-014": {
+      "case_id": "TC-014",
+      "original": "كلاسيد للالتهاب يعطي مرتين باليوم",
+      "corrected": "كلاسيد للالتهاب يعطي مرتين باليوم",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-015": {
+      "case_id": "TC-015",
+      "original": "زيثروماكس للصدر و الكحة",
+      "corrected": "zithromax للصدر و الكحة",
+      "corrections": [
+        {
+          "span_text": "زيثروماكس",
+          "chosen": "zithromax",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "زيثروماكس",
+          "start_index": 0,
+          "end_index": 1,
+          "max_suspicion": 0.857,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "زيثروماكس",
+          "candidates": [
+            {
+              "term": "zithromax",
+              "phonetic_score": 0.857
+            },
+            {
+              "term": "azithromycin",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "tramadol",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-016": {
+      "case_id": "TC-016",
+      "original": "the patient's fever is not going down with if all gone",
+      "corrected": "the patient's fever is not going down with if all gone",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "patient's",
+          "start_index": 1,
+          "end_index": 2,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "patient's",
+          "candidates": [
+            {
+              "term": "peritonitis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "rhinitis",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "tetanus",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-017": {
+      "case_id": "TC-017",
+      "original": "she needs augmentin twice daily for the infection",
+      "corrected": "she needs augmentin twice daily for the infection",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-018": {
+      "case_id": "TC-018",
+      "original": "take panadol for the headache every six hours",
+      "corrected": "take panadol for the headache every six hours",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-019": {
+      "case_id": "TC-019",
+      "original": "the patient needs insulin injection before meals",
+      "corrected": "the patient needs insulin injection before meals",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "meals",
+          "start_index": 6,
+          "end_index": 7,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "meals",
+          "candidates": [
+            {
+              "term": "maalox",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "malaria",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "glucose",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-020": {
+      "case_id": "TC-020",
+      "original": "كيف حالك اليوم",
+      "corrected": "كيف حالك اليوم",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "كيف حالك اليوم",
+          "start_index": 0,
+          "end_index": 3,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كيف حالك اليوم",
+          "candidates": [
+            {
+              "term": "flagyl",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "glaucoma",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "varicella",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-021": {
+      "case_id": "TC-021",
+      "original": "عندي صداع من الصباح ما ادري ليش",
+      "corrected": "عندي صداع من الصباح ما ادري ليش",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-022": {
+      "case_id": "TC-022",
+      "original": "الدكتور قال لازم ترتاح و تشرب ماء كثير",
+      "corrected": "الدكتور قال لازم ترتاح و تشرب ماء كثير",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "لازم ترتاح",
+          "start_index": 2,
+          "end_index": 4,
+          "max_suspicion": 0.5,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "لازم ترتاح",
+          "candidates": [
+            {
+              "term": "gastritis",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-023": {
+      "case_id": "TC-023",
+      "original": "اعطني panadol للصداع و motilium للغثيان",
+      "corrected": "اعطني panadol للصداع و motilium للغثيان",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-024": {
+      "case_id": "TC-024",
+      "original": "الطفل عنده التهاب يحتاج augmentin و بروفين للالم",
+      "corrected": "الطفل عنده التهاب يحتاج augmentin و بروفين للالم",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "الطفل عنده",
+          "start_index": 0,
+          "end_index": 2,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "بروفين",
+          "start_index": 6,
+          "end_index": 7,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "الطفل عنده",
+          "candidates": [
+            {
+              "term": "influenza",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "clavulanate",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "بروفين",
+          "candidates": [
+            {
+              "term": "ibuprofen",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "warfarin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "propofol",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-025": {
+      "case_id": "TC-025",
+      "original": "دور على دوليبران في الصيدلية و جبلي اياه",
+      "corrected": "دور على doliprane في الصيدلية و جبلي اياه",
+      "corrections": [
+        {
+          "span_text": "دوليبران",
+          "chosen": "doliprane",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "دوليبران",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "دوليبران",
+          "candidates": [
+            {
+              "term": "doliprane",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "domperidone",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-026": {
+      "case_id": "TC-026",
+      "original": "ودوليبران للحرارة",
+      "corrected": "doliprane للحرارة",
+      "corrections": [
+        {
+          "span_text": "ودوليبران",
+          "chosen": "doliprane",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ودوليبران",
+          "start_index": 0,
+          "end_index": 1,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ودوليبران",
+          "candidates": [
+            {
+              "term": "doliprane",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "domperidone",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-027": {
+      "case_id": "TC-027",
+      "original": "البنادول بعد الأكل",
+      "corrected": "panadol بعد الأكل",
+      "corrections": [
+        {
+          "span_text": "البنادول",
+          "chosen": "panadol",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "البنادول",
+          "start_index": 0,
+          "end_index": 1,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "بعد الأكل",
+          "start_index": 1,
+          "end_index": 3,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "البنادول",
+          "candidates": [
+            {
+              "term": "panadol",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "haloperidol",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "spondylitis",
+              "phonetic_score": 0.571
+            }
+          ]
+        },
+        {
+          "span_text": "بعد الأكل",
+          "candidates": [
+            {
+              "term": "flagyl",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "fluconazole",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "glaucoma",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-028": {
+      "case_id": "TC-028",
+      "original": "بدها ليريكا للام الظهر",
+      "corrected": "بدها ليريكا للام الظهر",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-029": {
+      "case_id": "TC-029",
+      "original": "يحتاج كلاسيد للالتهاب و نيورونتين للاعصاب",
+      "corrected": "يحتاج كلاسيد للالتهاب و نيورونتين للاعصاب",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "يحتاج كلاسيد",
+          "start_index": 0,
+          "end_index": 2,
+          "max_suspicion": 0.571,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "نيورونتين",
+          "start_index": 4,
+          "end_index": 5,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "يحتاج كلاسيد",
+          "candidates": [
+            {
+              "term": "tuberculosis",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "scoliosis",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "نيورونتين",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "nystatin",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-030": {
+      "case_id": "TC-030",
+      "original": "our patient was given if all gone and augmentin for the infection",
+      "corrected": "our patient was given if all gone and augmentin for the infection",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-031": {
+      "case_id": "TC-031",
+      "original": "المريضة عمرها خمسين سنة تشتكي من صداع نصفي و الم في الظهر. اعطيتها بنادول للصداع و فولتارين للمفاصل. قالت انها تاخذ ميتفورمين للسكر من خمس سنوات و الحمدلله السكر مضبوط. طلبت منها تراجع العيادة بعد اسبوع",
+      "corrected": "المريضة عمرها خمسين سنة تشتكي من صداع نصفي و الم في الظهر. اعطيتها panadol للصداع و voltaren للمفاصل. قالت انها تاخذ metformin للسكر من خمس سنوات و الحمدلله السكر مضبوط. طلبت منها تراجع العيادة بعد اسبوع",
+      "corrections": [
+        {
+          "span_text": "بنادول",
+          "chosen": "panadol",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "فولتارين",
+          "chosen": "voltaren",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "ميتفورمين",
+          "chosen": "metformin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "سنة تشتكي",
+          "start_index": 3,
+          "end_index": 5,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "اعطيتها بنادول",
+          "start_index": 12,
+          "end_index": 14,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "فولتارين",
+          "start_index": 16,
+          "end_index": 17,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "ميتفورمين",
+          "start_index": 21,
+          "end_index": 22,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "طلبت منها",
+          "start_index": 30,
+          "end_index": 32,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "سنة تشتكي",
+          "candidates": [
+            {
+              "term": "sinusitis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "sciatica",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "اعطيتها بنادول",
+          "candidates": [
+            {
+              "term": "panadol",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "metronidazole",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "itraconazole",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "فولتارين",
+          "candidates": [
+            {
+              "term": "voltaren",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "losartan",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "ventolin",
+              "phonetic_score": 0.6
+            }
+          ]
+        },
+        {
+          "span_text": "ميتفورمين",
+          "candidates": [
+            {
+              "term": "metformin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "azithromycin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "mupirocin",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "طلبت منها",
+          "candidates": [
+            {
+              "term": "salbutamol",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "ketamine",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-032": {
+      "case_id": "TC-032",
+      "original": "the patient came in with fever and cough for three days. I prescribed augmentin and told him to take panadol for fever. he also mentioned he uses ventolin when his asthma acts up. I increased his metformin to twice a day because his blood sugar was high at 180. follow up in two weeks",
+      "corrected": "the patient came in with fever and cough for three days. I prescribed augmentin and told him to take panadol for fever. he also mentioned he uses ventolin when his asthma acts up. I increased his metformin to twice a day because his blood sugar was high at 180. follow up in two weeks",
+      "corrections": [],
+      "flagged_spans": [
+        {
+          "text": "mentioned",
+          "start_index": 24,
+          "end_index": 25,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "follow",
+          "start_index": 49,
+          "end_index": 50,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "mentioned",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "ceftriaxone",
+              "phonetic_score": 0.455
+            }
+          ]
+        },
+        {
+          "span_text": "follow",
+          "candidates": [
+            {
+              "term": "flagyl",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "rubella",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-033": {
+      "case_id": "TC-033",
+      "original": "عندي مريض عنده التهاب في الصدر و كحة شديدة. وصفت له اوجمنتين قوي و زيثروماكس للصدر. بعد يومين رجع قال احس بحرارة فاعطيته افرلجان. لكن بعد اسبوع صار عنده الم في المعده، يمكن من كثر الادوية. قلت له يوقف الادوية و يراجع",
+      "corrected": "عندي مريض عنده التهاب في الصدر و كحة شديدة. وصفت له augmentin قوي و zithromax للصدر. بعد يومين رجع قال احس بحرارة فاعطيته efferalgan لكن بعد اسبوع صار عنده الم في المعده، يمكن من كثر الادوية. قلت له يوقف الادوية و يراجع",
+      "corrections": [
+        {
+          "span_text": "اوجمنتين",
+          "chosen": "augmentin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "زيثروماكس",
+          "chosen": "zithromax",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "افرلجان.",
+          "chosen": "efferalgan",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "عندي مريض عنده",
+          "start_index": 0,
+          "end_index": 3,
+          "max_suspicion": 0.571,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "له اوجمنتين",
+          "start_index": 10,
+          "end_index": 12,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "زيثروماكس",
+          "start_index": 14,
+          "end_index": 15,
+          "max_suspicion": 0.857,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "بعد يومين",
+          "start_index": 16,
+          "end_index": 18,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "فاعطيته افرلجان.",
+          "start_index": 22,
+          "end_index": 24,
+          "max_suspicion": 0.625,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "لكن",
+          "start_index": 24,
+          "end_index": 25,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "يمكن",
+          "start_index": 32,
+          "end_index": 33,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "عندي مريض عنده",
+          "candidates": [
+            {
+              "term": "domperidone",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "endocarditis",
+              "phonetic_score": 0.571
+            }
+          ]
+        },
+        {
+          "span_text": "له اوجمنتين",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "gabapentin",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "زيثروماكس",
+          "candidates": [
+            {
+              "term": "zithromax",
+              "phonetic_score": 0.857
+            },
+            {
+              "term": "azithromycin",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "tramadol",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "بعد يومين",
+          "candidates": [
+            {
+              "term": "pneumonia",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "codeine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "betadine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "فاعطيته افرلجان.",
+          "candidates": [
+            {
+              "term": "efferalgan",
+              "phonetic_score": 0.625
+            },
+            {
+              "term": "metformin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "sertraline",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "لكن",
+          "candidates": [
+            {
+              "term": "leukemia",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "flagyl",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "migraine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "يمكن",
+          "candidates": [
+            {
+              "term": "migraine",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "maalox",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "melanoma",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-034": {
+      "case_id": "TC-034",
+      "original": "الطفل عمره سنتين عنده حرارة و الم في الاذن. الام قالت انها عطته برسي تمر من الصيدلية بس ما نفع. فحصت الاذن لقيت فيها التهاب. وصفت له كلاسيد للالتهاب لمدة سبع ايام و دوليبران للحرارة كل ست ساعات. قلت للام اذا ما تحسن خلال يومين ترجع",
+      "corrected": "الطفل عمره سنتين عنده حرارة و الم في الاذن. الام قالت انها عطته برسي تمر من الصيدلية بس ما نفع. فحصت الاذن لقيت فيها التهاب. وصفت له كلاسيد للالتهاب لمدة سبع ايام و doliprane للحرارة كل ست ساعات. قلت للام اذا ما تحسن خلال يومين ترجع",
+      "corrections": [
+        {
+          "span_text": "دوليبران",
+          "chosen": "doliprane",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "الاذن.",
+          "start_index": 8,
+          "end_index": 9,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "عطته برسي",
+          "start_index": 12,
+          "end_index": 14,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "دوليبران",
+          "start_index": 33,
+          "end_index": 34,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "الاذن.",
+          "candidates": [
+            {
+              "term": "codeine",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "betadine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "عطته برسي",
+          "candidates": [
+            {
+              "term": "osteoporosis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "tetanus",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "urethritis",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "دوليبران",
+          "candidates": [
+            {
+              "term": "doliprane",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "domperidone",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-035": {
+      "case_id": "TC-035",
+      "original": "the patient is a 55 year old male with diabetes and hypertension. he takes glucophage and amaryl for sugar control and his bp medications include concor. three days ago he developed chest infection so I started him on augmentin and told him to take novadol for pain. he also has a history of asthma and uses ventolin as needed. his kidney function is normal so I am not worried about the metformin dose. I asked him to monitor his sugar closely and come back if fever persists",
+      "corrected": "the patient is a 55 year old male with diabetes and hypertension he takes glucophage and amaryl for sugar control and his bp medications include concor. three days ago he developed chest infection so I started him on augmentin and told him to take novadol for pain. he also has a history of asthma and uses ventolin as needed. his codeine function is normal so I am not worried about the metformin dose. I asked him to monitor his sugar closely and come back if fever persists",
+      "corrections": [
+        {
+          "span_text": "hypertension.",
+          "chosen": "hypertension",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "kidney",
+          "chosen": "codeine",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "hypertension.",
+          "start_index": 11,
+          "end_index": 12,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "started",
+          "start_index": 35,
+          "end_index": 36,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "kidney",
+          "start_index": 60,
+          "end_index": 61,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "monitor",
+          "start_index": 77,
+          "end_index": 78,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "persists",
+          "start_index": 86,
+          "end_index": 87,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "hypertension.",
+          "candidates": [
+            {
+              "term": "hypertension",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "hypotension",
+              "phonetic_score": 0.833
+            },
+            {
+              "term": "prednisolone",
+              "phonetic_score": 0.571
+            }
+          ]
+        },
+        {
+          "span_text": "started",
+          "candidates": [
+            {
+              "term": "gastritis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "sertraline",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "urethritis",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "kidney",
+          "candidates": [
+            {
+              "term": "codeine",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "migraine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "ketamine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "monitor",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "malaria",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "persists",
+          "candidates": [
+            {
+              "term": "bursitis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "prostatitis",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "lordosis",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-036": {
+      "case_id": "TC-036",
+      "original": "سبعين سنة يعاني من الم في المفاصل من سنين. جرب فولتارين و نوبه مرتين بس ما نفعت. الدكتور كتب له اوغ من تين للالتهاب و قال ياخذ دوليبران بس للالم الشديد. بعد فحص الدم طلع عنده نقص فيتامين د، كتب له كالسيوم و فيتامين د. قلت له يراجع بعد شهر و يسوي تحاليل",
+      "corrected": "سبعين سنة يعاني من الم في المفاصل من سنين. جرب voltaren و نوبه مرتين بس ما نفعت. الدكتور كتب له اوغ من تين للالتهاب و قال ياخذ doliprane بس للالم الشديد. بعد فحص الدم طلع عنده نقص فيتامين د، كتب له كالسيوم و فيتامين د. قلت له يراجع بعد شهر و يسوي تحاليل",
+      "corrections": [
+        {
+          "span_text": "فولتارين",
+          "chosen": "voltaren",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "دوليبران",
+          "chosen": "doliprane",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "سنة يعاني من",
+          "start_index": 1,
+          "end_index": 4,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "سنين.",
+          "start_index": 8,
+          "end_index": 9,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "فولتارين",
+          "start_index": 10,
+          "end_index": 11,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "الدكتور كتب",
+          "start_index": 17,
+          "end_index": 19,
+          "max_suspicion": 0.714,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "اوغ من تين",
+          "start_index": 20,
+          "end_index": 23,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "ياخذ دوليبران",
+          "start_index": 26,
+          "end_index": 28,
+          "max_suspicion": 0.714,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "طلع عنده نقص",
+          "start_index": 34,
+          "end_index": 37,
+          "max_suspicion": 0.714,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "فيتامين",
+          "start_index": 37,
+          "end_index": 38,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "د، كتب له",
+          "start_index": 38,
+          "end_index": 41,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "كالسيوم",
+          "start_index": 41,
+          "end_index": 42,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "فيتامين د.",
+          "start_index": 43,
+          "end_index": 45,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "سنة يعاني من",
+          "candidates": [
+            {
+              "term": "pneumonia",
+              "phonetic_score": 0.75
+            }
+          ]
+        },
+        {
+          "span_text": "سنين.",
+          "candidates": [
+            {
+              "term": "saline",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "aspirin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "insulin",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "فولتارين",
+          "candidates": [
+            {
+              "term": "voltaren",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "losartan",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "ventolin",
+              "phonetic_score": 0.6
+            }
+          ]
+        },
+        {
+          "span_text": "الدكتور كتب",
+          "candidates": [
+            {
+              "term": "cataract",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "endocarditis",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "اوغ من تين",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            }
+          ]
+        },
+        {
+          "span_text": "ياخذ دوليبران",
+          "candidates": [
+            {
+              "term": "doliprane",
+              "phonetic_score": 0.714
+            }
+          ]
+        },
+        {
+          "span_text": "طلع عنده نقص",
+          "candidates": [
+            {
+              "term": "tendinitis",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "clonidine",
+              "phonetic_score": 0.571
+            }
+          ]
+        },
+        {
+          "span_text": "فيتامين",
+          "candidates": [
+            {
+              "term": "ketamine",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "ventolin",
+              "phonetic_score": 0.6
+            }
+          ]
+        },
+        {
+          "span_text": "د، كتب له",
+          "candidates": [
+            {
+              "term": "quetiapine",
+              "phonetic_score": 0.6
+            }
+          ]
+        },
+        {
+          "span_text": "كالسيوم",
+          "candidates": [
+            {
+              "term": "glaucoma",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "scoliosis",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "nexium",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "فيتامين د.",
+          "candidates": [
+            {
+              "term": "ketamine",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "tamiflu",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "tetanus",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    }
+  }
+}

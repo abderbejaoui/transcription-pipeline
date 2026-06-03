@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Runtime Pipeline Architecture</title>
+<style>
+  :root{
+    --navy:#1c2a52;
+    --teal:#1aa6a0;
+    --orange:#f5a623;
+    --purple:#7b3fe4;
+    --gray:#8a93a6;
+    --card-bg:#ffffff;
+    --panel-bg:#f4f6fb;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Segoe UI",Helvetica,Arial,sans-serif;
+    background:#ffffff;
+    color:var(--navy);
+    padding:56px 48px;
+  }
+  h1{
+    font-size:58px;
+    font-weight:800;
+    line-height:1.04;
+    letter-spacing:-0.5px;
+    margin-bottom:40px;
+  }
+  .panel{
+    border:3px solid var(--purple);
+    border-radius:18px;
+    background:var(--panel-bg);
+    padding:30px 14px;
+    display:flex;
+    align-items:stretch;
+  }
+  .card{
+    flex:1;
+    background:var(--card-bg);
+    border-radius:12px;
+    padding:26px 18px 22px;
+    margin:0 7px;
+    text-align:center;
+    box-shadow:0 1px 3px rgba(28,42,82,.06);
+    position:relative;
+  }
+  .card.highlight{
+    border:3px solid var(--orange);
+    box-shadow:0 4px 14px rgba(245,166,35,.25);
+  }
+  .badge{
+    width:54px;height:54px;border-radius:50%;
+    background:var(--teal);
+    color:#fff;font-size:24px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;
+    margin:0 auto 18px;
+  }
+  .card.highlight .badge{background:var(--orange);}
+  .title{
+    font-size:18px;font-weight:700;margin-bottom:14px;
+  }
+  .sub{
+    font-size:12.5px;color:var(--gray);line-height:1.7;
+  }
+  .sub span{display:block;}
+  .footnote{
+    margin-top:22px;
+    font-size:13px;
+    color:var(--gray);
+    display:flex;align-items:center;gap:10px;
+  }
+  .chip{
+    display:inline-block;background:#eef0f7;color:var(--navy);
+    border-radius:6px;padding:3px 9px;font-weight:600;font-size:12px;
+  }
+  .evalrow{
+    margin-top:14px;
+    border:2px dashed var(--teal);
+    border-radius:12px;
+    background:#f0fbfa;
+    padding:14px 18px;
+    font-size:13px;color:var(--navy);
+  }
+  .evalrow b{color:var(--teal);}
+</style>
+</head>
+<body>
+  <h1>Runtime Pipeline<br>Architecture</h1>
+
+  <div class="panel">
+    <div class="card">
+      <div class="badge">A</div>
+      <div class="title">Acoustic Decode</div>
+      <div class="sub">
+        <span>Qwen3-ASR + merged LoRA</span>
+        <span>16 kHz mono norm</span>
+        <span>Context-biased + drug-normalized</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge">B</div>
+      <div class="title">Forced Alignment</div>
+      <div class="sub">
+        <span>MMS CTC aligner</span>
+        <span>Word timestamps</span>
+        <span>Debug / UI only</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge">C</div>
+      <div class="title">Phonetic Flagging</div>
+      <div class="sub">
+        <span>215-term lexicon (+24 CEQ)</span>
+        <span>Sliding window 1&ndash;3</span>
+        <span>Flag / auto-correct</span>
+      </div>
+    </div>
+
+    <div class="card highlight">
+      <div class="badge">D</div>
+      <div class="title">LLM Judge</div>
+      <div class="sub">
+        <span>DETECT &rarr; DECIDE rerank</span>
+        <span>NO_CHANGE default</span>
+        <span>Candidate-constrained</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge">E</div>
+      <div class="title">Safe Correction</div>
+      <div class="sub">
+        <span>Sim &ge; 0.85 auto-fix</span>
+        <span>Lexicon membership</span>
+        <span>Span-aware edits</span>
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="badge">F</div>
+      <div class="title">Clinician UI</div>
+      <div class="sub">
+        <span>JSON response</span>
+        <span>Click-to-play audio</span>
+        <span>Flag highlights</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="evalrow">
+    <b>Eval path</b> (scored by eval_pipeline.py &rarr; /api/test-pipeline):
+    deterministic, text-only &mdash; uses <b>C &rarr; E</b> only.
+    No audio decode (A), no alignment (B), no LLM judge (D).
+  </div>
+
+  <div class="footnote">
+    <span class="chip">A</span> audio runtime &nbsp;&middot;&nbsp;
+    Corrected from source: D is the LLM semantic judge (not dual-ASR) &middot;
+    B runs only in /api/transcribe_debug &middot; lexicon = 215 unique terms.
+  </div>
+</body>
+</html>

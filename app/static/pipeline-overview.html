@@ -1,0 +1,1091 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Phonetic & Semantic Correction Engine — Architecture Overview</title>
+  <style>
+    *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+      font-family: -apple-system, "Segoe UI", Arial, sans-serif;
+      font-size: 15px;
+      line-height: 1.65;
+      color: #1a1a2e;
+      background: #f4f6fb;
+    }
+    .canvas-page {
+      max-width: 960px;
+      margin: 0 auto;
+      background: #fff;
+      box-shadow: 0 0 0 1px #dde2f0;
+      padding-bottom: 60px;
+    }
+
+    /* ── Hero ── */
+    .hero {
+      background: linear-gradient(135deg, #0f3460 0%, #1b4a7a 55%, #16213e 100%);
+      color: #fff;
+      padding: 48px 40px 40px;
+      position: relative;
+      overflow: hidden;
+    }
+    .hero::after {
+      content: "";
+      position: absolute;
+      right: -60px; top: -60px;
+      width: 320px; height: 320px;
+      border-radius: 50%;
+      background: rgba(255,255,255,0.04);
+      pointer-events: none;
+    }
+    .hero-kicker {
+      font-size: 0.7rem; font-weight: 700;
+      letter-spacing: 0.12em; text-transform: uppercase;
+      color: #7dd3fc; margin-bottom: 10px;
+    }
+    .hero h1 {
+      font-size: 1.9rem; font-weight: 800;
+      line-height: 1.2; letter-spacing: -0.02em; margin-bottom: 14px;
+    }
+    .hero h1 em { color: #7dd3fc; font-style: normal; }
+    .hero-desc { font-size: 0.96rem; color: #bdd4ee; max-width: 600px; margin-bottom: 26px; }
+    .hero-chips { display: flex; flex-wrap: wrap; gap: 8px; }
+    .hero-chip {
+      background: rgba(255,255,255,0.1); border: 1px solid rgba(255,255,255,0.18);
+      color: #ddeeff; padding: 4px 13px; border-radius: 20px;
+      font-size: 0.76rem; font-weight: 600;
+    }
+
+    /* ── Context bar ── */
+    .context-bar {
+      background: #f0f6ff; border-bottom: 1px solid #d0ddf5;
+      padding: 14px 40px; font-size: 0.84rem; color: #3a4a6a;
+      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
+    }
+    .context-bar strong { color: #0f3460; }
+    .context-bar .pipe-arrow { color: #9aa0b4; font-weight: 700; }
+
+    /* ── Sections ── */
+    .section {
+      padding: 36px 40px;
+      border-bottom: 1px solid #edf0f7;
+    }
+    .section:last-child { border-bottom: none; }
+    .sec-kicker {
+      font-size: 0.68rem; font-weight: 700;
+      letter-spacing: 0.11em; text-transform: uppercase;
+      color: #0f3460; margin-bottom: 5px;
+    }
+    .sec-title {
+      font-size: 1.3rem; font-weight: 700;
+      color: #1a1a2e; margin-bottom: 14px; letter-spacing: -0.01em;
+    }
+    .sec-body {
+      color: #3a3a5c; font-size: 0.93rem;
+      max-width: 820px; line-height: 1.7;
+    }
+    .sec-body p + p { margin-top: 10px; }
+
+    /* ── Cascade flow ── */
+    .cascade { margin-top: 24px; }
+
+    .cascade-preproc {
+      background: #fafafa;
+      border: 1.5px dashed #b0bcd8;
+      border-radius: 10px;
+      padding: 14px 18px;
+      margin-bottom: 6px;
+    }
+    .preproc-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #6b7a99; margin-bottom: 8px;
+    }
+    .preproc-steps {
+      display: flex; flex-wrap: wrap; gap: 6px;
+    }
+    .preproc-step {
+      background: #fff; border: 1px solid #d0ddf0;
+      border-radius: 6px; padding: 5px 11px;
+      font-size: 0.78rem; font-weight: 600; color: #1a1a2e;
+    }
+    .preproc-step span { color: #7a7a9a; font-weight: 400; font-size: 0.73rem; }
+
+    .cascade-input {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px;
+      background: #f0f4ff; border: 2px dashed #b0c0e8; border-radius: 10px;
+      margin-bottom: 6px;
+    }
+    .ci-label { font-size: 0.8rem; font-weight: 700; color: #0f3460; }
+    .ci-sub   { font-size: 0.75rem; color: #7a7a9a; }
+
+    .cc-line { width: 2px; height: 22px; background: #d0d8f0; margin: 0 auto; }
+
+    .cascade-stages { display: flex; flex-direction: column; gap: 4px; }
+
+    .cs-item { display: flex; align-items: stretch; gap: 0; }
+    .cs-num-col {
+      width: 48px; display: flex; flex-direction: column;
+      align-items: center; flex-shrink: 0;
+    }
+    .cs-num {
+      width: 32px; height: 32px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 800; color: #fff;
+      flex-shrink: 0; z-index: 1;
+    }
+    .cs-vline { width: 2px; flex: 1; background: #d0d8f0; margin: 0 auto; }
+    .cs-item:last-child .cs-vline { background: transparent; }
+
+    .cs-card {
+      flex: 1; background: #fff;
+      border: 1.5px solid #d8e0f0; border-radius: 10px;
+      padding: 14px 18px; margin: 2px 0 4px;
+      transition: box-shadow 0.15s;
+    }
+    .cs-card:hover { box-shadow: 0 3px 14px rgba(15,52,96,0.1); }
+    .cs-card-top { display: flex; align-items: center; gap: 10px; margin-bottom: 6px; }
+    .cs-card-title { font-size: 0.92rem; font-weight: 700; color: #1a1a2e; }
+    .cs-card-note  { font-size: 0.82rem; color: #4a4a6a; margin-bottom: 8px; }
+    .cs-exit {
+      display: inline-flex; align-items: center; gap: 5px;
+      font-size: 0.72rem; font-weight: 600;
+      color: #047857; background: #d1fae5;
+      padding: 2px 9px; border-radius: 8px;
+    }
+    .cs-exit.fallback { color: #92400e; background: #fef3c7; }
+
+    .cascade-output {
+      display: flex; align-items: center; gap: 12px;
+      padding: 14px 18px;
+      background: #f0fdf8; border: 2px solid #6ee7b7; border-radius: 10px;
+      margin-top: 6px;
+    }
+    .co-label { font-size: 0.8rem; font-weight: 700; color: #065f46; }
+    .co-sub   { font-size: 0.75rem; color: #6b8a7a; }
+
+    /* ── Pills ── */
+    .pills { display: flex; flex-wrap: wrap; gap: 5px; margin-top: 8px; }
+    .pill {
+      font-size: 0.7rem; font-weight: 700;
+      padding: 2px 9px; border-radius: 10px; letter-spacing: 0.02em;
+    }
+    .p-blue   { background: #dbeafe; color: #1d4ed8; }
+    .p-purple { background: #ede9fe; color: #5b21b6; }
+    .p-green  { background: #d1fae5; color: #065f46; }
+    .p-amber  { background: #fef3c7; color: #92400e; }
+    .p-cyan   { background: #cffafe; color: #0e7490; }
+    .p-gray   { background: #f3f4f6; color: #374151; }
+    .p-teal   { background: #ccfbf1; color: #115e59; }
+    .p-rose   { background: #ffe4e6; color: #9f1239; }
+    .p-indigo { background: #e0e7ff; color: #3730a3; }
+
+    /* ── Detail cards ── */
+    .detail-grid { display: flex; flex-direction: column; gap: 18px; margin-top: 20px; }
+    .detail-card {
+      background: #fff; border: 1px solid #dde2f0;
+      border-radius: 12px; border-left: 4px solid #0f3460;
+      padding: 20px 24px;
+    }
+    .detail-card.s-camel  { border-left-color: #6d28d9; }
+    .detail-card.s-arabic { border-left-color: #0891b2; }
+    .detail-card.s-fuzzy  { border-left-color: #7c3aed; }
+    .detail-card.s-skel   { border-left-color: #047857; }
+    .detail-card.s-drug   { border-left-color: #dc2626; }
+    .detail-card.s-phrase { border-left-color: #d97706; }
+    .detail-card.s-vector { border-left-color: #0f3460; }
+
+    .dc-header { display: flex; align-items: center; gap: 14px; margin-bottom: 10px; }
+    .dc-num {
+      width: 30px; height: 30px; border-radius: 50%;
+      display: flex; align-items: center; justify-content: center;
+      font-size: 0.8rem; font-weight: 800; color: #fff; flex-shrink: 0;
+      background: #0f3460;
+    }
+    .detail-card.s-camel  .dc-num { background: #6d28d9; }
+    .detail-card.s-arabic .dc-num { background: #0891b2; }
+    .detail-card.s-fuzzy  .dc-num { background: #7c3aed; }
+    .detail-card.s-skel   .dc-num { background: #047857; }
+    .detail-card.s-drug   .dc-num { background: #dc2626; }
+    .detail-card.s-phrase .dc-num { background: #d97706; }
+    .dc-title    { font-size: 0.97rem; font-weight: 700; color: #1a1a2e; }
+    .dc-subtitle { font-size: 0.75rem; font-weight: 600; color: #9aa0b4; margin-top: 1px; }
+    .dc-body     { font-size: 0.87rem; color: #3a3a5c; margin-bottom: 10px; line-height: 1.7; }
+
+    /* ── Inline formula box ── */
+    .formula-box {
+      background: #f8f9fc; border: 1px solid #d8e0f0;
+      border-radius: 8px; padding: 14px 18px; margin: 10px 0;
+      font-size: 0.83rem;
+    }
+    .formula-box-title {
+      font-size: 0.63rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #6b7a99; margin-bottom: 10px;
+    }
+    .formula-eq {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.86rem; color: #0f3460; font-weight: 600;
+      margin-bottom: 6px;
+    }
+    .formula-note { font-size: 0.76rem; color: #5a5a7a; margin-bottom: 4px; }
+    .formula-note:last-child { margin-bottom: 0; }
+
+    /* ── CEQ class table ── */
+    .ceq-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(160px, 1fr));
+      gap: 6px;
+      margin: 10px 0;
+    }
+    .ceq-cell {
+      background: #fff; border: 1px solid #d8e0f0; border-radius: 6px;
+      padding: 7px 10px; font-size: 0.78rem;
+    }
+    .ceq-class { font-weight: 800; color: #dc2626; font-size: 0.82rem; }
+    .ceq-desc  { color: #3a3a5c; }
+    .ceq-chars { font-family: monospace; color: #6b7a99; font-size: 0.74rem; }
+
+    /* ── Example boxes ── */
+    .ex-box {
+      background: #f8f9fc; border: 1px solid #e0e4ef;
+      border-radius: 8px; padding: 12px 16px; margin: 10px 0;
+      font-size: 0.84rem;
+    }
+    .ex-box-label {
+      font-size: 0.65rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #9aa0b4; margin-bottom: 6px;
+    }
+    .ex-row {
+      display: flex; align-items: center; gap: 10px;
+      flex-wrap: wrap; margin-bottom: 4px;
+    }
+    .ex-row:last-child { margin-bottom: 0; }
+    .ex-orig   { color: #dc2626; background: #fee2e2; padding: 2px 8px; border-radius: 5px; font-weight: 600; }
+    .ex-arrow  { color: #9aa0b4; font-size: 0.9rem; }
+    .ex-result { color: #047857; background: #d1fae5; padding: 2px 8px; border-radius: 5px; font-weight: 600; }
+    .ex-note   { font-size: 0.75rem; color: #7a7a9a; font-style: italic; }
+    .mono {
+      font-family: "SFMono-Regular", Consolas, monospace;
+      font-size: 0.8rem; background: #f0f4ff; color: #0f3460;
+      padding: 1px 6px; border-radius: 4px;
+    }
+
+    /* ── Lexicon anatomy ── */
+    .lexicon-anatomy {
+      background: #f8f9fc; border: 1px solid #dde2f0;
+      border-radius: 10px; padding: 16px 20px; margin-top: 16px;
+      font-size: 0.85rem;
+    }
+    .la-title {
+      font-size: 0.68rem; font-weight: 700; letter-spacing: 0.1em;
+      text-transform: uppercase; color: #0f3460; margin-bottom: 10px;
+    }
+    .la-row { display: flex; gap: 10px; margin-bottom: 6px; align-items: baseline; }
+    .la-field { font-weight: 700; color: #0f3460; min-width: 110px; font-size: 0.8rem; }
+    .la-val   { color: #3a3a5c; }
+
+    /* ── Score / worked example table ── */
+    .score-table { width: 100%; border-collapse: collapse; margin-top: 16px; font-size: 0.86rem; }
+    .score-table th {
+      background: #f0f4ff; color: #0f3460;
+      font-size: 0.7rem; font-weight: 700; letter-spacing: 0.07em;
+      text-transform: uppercase; padding: 9px 13px; text-align: left;
+      border-bottom: 2px solid #c8d4f0;
+    }
+    .score-table td {
+      padding: 9px 13px; border-bottom: 1px solid #edf0f7;
+      vertical-align: top; color: #3a3a5c;
+    }
+    .score-table tr:last-child td { border-bottom: none; }
+    .score-table tr:hover td { background: #f8f9fc; }
+
+    /* ── Tech grid ── */
+    .tech-grid {
+      display: grid;
+      grid-template-columns: repeat(auto-fill, minmax(185px, 1fr));
+      gap: 12px; margin-top: 18px;
+    }
+    .tech-card {
+      background: #fff; border: 1px solid #dde2f0;
+      border-radius: 10px; padding: 13px 16px;
+    }
+    .tc-cat  { font-size: 0.63rem; font-weight: 700; letter-spacing: 0.1em; text-transform: uppercase; color: #9aa0b4; margin-bottom: 5px; }
+    .tc-name { font-size: 0.88rem; font-weight: 700; color: #1a1a2e; margin-bottom: 3px; }
+    .tc-note { font-size: 0.74rem; color: #5a5a7a; }
+
+    /* ── Footer ── */
+    .footer {
+      padding: 18px 40px; background: #f4f6fb; border-top: 1px solid #dde2f0;
+      font-size: 0.76rem; color: #9aa0b4;
+      display: flex; justify-content: space-between; align-items: center;
+      flex-wrap: wrap; gap: 8px;
+    }
+    .footer a { color: #0f3460; text-decoration: none; font-weight: 600; }
+    .footer a:hover { text-decoration: underline; }
+
+    @media (max-width: 680px) {
+      .hero, .section, .context-bar, .footer { padding-left: 20px; padding-right: 20px; }
+      .detail-card { padding: 16px; }
+      .cs-num-col { width: 36px; }
+    }
+    @media print {
+      .canvas-page { box-shadow: none; }
+      .hero { print-color-adjust: exact; -webkit-print-color-adjust: exact; }
+      .detail-card, .tech-card { break-inside: avoid; }
+    }
+  </style>
+</head>
+<body>
+<div class="canvas-page">
+
+  <!-- ══ HERO ══ -->
+  <div class="hero">
+    <div class="hero-kicker">NLP Sub-System · Gulf Arabic Medical AI</div>
+    <h1>Phonetic &amp; Semantic<br><em>Correction Engine</em></h1>
+    <p class="hero-desc">
+      A cascaded multi-stage engine that maps mis-transcribed Arabic and English medical
+      terms to their canonical forms — combining CAMeL Tools morphological analysis,
+      Gulf Arabic spelling correction, Editex-weighted phonetic distance,
+      consonant skeleton matching, multi-word phrase detection, and neural vector retrieval.
+    </p>
+    <div class="hero-chips">
+      <span class="hero-chip">CAMeL Tools (Gulf + MSA MorphologyDB)</span>
+      <span class="hero-chip">CEQ + Editex + Jaro-Winkler</span>
+      <span class="hero-chip">Arabic → English Skeleton</span>
+      <span class="hero-chip">SymSpellPy</span>
+      <span class="hero-chip">FAISS Vector Lexicon</span>
+      <span class="hero-chip">Medical Lexicon (~200 terms)</span>
+    </div>
+  </div>
+
+  <!-- ══ CONTEXT BAR ══ -->
+  <div class="context-bar">
+    <strong>Position in the full pipeline:</strong>
+    <span class="pipe-arrow">ASR transcript</span>
+    <span>→</span>
+    <span class="pipe-arrow">LLM DETECT flagged spans</span>
+    <span>→</span>
+    <strong style="color:#047857;">▶ Correction Engine (this module)</strong>
+    <span>→</span>
+    <span class="pipe-arrow">Corrected transcript</span>
+  </div>
+
+  <!-- ══ OVERVIEW ══ -->
+  <div class="section">
+    <div class="sec-kicker">Module Overview</div>
+    <div class="sec-title">What This Module Does</div>
+    <div class="sec-body">
+      <p>
+        After the ASR model produces a raw transcript and the LLM DETECT stage flags
+        suspicious spans, this module resolves each span to the correct canonical term.
+        It operates entirely on text — no external LLM calls — making it fast,
+        deterministic, and fully explainable.
+      </p>
+      <p>
+        Before any matching begins, <strong>CAMeL Tools</strong> normalises the Arabic
+        text and a morphological analyser filters out real Arabic words so they are never
+        sent for correction. The remaining spans pass through six correction stages in
+        priority order, short-circuiting as soon as one stage reaches confidence threshold.
+        The phonetic core — used across multiple stages — is a custom
+        <strong>CEQ (Consonant Equivalence Class) + Editex + Jaro-Winkler</strong>
+        scorer built specifically for Arabic→Latin drug-name transliteration.
+      </p>
+    </div>
+  </div>
+
+  <!-- ══ CASCADE FLOW ══ -->
+  <div class="section">
+    <div class="sec-kicker">Architecture</div>
+    <div class="sec-title">Correction Cascade — Execution Order</div>
+    <div class="sec-body">
+      Each flagged span passes through the stages below in order.
+      The first stage returning confidence ≥ threshold short-circuits the rest.
+      Spans that clear all stages unchanged are flagged for HITL review.
+    </div>
+
+    <div class="cascade">
+
+      <!-- Preprocessing -->
+      <div class="cascade-preproc">
+        <div class="preproc-label">Preprocessing — applied to every span before matching</div>
+        <div class="preproc-steps">
+          <div class="preproc-step">CAMeL <span>dediac_ar</span> <span>· diacritics removed</span></div>
+          <div class="preproc-step">CAMeL <span>normalize_alef_ar</span> <span>· أ إ آ → ا</span></div>
+          <div class="preproc-step">CAMeL <span>normalize_teh_marbuta_ar</span> <span>· ة → ه</span></div>
+          <div class="preproc-step">Arabic clitic strip <span>· ال / وال / بال…</span></div>
+          <div class="preproc-step">CAMeL morphology filter <span>· real Arabic words skipped</span></div>
+        </div>
+      </div>
+      <div class="cc-line"></div>
+
+      <!-- Input -->
+      <div class="cascade-input">
+        <span style="font-size:1.3rem;">📥</span>
+        <div>
+          <div class="ci-label">Input — Normalised Flagged Span</div>
+          <div class="ci-sub">e.g. "دايابيتس" · "ميت فورمين" · "bllod sugr"</div>
+        </div>
+      </div>
+      <div class="cc-line"></div>
+
+      <div class="cascade-stages">
+
+        <div class="cs-item">
+          <div class="cs-num-col">
+            <div class="cs-num" style="background:#0891b2;">1</div>
+            <div class="cs-vline"></div>
+          </div>
+          <div class="cs-card">
+            <div class="cs-card-top">
+              <div class="cs-card-title">Arabic Spelling Correction</div>
+              <span class="cs-exit">✓ exits if confidence ≥ threshold</span>
+            </div>
+            <div class="cs-card-note">
+              Fixes Gulf ASR phonetic errors in Arabic script using a weighted edit-distance
+              dictionary. Dialect substitutions (ق↔ك, ذ↔ز) carry lower edit cost than arbitrary changes.
+            </div>
+            <div class="pills">
+              <span class="pill p-cyan">SymSpellPy</span>
+              <span class="pill p-cyan">Weighted Damerau-Levenshtein</span>
+              <span class="pill p-gray">Gulf phonetic error dictionary</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-item">
+          <div class="cs-num-col">
+            <div class="cs-num" style="background:#7c3aed;">2</div>
+            <div class="cs-vline"></div>
+          </div>
+          <div class="cs-card">
+            <div class="cs-card-top">
+              <div class="cs-card-title">English Fuzzy Matching</div>
+              <span class="cs-exit">✓ exits if confidence ≥ threshold</span>
+            </div>
+            <div class="cs-card-note">
+              Matches Latin-script spans against all lexicon terms and aliases using a composite
+              score: 80% rapidfuzz token_sort_ratio + 20% jellyfish Jaro-Winkler.
+            </div>
+            <div class="pills">
+              <span class="pill p-purple">rapidfuzz token_sort_ratio</span>
+              <span class="pill p-purple">jellyfish Jaro-Winkler</span>
+              <span class="pill p-gray">Composite 0.8 / 0.2</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-item">
+          <div class="cs-num-col">
+            <div class="cs-num" style="background:#047857;">3</div>
+            <div class="cs-vline"></div>
+          </div>
+          <div class="cs-card">
+            <div class="cs-card-top">
+              <div class="cs-card-title">Arabic → English Skeleton Matching</div>
+              <span class="cs-exit">✓ exits if confidence ≥ threshold</span>
+            </div>
+            <div class="cs-card-note">
+              Strips Arabic short vowels and maps each consonant to its IPA equivalent,
+              then matches the resulting skeleton against English lexicon term skeletons
+              via normalised Levenshtein ratio. Handles transliterations like
+              <span class="mono">دايابيتس</span> → diabetes.
+            </div>
+            <div class="pills">
+              <span class="pill p-green">Consonant skeleton extraction</span>
+              <span class="pill p-green">Arabic → IPA consonant map</span>
+              <span class="pill p-green">Normalised Levenshtein</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-item">
+          <div class="cs-num-col">
+            <div class="cs-num" style="background:#dc2626;">4</div>
+            <div class="cs-vline"></div>
+          </div>
+          <div class="cs-card">
+            <div class="cs-card-top">
+              <div class="cs-card-title">Drug Name Normalization — CEQ + Editex + Jaro-Winkler</div>
+              <span class="cs-exit">✓ exits if phonetic score ≥ threshold</span>
+            </div>
+            <div class="cs-card-note">
+              The dedicated phonetic core for drug names. Folds skeletons into 14 Consonant
+              Equivalence Classes, then blends a length-normalised Editex distance with a
+              Jaro-Winkler prefix bonus: <strong>score = 0.6 × (1 − editex/max_len) + 0.4 × JW</strong>.
+            </div>
+            <div class="pills">
+              <span class="pill p-rose">CEQ — 14 phonetic classes</span>
+              <span class="pill p-rose">Editex weighted edit distance</span>
+              <span class="pill p-rose">Jaro-Winkler prefix bonus</span>
+              <span class="pill p-gray">drug_normalize.py</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-item">
+          <div class="cs-num-col">
+            <div class="cs-num" style="background:#d97706;">5</div>
+            <div class="cs-vline"></div>
+          </div>
+          <div class="cs-card">
+            <div class="cs-card-top">
+              <div class="cs-card-title">Multi-Word Arabic Phrase Matching</div>
+              <span class="cs-exit">✓ exits if confidence ≥ threshold</span>
+            </div>
+            <div class="cs-card-note">
+              Scans n-gram token windows (n=2,3). Scores each window with combined IPA
+              phonetic distance + skeleton overlap. Kneser-Ney LM perplexity down-ranks
+              implausible matches. Catches spans like <span class="mono">بلاد شوجر</span> → blood sugar.
+            </div>
+            <div class="pills">
+              <span class="pill p-amber">IPA phonetic distance</span>
+              <span class="pill p-amber">Skeleton overlap</span>
+              <span class="pill p-amber">Kneser-Ney LM perplexity</span>
+              <span class="pill p-gray">phonetic.py</span>
+            </div>
+          </div>
+        </div>
+
+        <div class="cs-item">
+          <div class="cs-num-col">
+            <div class="cs-num" style="background:#0f3460;">6</div>
+            <div class="cs-vline"></div>
+          </div>
+          <div class="cs-card">
+            <div class="cs-card-top">
+              <div class="cs-card-title">Vector Lexicon Retrieval</div>
+              <span class="cs-exit fallback">⚠ last resort</span>
+            </div>
+            <div class="cs-card-note">
+              Character n-gram TF-IDF (n=2–4) or sentence-transformer embedding, compared
+              against a pre-built FAISS index of all lexicon terms and aliases.
+              Returns the closest neighbour above cosine similarity 0.60.
+            </div>
+            <div class="pills">
+              <span class="pill p-blue">FAISS flat cosine index</span>
+              <span class="pill p-blue">n-gram TF-IDF (n=2–4)</span>
+              <span class="pill p-cyan">sentence-transformers (optional)</span>
+              <span class="pill p-gray">vector_lexicon.py</span>
+            </div>
+          </div>
+        </div>
+
+      </div>
+
+      <div class="cc-line"></div>
+      <div class="cascade-output">
+        <span style="font-size:1.3rem;">✅</span>
+        <div>
+          <div class="co-label">Output — Resolved Term (or HITL flag)</div>
+          <div class="co-sub">Canonical form · confidence score · stage that resolved it</div>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ STAGE DETAILS ══ -->
+  <div class="section">
+    <div class="sec-kicker">Deep Dive</div>
+    <div class="sec-title">Stage-by-Stage Technical Detail</div>
+
+    <div class="detail-grid">
+
+      <!-- CAMeL Preprocessing -->
+      <div class="detail-card s-camel">
+        <div class="dc-header">
+          <div class="dc-num">0</div>
+          <div>
+            <div class="dc-title">CAMeL Tools — Arabic Normalisation &amp; Morphological Filtering</div>
+            <div class="dc-subtitle">correction.py · _normalize_arabic() &nbsp;|&nbsp; flag.py · _morph_is_real_arabic()</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          CAMeL Tools (Columbia Arabic Machine-learning Language toolkit) is used at two
+          points before any correction stage runs:
+          <br><br>
+          <strong>(1) Text Normalisation</strong> — every input span is normalised using three CAMeL
+          utilities so that dialectal and script variations do not prevent matches:
+          <ul style="margin:8px 0 0 18px;">
+            <li><span class="mono">dediac_ar</span> — removes all tashkeel (diacritics / harakat)</li>
+            <li><span class="mono">normalize_alef_ar</span> — collapses أ / إ / آ / ا / ى → ا</li>
+            <li><span class="mono">normalize_teh_marbuta_ar</span> — ة → ه (common in Gulf dialect)</li>
+          </ul>
+          <br>
+          <strong>(2) Morphological Filtering</strong> — the two CAMeL MorphologyDB databases
+          (<span class="mono">calima-glf-01</span> Gulf Arabic and <span class="mono">calima-msa-r13</span> MSA)
+          are queried for each word. Any word that returns at least one valid POS analysis
+          is a genuine Arabic word and is <em>excluded</em> from correction entirely.
+          Drug transliterations like لازيكس or بنادول produce <strong>zero</strong> analyses in
+          both databases, so they correctly pass through to the correction cascade.
+          This morphology gate runs at O(1) per word thanks to an LRU cache.
+        </div>
+        <div class="ex-box">
+          <div class="ex-box-label">Morphology Filter Examples</div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">مريض</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">3 valid analyses → skipped</span>
+            <span class="ex-note">real Arabic word (patient)</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">لازيكس</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">0 analyses → sent to cascade</span>
+            <span class="ex-note">drug transliteration (Lasix)</span>
+          </div>
+        </div>
+        <div class="pills">
+          <span class="pill p-purple">CAMeL Tools</span>
+          <span class="pill p-purple">calima-glf-01 Gulf MorphologyDB</span>
+          <span class="pill p-purple">calima-msa-r13 MSA MorphologyDB</span>
+          <span class="pill p-indigo">dediac_ar · normalize_alef_ar · normalize_teh_marbuta_ar</span>
+          <span class="pill p-gray">LRU cache (8192 entries)</span>
+        </div>
+      </div>
+
+      <!-- Arabic Spelling -->
+      <div class="detail-card s-arabic">
+        <div class="dc-header">
+          <div class="dc-num">1</div>
+          <div>
+            <div class="dc-title">Arabic Spelling Correction</div>
+            <div class="dc-subtitle">arabic_spelling.py · weighted_arabic_spelling.py</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          Gulf Arabic ASR produces systematic, dialect-driven substitutions that are
+          not random noise but predictable patterns. SymSpellPy is loaded with a custom
+          frequency dictionary where these substitutions carry lower edit cost:
+          ق (qaf) → ك (kaf), ذ (thal) → ز (zain), ث → س are all common in Gulf speech.
+          The weighted costs ensure the corrector reaches the dialect-appropriate form first
+          without over-correcting MSA terms that happen to share the same skeleton.
+        </div>
+        <div class="ex-box">
+          <div class="ex-box-label">Gulf Dialect Corrections</div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">زياده</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result" dir="rtl">زيادة</span>
+            <span class="ex-note">ta-marbuta restoration</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">كلب</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result" dir="rtl">قلب</span>
+            <span class="ex-note">ك → ق (qaf) — heart</span>
+          </div>
+        </div>
+        <div class="pills">
+          <span class="pill p-cyan">SymSpellPy</span>
+          <span class="pill p-cyan">Weighted Damerau-Levenshtein</span>
+          <span class="pill p-gray">Gulf dialect frequency dictionary</span>
+        </div>
+      </div>
+
+      <!-- English Fuzzy -->
+      <div class="detail-card s-fuzzy">
+        <div class="dc-header">
+          <div class="dc-num">2</div>
+          <div>
+            <div class="dc-title">English Fuzzy Matching</div>
+            <div class="dc-subtitle">correction.py — english_fuzzy_match()</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          For terms in Latin script the engine computes a composite score across all
+          canonical terms and their aliases: <strong>0.8 × rapidfuzz token_sort_ratio
+          + 0.2 × jellyfish Jaro-Winkler</strong>. The token_sort_ratio handles
+          transpositions and partial matches; Jaro-Winkler rewards shared prefix and
+          penalises suffix differences — critical for brand names that share a stem
+          (e.g. Metformin / Metformina). Matches above 0.75 are accepted; 0.60–0.75
+          are flagged for HITL review.
+        </div>
+        <div class="ex-box">
+          <div class="ex-box-label">Examples</div>
+          <div class="ex-row">
+            <span class="ex-orig">metfornin</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">Metformin</span>
+            <span class="ex-note">composite score 0.91</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig">insuln</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">Insulin</span>
+            <span class="ex-note">composite score 0.88</span>
+          </div>
+        </div>
+        <div class="pills">
+          <span class="pill p-purple">rapidfuzz token_sort_ratio</span>
+          <span class="pill p-purple">jellyfish Jaro-Winkler</span>
+          <span class="pill p-gray">Composite 0.8 / 0.2</span>
+        </div>
+      </div>
+
+      <!-- Skeleton -->
+      <div class="detail-card s-skel">
+        <div class="dc-header">
+          <div class="dc-num">3</div>
+          <div>
+            <div class="dc-title">Arabic → English Skeleton Matching</div>
+            <div class="dc-subtitle">arabic_matcher.py — HybridMatcher · skeleton()</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          Clinicians write English terms using Arabic phonetic approximation. The skeleton
+          matcher handles this cross-script challenge in two steps:
+          <br><br>
+          <strong>(1) Extraction:</strong> after CAMeL normalisation, short vowels are dropped
+          and each Arabic consonant is mapped to its closest Latin/IPA equivalent via a
+          Buckwalter-derived table. Only the consonant sequence is retained.
+          <br><br>
+          <strong>(2) Matching:</strong> the same extraction is applied offline to every
+          lexicon entry, building a skeleton index. At query time, the Arabic skeleton is
+          compared against all English skeletons using normalised Levenshtein ratio.
+          A threshold of 0.70 is used for acceptance.
+        </div>
+        <div class="ex-box">
+          <div class="ex-box-label">Skeleton Extraction</div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">دايابيتس</span>
+            <span class="ex-arrow">→ skeleton →</span>
+            <span class="mono">d-y-b-t-s</span>
+            <span class="ex-arrow">↔</span>
+            <span class="ex-result">diabetes</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">هستوري</span>
+            <span class="ex-arrow">→ skeleton →</span>
+            <span class="mono">h-s-t-r</span>
+            <span class="ex-arrow">↔</span>
+            <span class="ex-result">history</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">بريشر</span>
+            <span class="ex-arrow">→ skeleton →</span>
+            <span class="mono">p-r-sh-r</span>
+            <span class="ex-arrow">↔</span>
+            <span class="ex-result">pressure</span>
+          </div>
+        </div>
+        <div class="pills">
+          <span class="pill p-green">Short vowel stripping</span>
+          <span class="pill p-green">Arabic → IPA consonant table</span>
+          <span class="pill p-green">Normalised Levenshtein</span>
+          <span class="pill p-green">Pre-built skeleton index</span>
+        </div>
+      </div>
+
+      <!-- Drug Normalize — CEQ + Editex + JW -->
+      <div class="detail-card s-drug">
+        <div class="dc-header">
+          <div class="dc-num">4</div>
+          <div>
+            <div class="dc-title">Drug Name Normalization — CEQ · Editex · Jaro-Winkler</div>
+            <div class="dc-subtitle">drug_normalize.py — _phonetic_similarity() · _editex() · _jaro_winkler()</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          Plain Levenshtein over consonant skeletons is <em>orthographic</em>: it treats a
+          b↔p swap identically to a b↔z swap, even though the former is a trivial voiced/voiceless
+          confusion and the latter is phonetically unrelated. This stage fixes that with a
+          three-layer phonetic scoring system built specifically for Arabic→Latin drug names.
+          <br><br>
+          <strong>Layer 1 — CEQ (Consonant Equivalence Classes):</strong> every skeleton
+          character is mapped to one of 14 phonetic class symbols.
+          Within-class substitution costs 0; adjacent-class substitution costs 0.5;
+          all other substitutions cost 1.0. The 14 classes and their neighbour pairs
+          are derived from Buckwalter and IPA equivalences for Gulf Arabic.
+        </div>
+
+        <div class="ceq-grid">
+          <div class="ceq-cell"><span class="ceq-class">B</span> — bilabial<br><span class="ceq-chars">b, p (ب پ)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">F</span> — labiodental<br><span class="ceq-chars">f, v (ف ڤ)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">T</span> — dental/alveolar<br><span class="ceq-chars">t, d (ت ط د ض ة)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">S</span> — sibilant<br><span class="ceq-chars">s, z (ث س ص ش ز ظ ذ)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">K</span> — velar/uvular<br><span class="ceq-chars">k, g, j (ك ق خ غ ج)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">R</span> — rhotic<br><span class="ceq-chars">r (ر)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">L</span> — lateral<br><span class="ceq-chars">l (ل)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">M / N</span> — nasals<br><span class="ceq-chars">m, n (م ن) — near pair</span></div>
+          <div class="ceq-cell"><span class="ceq-class">H</span> — glottal<br><span class="ceq-chars">h (ه ح هـ)</span></div>
+          <div class="ceq-cell"><span class="ceq-class">W / Y</span> — glides<br><span class="ceq-chars">w, y (و ي) — near vowels</span></div>
+          <div class="ceq-cell"><span class="ceq-class">A</span> — vowel carrier<br><span class="ceq-chars">a (ا أ إ ى ع)</span></div>
+        </div>
+
+        <div class="formula-box" style="margin-top:12px;">
+          <div class="formula-box-title">Scoring Formula</div>
+          <div class="formula-eq">score = 0.6 × (1 − editex(CEQ_a, CEQ_b) / max_len) + 0.4 × JW(CEQ_a, CEQ_b)</div>
+          <div class="formula-note">• <strong>Editex</strong> (Zobel &amp; Dart 1996 adapted): dynamic programming over CEQ strings — within-class cost 0, adjacent-class cost 0.5, other cost 1.0</div>
+          <div class="formula-note">• <strong>Jaro-Winkler</strong>: standard Jaro score + prefix bonus p=0.1 (up to 4 matching prefix chars) — rewards brand names that share a common stem</div>
+          <div class="formula-note">• Weights: Editex carries 60% (phonetic substance); Jaro-Winkler carries 40% (prefix/order)</div>
+        </div>
+
+        <div class="ex-box">
+          <div class="ex-box-label">Phonetic Scoring Trace</div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">فولتران</span>
+            <span class="ex-arrow">CEQ →</span>
+            <span class="mono">F-L-T-R-N</span>
+            <span class="ex-arrow">vs</span>
+            <span class="mono">F-L-T-R-N</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">Voltaren · 0.94</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">ميت فورمين</span>
+            <span class="ex-arrow">CEQ →</span>
+            <span class="mono">M-T-F-R-M-N</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">Metformin · 0.89</span>
+          </div>
+        </div>
+        <div class="pills">
+          <span class="pill p-rose">14 CEQ phonetic classes</span>
+          <span class="pill p-rose">Editex weighted DP</span>
+          <span class="pill p-rose">Jaro-Winkler prefix bonus (p=0.1)</span>
+          <span class="pill p-rose">Near-class pairs (B↔F, T↔S, N↔M, R↔L…)</span>
+          <span class="pill p-gray">Arabic clitic stripping before scoring</span>
+        </div>
+      </div>
+
+      <!-- Multi-word phrase -->
+      <div class="detail-card s-phrase">
+        <div class="dc-header">
+          <div class="dc-num">5</div>
+          <div>
+            <div class="dc-title">Multi-Word Arabic Phrase Matching</div>
+            <div class="dc-subtitle">phonetic.py — match_multi_word_arabic() · combined_phonetic_similarity()</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          Single-term matchers fail when a multi-word English clinical expression is
+          approximated as multiple Arabic tokens. This stage scans all n-gram windows
+          (n=2 and n=3) of the input token list and scores each window with
+          <strong>combined_phonetic_similarity</strong>:
+          0.5 × IPA Levenshtein (normalised) + 0.5 × consonant skeleton overlap.
+          The Kneser-Ney n-gram LM provides an additional perplexity signal that
+          down-ranks matches which are linguistically implausible in context.
+        </div>
+        <div class="ex-box">
+          <div class="ex-box-label">Multi-Word Phrase Examples</div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">بلاد شوجر</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">blood sugar</span>
+            <span class="ex-note">IPA+skeleton score 0.79</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">هارت ريت</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">heart rate</span>
+          </div>
+          <div class="ex-row">
+            <span class="ex-orig" dir="rtl">بلاد برشر</span>
+            <span class="ex-arrow">→</span>
+            <span class="ex-result">blood pressure</span>
+          </div>
+        </div>
+        <div class="pills">
+          <span class="pill p-amber">n-gram token windows (n=2,3)</span>
+          <span class="pill p-amber">IPA phonetic distance</span>
+          <span class="pill p-amber">Skeleton overlap</span>
+          <span class="pill p-amber">Kneser-Ney LM perplexity</span>
+        </div>
+      </div>
+
+      <!-- Vector Lexicon -->
+      <div class="detail-card s-vector">
+        <div class="dc-header">
+          <div class="dc-num">6</div>
+          <div>
+            <div class="dc-title">Vector Lexicon Retrieval</div>
+            <div class="dc-subtitle">vector_lexicon.py — VectorLexicon</div>
+          </div>
+        </div>
+        <div class="dc-body">
+          The broadest and most permissive stage — a semantic safety net. All lexicon
+          terms (canonical + aliases) are indexed at startup as character n-gram TF-IDF
+          vectors (n=2–4), which capture sub-word phonetic similarity without a GPU.
+          An optional transformer backend replaces this with multilingual
+          sentence-transformer embeddings for true semantic matching.
+          The input span is vectorised and the top-K nearest neighbours are retrieved
+          via FAISS flat cosine index; only results above cosine similarity 0.60 are returned.
+        </div>
+        <div class="pills">
+          <span class="pill p-blue">FAISS flat cosine index</span>
+          <span class="pill p-blue">n-gram TF-IDF (n=2–4)</span>
+          <span class="pill p-cyan">sentence-transformers (optional)</span>
+          <span class="pill p-gray">Min cosine similarity: 0.60</span>
+        </div>
+      </div>
+
+    </div>
+  </div>
+
+  <!-- ══ LEXICON ══ -->
+  <div class="section">
+    <div class="sec-kicker">Data Foundation</div>
+    <div class="sec-title">Medical Lexicon — The Shared Knowledge Base</div>
+    <div class="sec-body">
+      All correction stages share a single knowledge base:
+      <span class="mono">data/medical_lexicon.jsonl</span> (~200 curated entries).
+      Each entry defines a canonical term, Gulf Arabic aliases, a type tag, and a
+      priority weight. Aliases cover the phonetic approximations most frequently
+      produced by Gulf Arabic clinical dictation.
+    </div>
+
+    <div class="lexicon-anatomy">
+      <div class="la-title">Entry Structure</div>
+      <div class="la-row">
+        <span class="la-field">term</span>
+        <span class="la-val">Canonical INN/clinical form — e.g. <span class="mono">"Metformin"</span></span>
+      </div>
+      <div class="la-row">
+        <span class="la-field">type</span>
+        <span class="la-val"><span class="mono">"drug"</span> · <span class="mono">"disease"</span> · <span class="mono">"symptom"</span> · <span class="mono">"procedure"</span></span>
+      </div>
+      <div class="la-row">
+        <span class="la-field">aliases</span>
+        <span class="la-val">Gulf Arabic phonetic variants — e.g. <span class="mono">["ميت فورمين", "ميتفورمين", "metformine"]</span></span>
+      </div>
+      <div class="la-row">
+        <span class="la-field">priority</span>
+        <span class="la-val">Float — used when multiple terms score equally (higher = preferred)</span>
+      </div>
+    </div>
+
+    <table class="score-table" style="margin-top:20px;">
+      <thead>
+        <tr>
+          <th>Input (ASR output)</th>
+          <th>Resolved</th>
+          <th>Stage</th>
+          <th>Mechanism</th>
+        </tr>
+      </thead>
+      <tbody>
+        <tr>
+          <td dir="rtl">لازيكس</td>
+          <td><strong>Lasix</strong></td>
+          <td><span class="pill p-rose" style="font-size:.68rem;">CEQ + Editex + JW</span></td>
+          <td>L-Z-K-S ↔ L-Z-K-S — editex=0, JW=1.0 → score 1.0</td>
+        </tr>
+        <tr>
+          <td dir="rtl">فولتران</td>
+          <td><strong>Voltaren</strong></td>
+          <td><span class="pill p-rose" style="font-size:.68rem;">CEQ + Editex + JW</span></td>
+          <td>F-L-T-R-N ↔ F-L-T-R-N — score 0.94</td>
+        </tr>
+        <tr>
+          <td dir="rtl">ميت فورمين</td>
+          <td><strong>Metformin</strong></td>
+          <td><span class="pill p-rose" style="font-size:.68rem;">CEQ + Editex + JW</span></td>
+          <td>M-T-F-R-M-N → after clitic strip — score 0.89</td>
+        </tr>
+        <tr>
+          <td dir="rtl">دايابيتس</td>
+          <td><strong>Diabetes</strong></td>
+          <td><span class="pill p-green" style="font-size:.68rem;">Skeleton Match</span></td>
+          <td>d-y-b-t-s ↔ d-b-t-s — normalised Levenshtein 0.82</td>
+        </tr>
+        <tr>
+          <td dir="rtl">بلاد شوجر</td>
+          <td><strong>Blood Sugar</strong></td>
+          <td><span class="pill p-amber" style="font-size:.68rem;">Multi-Word Phrase</span></td>
+          <td>IPA + skeleton 2-gram window — score 0.79</td>
+        </tr>
+        <tr>
+          <td dir="rtl">مريض</td>
+          <td><em style="color:#7a7a9a;">unchanged</em></td>
+          <td><span class="pill p-purple" style="font-size:.68rem;">CAMeL Filter</span></td>
+          <td>3 valid morphological analyses → skipped before cascade</td>
+        </tr>
+        <tr>
+          <td>insuln</td>
+          <td><strong>Insulin</strong></td>
+          <td><span class="pill p-purple" style="font-size:.68rem;">English Fuzzy</span></td>
+          <td>rapidfuzz token_sort_ratio 0.92</td>
+        </tr>
+      </tbody>
+    </table>
+  </div>
+
+  <!-- ══ TECH STACK ══ -->
+  <div class="section">
+    <div class="sec-kicker">Technology Stack</div>
+    <div class="sec-title">Libraries &amp; Tools Used in This Module</div>
+
+    <div class="tech-grid">
+      <div class="tech-card">
+        <div class="tc-cat">Arabic NLP</div>
+        <div class="tc-name">CAMeL Tools</div>
+        <div class="tc-note">dediac_ar · normalize_alef_ar · MorphologyDB (Gulf + MSA)</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Morphology Databases</div>
+        <div class="tc-name">calima-glf-01 &amp; calima-msa-r13</div>
+        <div class="tc-note">Gulf Arabic + MSA morphological analyser databases</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Spelling Correction</div>
+        <div class="tc-name">SymSpellPy</div>
+        <div class="tc-note">Weighted Damerau-Levenshtein — Gulf dialect error costs</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Phonetic Distance</div>
+        <div class="tc-name">Editex (custom)</div>
+        <div class="tc-note">CEQ class-based weighted DP — Zobel &amp; Dart 1996 adapted for Arabic→Latin</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">String Similarity</div>
+        <div class="tc-name">Jaro-Winkler (custom)</div>
+        <div class="tc-note">Prefix bonus p=0.1 over CEQ class strings — brand name prefix sensitivity</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Fuzzy String</div>
+        <div class="tc-name">rapidfuzz</div>
+        <div class="tc-note">C++ backed — token_sort_ratio for English term matching</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Phonetic Similarity</div>
+        <div class="tc-name">jellyfish</div>
+        <div class="tc-note">Jaro-Winkler complement for English fuzzy stage</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Vector Search</div>
+        <div class="tc-name">FAISS</div>
+        <div class="tc-note">Facebook AI — flat cosine index, CPU mode</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Vectorisation</div>
+        <div class="tc-name">scikit-learn TfidfVectorizer</div>
+        <div class="tc-note">Character n-gram (2–4) — language-agnostic sub-word features</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Language Model</div>
+        <div class="tc-name">Kneser-Ney n-gram LM</div>
+        <div class="tc-note">Perplexity scoring for multi-word phrase plausibility</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Optional Embeddings</div>
+        <div class="tc-name">sentence-transformers</div>
+        <div class="tc-note">paraphrase-multilingual — semantic fallback backend</div>
+      </div>
+      <div class="tech-card">
+        <div class="tc-cat">Knowledge Base</div>
+        <div class="tc-name">Medical Lexicon JSONL</div>
+        <div class="tc-note">~200 entries — canonical term + Gulf aliases + priority weight</div>
+      </div>
+    </div>
+  </div>
+
+  <!-- ══ FOOTER ══ -->
+  <div class="footer">
+    <span>Phonetic &amp; Semantic Correction Engine · Gulf Arabic Medical Transcription Pipeline</span>
+    <span><a href="/">Main App</a> · <a href="/pipeline">Live Debugger</a></span>
+  </div>
+
+</div>
+</body>
+</html>
