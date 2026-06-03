@@ -194,6 +194,12 @@ def pipeline_tester() -> FileResponse:
     return FileResponse(STATIC_DIR / "pipeline.html")
 
 
+@app.get("/pipeline-overview", include_in_schema=False)
+def pipeline_overview() -> FileResponse:
+    """Static architecture overview — Canvas-ready presentation page."""
+    return FileResponse(STATIC_DIR / "pipeline-overview.html")
+
+
 @app.get("/api/healthz")
 def healthz() -> Dict[str, str]:
     return {"status": "ok"}
