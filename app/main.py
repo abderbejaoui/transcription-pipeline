@@ -779,6 +779,7 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
         corr_result = flag.apply_high_confidence_corrections(
             normalized_text, flags_out,
             include_hitl=True,
+            use_llm=use_llm_flag,
         )
         final_text = corr_result["corrected_transcript"]
         auto_applied = corr_result["applied"]

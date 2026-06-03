@@ -897,15 +897,22 @@ def _is_arabic_filler(word: str) -> bool:
 
     Strategy (in order):
     1. Empty string → skip.
-    2. Short particles (≤3 chars or in _ARABIC_SHORT_PARTICLES) → always skip.
-    3. Morphological check (Gulf Arabic + MSA): ≥1 valid analysis → real word.
-    4. Fallback if no morphology DB: compact hardcoded set.
+    2. Explicit particle set: confirmed short structural words → always skip.
+    3. Short words (≤3 chars) NOT in the particle set → NOT filler. Drug
+       name mangles often produce short fragments (e.g. 'با' in كارباmazepine,
+       'كار' in كاربامازيبين) that must NOT be blocked from n-gram joining.
+    4. Longer words (4+ chars): morphological check via Gulf + MSA analyzers.
+    5. Fallback if morphology DBs unavailable: compact hardcoded set.
     """
     w = _TASHKEEL_RE.sub("", unicodedata.normalize("NFKC", word))
     if not w:
         return True
-    if len(w) <= 3 or w in _ARABIC_SHORT_PARTICLES:
+    if w in _ARABIC_SHORT_PARTICLES:
         return True
+    # Short words not in the particle list may be drug mangle fragments —
+    # don't classify them as filler or they get excluded from n-gram joining.
+    if len(w) <= 3:
+        return False
     if _GLF_ANALYZER is not None or _MSA_ANALYZER is not None:
         return _morph_is_real_arabic(w)
     # Fallback: compact hardcoded set
@@ -1023,6 +1030,69 @@ def _extract_json_from_llm(text: str) -> Optional[Dict[str, Any]]:
         except json.JSONDecodeError:
             pass
     return None
+
+
+_LLM_SELECTION_SYSTEM = (
+    "You are selecting the correct medical term for an Arabic Gulf dialect ASR transcript. "
+    "You receive a flagged span (likely a mis-transcribed drug name) and a ranked list of "
+    "phonetically similar candidates from the medical lexicon. "
+    "Your task: pick ONE candidate that best fits the flagged span given the transcript context, "
+    "or respond with 'NONE' if no candidate makes clinical sense.\n\n"
+    "Rules:\n"
+    "1. Output STRICT JSON: {\"chosen\": \"<term>\"} or {\"chosen\": \"NONE\"}.\n"
+    "2. The chosen term MUST come exactly from the candidates list (no new terms).\n"
+    "3. Use the surrounding transcript for clinical context "
+    "(e.g. 'للضغط' = blood pressure → prefer ACE inhibitors; "
+    "'للسكري' = diabetes → prefer metformin/insulin).\n"
+    "4. Prefer drug names over disease names.\n"
+    "5. If uncertain, output {\"chosen\": \"NONE\"} — do not guess."
+)
+
+
+def _llm_select_candidate(
+    transcript: str,
+    span_text: str,
+    candidates: List[Dict[str, Any]],
+    timeout: float = 20.0,
+) -> Optional[str]:
+    """Ask the LLM to pick the best candidate from a short list.
+
+    Used when phonetic score is in the uncertain range (0.55–0.84): good
+    enough to retrieve the right drug, but below the auto-correction
+    threshold. The LLM uses full transcript context to make the call.
+    Returns the chosen term string, or None if LLM is unavailable / uncertain.
+    """
+    if not candidates:
+        return None
+    cand_list = [
+        f"  {c['term']} (phonetic_score={c['phonetic_similarity']:.2f})"
+        for c in candidates[:5]
+    ]
+    user_msg = {
+        "transcript": transcript,
+        "flagged_span": span_text,
+        "candidates": cand_list,
+    }
+    payload = {
+        "model": get_llm_model(get_llm_provider()),
+        "stream": False,
+        "format": "json",
+        "options": {"temperature": 0.0},
+        "messages": [
+            {"role": "system", "content": _LLM_SELECTION_SYSTEM},
+            {"role": "user", "content": json.dumps(user_msg, ensure_ascii=False)},
+        ],
+    }
+    obj = _call_llm(payload, timeout)
+    if obj is None:
+        return None
+    chosen = (obj.get("chosen") or "").strip()
+    if not chosen or chosen.upper() == "NONE":
+        return None
+    valid_terms = {c["term"].lower() for c in candidates}
+    if chosen.lower() not in valid_terms:
+        return None
+    return chosen
 
 
 def _call_llm(payload: Dict[str, Any], timeout: float) -> Optional[Dict[str, Any]]:
@@ -1203,29 +1273,39 @@ def flag_suspicious(
 # user can compare it to the raw transcript without losing the original.
 # ---------------------------------------------------------------------------
 
+_AR_WAW = "و"  # Arabic conjunction 'and', commonly cliticised onto the next word
+
+
 def apply_high_confidence_corrections(
     transcript: str,
     flags: List[Dict[str, Any]],
     *,
     confidence_threshold: float = 0.90,
     phonetic_strong_threshold: float = 0.85,
+    phonetic_select_threshold: float = 0.55,
     include_hitl: bool = False,
+    use_llm: bool = False,
 ) -> Dict[str, Any]:
     """Rewrite the transcript with high-confidence corrections.
 
-    Two sources of corrections, in priority order:
+    Sources of corrections, in priority order:
 
-    1. PHONETIC TOP-1 (preferred when strong): if the top phonetic
-       candidate scored >= `phonetic_strong_threshold` (default 0.85),
-       trust it directly. Phonetic match is deterministic and grounded
-       in the actual ASR output — when it scores very high it is
-       essentially certainly the right drug.
+    1. PHONETIC TOP-1 (strong): top phonetic candidate scored >=
+       `phonetic_strong_threshold` (0.85). Applied automatically.
 
-    2. LLM `likely_term` (only as fallback): used ONLY when phonetic
-       is weak AND the LLM confidence is high (>= `confidence_threshold`)
-       AND the LLM's proposed term EXISTS IN OUR LEXICON. This guards
-       against LLM hallucinations like 'Foltranis' or 'Paracetamol'
-       when the audio clearly said 'voltaren' / 'panadol'.
+    2. LLM SELECTION (borderline): when score is in
+       [phonetic_select_threshold, phonetic_strong_threshold) and
+       use_llm=True, the LLM chooses among top-5 candidates using the
+       full transcript context. Answer is constrained to the candidate
+       list — no hallucination risk.
+
+    3. LLM DETECTION fallback: the existing llm_likely_term from the
+       detection pass, used when phonetic is too weak.
+
+    Conjunction preservation: if the original span starts with the Arabic
+    conjunction 'و' (waw) cliticised to a drug mangle, the 'و' is
+    prepended to the Latin correction so 'وسيمفاستاتن' → 'وsimvastatin'
+    rather than dropping the conjunction.
     """
     lexicon_lower = {t.lower() for t in load_medical_lexicon()}
     tokens = re.split(r"(\s+)", transcript)  # keep whitespace tokens
@@ -1246,7 +1326,12 @@ def apply_high_confidence_corrections(
         llm_conf = float(f.get("llm_confidence", 0.0) or 0.0)
         llm_term = (f.get("llm_likely_term") or "").strip()
 
-        # --- 1. Strong phonetic match → trust it.
+        # Detect leading Arabic conjunction 'و' on the first span word.
+        span_word = f.get("word", "")
+        first_token = span_word.split()[0] if span_word else ""
+        waw_prefix = first_token.startswith(_AR_WAW) and len(first_token) > 1
+
+        # --- 1. Strong phonetic match → apply automatically.
         chosen = None
         source = None
         chosen_conf = 0.0
@@ -1255,10 +1340,15 @@ def apply_high_confidence_corrections(
             chosen_conf = top_sim
             source = "phonetic"
 
-        # --- 2. Fallback to LLM IF and ONLY IF:
-        #     - phonetic was weak (didn't trigger above)
-        #     - LLM is confident
-        #     - LLM term is in our lexicon (so it's not a hallucination)
+        # --- 2. Borderline phonetic score → ask LLM to select among candidates.
+        if chosen is None and use_llm and cands and phonetic_select_threshold <= top_sim < phonetic_strong_threshold:
+            selected = _llm_select_candidate(transcript, span_word, cands)
+            if selected and selected.lower() in lexicon_lower:
+                chosen = selected
+                chosen_conf = top_sim
+                source = "llm_select"
+
+        # --- 3. LLM detection fallback (llm_likely_term from the flagging pass).
         if chosen is None and llm_conf >= confidence_threshold and llm_term:
             if llm_term.lower() in lexicon_lower:
                 chosen = llm_term
@@ -1268,8 +1358,12 @@ def apply_high_confidence_corrections(
         if not chosen:
             continue
 
+        # Preserve the Arabic conjunction if the span started with 'و<drug>'.
+        if waw_prefix and not chosen.startswith(_AR_WAW):
+            chosen = _AR_WAW + chosen
+
         # span_indices is set for bigram/trigram flags. Replace the FIRST
-        # word and clear the rest so 'وفولتران مسا' → 'voltaren'.
+        # word and clear the rest so 'وفولتران مسا' → 'وvoltaren'.
         spans = f.get("span_indices") or [idx]
         first = spans[0]
         original_parts = []
@@ -1295,7 +1389,7 @@ def apply_high_confidence_corrections(
             "confidence": chosen_conf,
             "source": source,
         })
-    # --- 3. HITL escalation: flagged spans that couldn't be auto-corrected
+    # --- 4. HITL escalation: flagged spans that couldn't be auto-corrected
     #     but have phonetic candidates are marked for human review.
     if include_hitl:
         corrected_indices = {a.get("index") for a in applied}
