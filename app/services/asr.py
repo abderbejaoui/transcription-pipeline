@@ -48,6 +48,15 @@ def _load_model():
     if not adapter_dir.is_absolute():
         adapter_dir = (PROJECT_ROOT / adapter_dir).resolve()
 
+    # The Gulf LoRA adapter is REQUIRED. Never silently fall back to the base model.
+    if not adapter_dir.exists():
+        raise RuntimeError(
+            f"[asr] Gulf LoRA adapter NOT FOUND at {adapter_dir}. "
+            f"Refusing to run on the un-fine-tuned base model. "
+            f"Set QWEN3_GULF_ADAPTER to the correct adapter directory "
+            f"(must contain adapter_config.json + adapter_model.safetensors)."
+        )
+
     if torch.cuda.is_available():
         _DEVICE, _DTYPE = "cuda:0", torch.bfloat16
     elif torch.backends.mps.is_available():
@@ -77,22 +86,17 @@ def _load_model():
             base_repo, dtype=_DTYPE, device_map=_DEVICE, max_new_tokens=1024,
         )
         _PROCESSOR = None  # wrapper handles its own processor
-        if adapter_dir.exists():
-            print(f"[asr] attaching LoRA adapter: {adapter_dir}")
-            inner = getattr(_MODEL, "model", None) or _MODEL
-            peft_model = PeftModel.from_pretrained(inner, str(adapter_dir)).to(_DEVICE).eval()
-            if hasattr(_MODEL, "model"):
-                _MODEL.model = peft_model
-            else:
-                _MODEL = peft_model
+        print(f"[asr] attaching LoRA adapter: {adapter_dir}")
+        inner = getattr(_MODEL, "model", None) or _MODEL
+        peft_model = PeftModel.from_pretrained(inner, str(adapter_dir)).to(_DEVICE).eval()
+        if hasattr(_MODEL, "model"):
+            _MODEL.model = peft_model
+        else:
+            _MODEL = peft_model
         return _MODEL, _PROCESSOR
 
-    if adapter_dir.exists():
-        print(f"[asr] attaching LoRA adapter: {adapter_dir}")
-        _MODEL = PeftModel.from_pretrained(base, str(adapter_dir)).to(_DEVICE).eval()
-    else:
-        print(f"[asr] WARNING: adapter not found at {adapter_dir}, using base model")
-        _MODEL = base
+    print(f"[asr] attaching LoRA adapter: {adapter_dir}")
+    _MODEL = PeftModel.from_pretrained(base, str(adapter_dir)).to(_DEVICE).eval()
 
     return _MODEL, _PROCESSOR
 
