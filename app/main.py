@@ -1184,6 +1184,39 @@ async def transcribe_stream(
     )
 
 
+@app.post("/api/asr")
+async def asr_only(
+    audio: UploadFile = File(...),
+    language: Optional[str] = Form(None),
+    model_size: str = Form(DEFAULT_WHISPER_SIZE),
+) -> Dict[str, Any]:
+    """ASR-only: transcribe audio to text using the same model as /api/transcribe
+    (Qwen3-ASR-1.7B Gulf LoRA from app/services/asr.py). No correction pipeline.
+    Used by the /pipeline page to feed audio into the text correction pipeline."""
+    session_id, session_path, size = _save_upload(audio)
+    effective_lang = language or DEFAULT_LANGUAGE
+    print(
+        f"[asr] session={session_id} type={audio.content_type!r} "
+        f"size={size}B model={model_size} lang={effective_lang}"
+    )
+    if size < 200:
+        return JSONResponse(
+            status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
+        )
+    try:
+        result = asr.transcribe(session_path, model_size=model_size, language=effective_lang)
+        return {
+            "text": result.get("text", ""),
+            "raw_text": result.get("raw_text", result.get("text", "")),
+            "language": result.get("language", effective_lang),
+            "duration": result.get("duration", 0.0),
+            "session_id": session_id,
+        }
+    except Exception as exc:
+        print(f"[asr] error: {exc!r}")
+        return JSONResponse(status_code=500, content={"error": str(exc)})
+
+
 # ---------------------------------------------------------------------------
 # /api/transcribe_debug — transcript + flags + per-flag audio slice info
 # ---------------------------------------------------------------------------

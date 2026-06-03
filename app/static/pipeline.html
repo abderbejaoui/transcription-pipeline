@@ -39,9 +39,26 @@
 </head>
 <body>
   <div class="wrap">
-    <h1>Correction Pipeline — Standalone</h1>
-    <div class="sub">Test the lexical/semantic correction pipeline directly on text, with no ASR.
-      Posts to <code>/api/correct</code>. &nbsp;·&nbsp; <a href="/">← full app (with ASR)</a></div>
+    <h1>Correction Pipeline</h1>
+    <div class="sub">Transcribe audio with the Qwen3-ASR Gulf LoRA model, then run the
+      lexical/semantic correction pipeline. ASR posts to <code>/api/asr</code>,
+      correction posts to <code>/api/correct</code>. &nbsp;·&nbsp; <a href="/">← full app</a></div>
+
+    <div class="panel">
+      <h2>Audio → transcript</h2>
+      <div class="row">
+        <input type="file" id="audioFile" accept="audio/*" />
+        <button id="recordBtn" type="button">● Record</button>
+        <select id="lang">
+          <option value="">Auto-detect</option>
+          <option value="ar">Arabic</option>
+          <option value="en">English</option>
+        </select>
+        <button id="transcribeBtn" type="button">Transcribe</button>
+        <span class="chip" id="asrStatus"></span>
+      </div>
+      <audio id="player" controls style="width:100%;margin-top:8px;display:none"></audio>
+    </div>
 
     <textarea id="input" dir="auto" spellcheck="false"></textarea>
     <div class="row">
@@ -130,6 +147,71 @@
         : '<tr><td colspan="3" class="empty">No flags.</td></tr>';
     }
 
+    // ---- ASR: transcribe audio using the same model as the main app ----
+    let selectedBlob = null;
+
+    async function transcribe() {
+      const blob = selectedBlob || ($("audioFile").files[0] || null);
+      if (!blob) { $("asrStatus").textContent = "pick or record audio first"; return; }
+      $("transcribeBtn").disabled = true;
+      $("asrStatus").textContent = "transcribing…";
+      try {
+        const t0 = performance.now();
+        const fd = new FormData();
+        fd.append("audio", blob, blob.name || "audio.webm");
+        const lang = $("lang").value;
+        if (lang) fd.append("language", lang);
+        const res = await fetch("/api/asr", { method: "POST", body: fd });
+        if (!res.ok) throw new Error("HTTP " + res.status + " — " + (await res.text()).slice(0, 200));
+        const data = await res.json();
+        if (data.error) throw new Error(data.error);
+        $("input").value = data.text || "";
+        $("asrStatus").textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s · transcribed";
+        if ($("input").value.trim()) run();  // auto-run the correction pipeline
+      } catch (e) {
+        $("asrStatus").textContent = "error";
+        $("corrected").innerHTML = '<span class="err">' + esc(e.message) + "</span>";
+      } finally {
+        $("transcribeBtn").disabled = false;
+      }
+    }
+
+    $("audioFile").addEventListener("change", () => {
+      selectedBlob = null;
+      const f = $("audioFile").files[0];
+      if (f) { $("player").src = URL.createObjectURL(f); $("player").style.display = "block"; }
+    });
+
+    // ---- Microphone recording ----
+    let mediaRecorder = null, chunks = [];
+    $("recordBtn").addEventListener("click", async () => {
+      if (mediaRecorder && mediaRecorder.state === "recording") {
+        mediaRecorder.stop();
+        return;
+      }
+      try {
+        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        mediaRecorder = new MediaRecorder(stream);
+        chunks = [];
+        mediaRecorder.ondataavailable = (e) => { if (e.data.size) chunks.push(e.data); };
+        mediaRecorder.onstop = () => {
+          stream.getTracks().forEach(t => t.stop());
+          selectedBlob = new Blob(chunks, { type: "audio/webm" });
+          selectedBlob.name = "recording.webm";
+          $("player").src = URL.createObjectURL(selectedBlob);
+          $("player").style.display = "block";
+          $("recordBtn").textContent = "● Record";
+          $("recordBtn").style.background = "var(--accent)";
+        };
+        mediaRecorder.start();
+        $("recordBtn").textContent = "■ Stop";
+        $("recordBtn").style.background = "var(--red)";
+      } catch (e) {
+        $("asrStatus").textContent = "mic error: " + e.message;
+      }
+    });
+
+    $("transcribeBtn").addEventListener("click", transcribe);
     $("run").addEventListener("click", run);
     $("input").addEventListener("keydown", (e) => { if (e.ctrlKey && e.key === "Enter") run(); });
   </script>
