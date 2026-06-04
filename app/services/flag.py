@@ -760,7 +760,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
             # joins across the conjunction and matches 'saline'.
             if n >= 2 and "و" in window[1:-1] if n >= 3 else False:
                 pass  # placeholder
-            if n >= 2 and any(w == "و" for w in window):
+            if n >= 2 and any(w in _ARABIC_SHORT_PARTICLES for w in window):
                 continue
             # Reject if any word in the window is a known correct Arabic
             # medical term (e.g. الأنسولين, للكوليسترول) — combining a
@@ -919,10 +919,16 @@ _ARABIC_SHORT_PARTICLES = {
     "ملغ", "مجم",
     # pure conjunction/preposition single chars
     "ف", "ب", "ل", "ك",
-    # 3-char Arabic function words (V2.1 short-word rule would miss these
-    # since len=3 returns False from is_arabic_filler, but they're genuine
-    # structural words — not drug fragments — and must be excluded)
-    "بدل",  # "instead of" — 3 Arabic chars, escapes the ≤3 filler gate
+    # 3-char Arabic words the V2.1 short-word rule would otherwise
+    # treat as potential drug fragments (len ≤ 3 → not filler).
+    # These are all structural / verbal words that can never be drug names.
+    "بدل",  # "instead of"
+    "اخذ",  # "take / took" — verb that frequently precedes drug names
+    "خذ",   # "take!" (imperative)
+    "هل",   # question particle (do / is / did?)
+    "بس",   # Gulf Arabic "just / only"
+    "كم",   # "how much / how many"
+    "عم",   # Gulf Arabic continuous marker ("doing")
 }
 
 # Fallback for when morphology DBs are unavailable: a compact set covering

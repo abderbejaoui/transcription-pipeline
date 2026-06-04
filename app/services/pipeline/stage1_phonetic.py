@@ -51,6 +51,23 @@ _PHONETIC_ALIAS: Dict[str, str] = {
     "fyjmwmytr": "sphygmomanometer",
 }
 
+_STRUCTURAL_PARTICLES: frozenset = frozenset({
+    # Prepositions, conjunctions, and pronouns that are never drug fragments.
+    "و", "أو", "او", "في", "من", "إلى", "الى", "على", "عن", "مع",
+    "له", "لها", "لهم", "لنا", "به", "بها", "بهم",
+    "هو", "هي", "لا", "ما", "قد", "ثم", "لو", "إذ",
+    "ف", "ب", "ل", "ك",
+    # Short verbs / discourse markers that can never be drug name prefixes
+    "اخذ", "خذ",   # take / take! (imperative)
+    "هل",           # question particle (do/is/did?)
+    "بس",           # Gulf "just/only"
+    "كم",           # "how much/many"
+    "عم",           # Gulf continuous marker
+    "بدل",          # "instead of"
+    # NOTE: "ام"/"أم" ("or") intentionally NOT here — it can be the 'am'
+    # prefix of amlodipine split by ASR, so "ام لوديبين" must form a bigram.
+})
+
 _KNOWN_ARABIC_MEDICAL_FORMS: set = {
     "كوليسترول", "الكوليسترول", "للكوليسترول", "وكوليسترول", "بالكوليسترول",
     "أنسولين", "الأنسولين", "للأنسولين", "وأنسولين", "بالأنسولين",
@@ -223,7 +240,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
             window = words[i:i + n]
             if any(is_pure_latin_or_digit(w) for w in window):
                 continue
-            if n >= 2 and any(w == "و" for w in window):
+            if n >= 2 and any(w in _STRUCTURAL_PARTICLES for w in window):
                 continue
             if any(_is_known_medical(w, lexicon) for w in window):
                 continue

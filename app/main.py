@@ -43,6 +43,19 @@ import uuid
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Tuple
 
+# Load .env from project root so env vars like REMOTE_ASR_URL are available
+# even when the server is started without them pre-set in the shell.
+_ENV_FILE = Path(__file__).resolve().parents[1] / ".env"
+if _ENV_FILE.exists():
+    for _line in _ENV_FILE.read_text(encoding="utf-8").splitlines():
+        _line = _line.strip()
+        if _line and not _line.startswith("#") and "=" in _line:
+            _k, _, _v = _line.partition("=")
+            _k = _k.strip()
+            _v = _v.strip().strip('"').strip("'")
+            if _k and _k not in os.environ:
+                os.environ[_k] = _v
+
 from fastapi import FastAPI, File, Form, HTTPException, UploadFile
 from fastapi.responses import FileResponse, JSONResponse
 from fastapi.staticfiles import StaticFiles
@@ -100,6 +113,8 @@ SESSIONS_DIR.mkdir(parents=True, exist_ok=True)
 
 DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "")  # "" = auto-detect (Arabic+English)
+def _get_remote_asr_url() -> str:
+    return os.environ.get("REMOTE_ASR_URL", "").rstrip("/")
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 # When 1, skip word-level forced alignment in /api/transcribe_debug. Alignment
 # only produces per-word TIMESTAMPS (it does not change the transcript text),
@@ -797,26 +812,62 @@ async def asr_only(
     audio: UploadFile = File(...),
     language: Optional[str] = Form(None),
     model_size: str = Form(DEFAULT_WHISPER_SIZE),
-) -> Dict[str, Any]:
-    """ASR-only: transcribe audio without the correction pipeline."""
-    session_id, session_path, size = _save_upload(audio)
-    effective_lang = language or DEFAULT_LANGUAGE
+) -> Any:
+    """ASR-only: transcribe audio without the correction pipeline.
+
+    Routes to the remote ASR service when REMOTE_ASR_URL is configured;
+    falls back to the local Whisper model otherwise.
+    """
+    import requests as _requests
+
+    audio_bytes = await audio.read()
+    size = len(audio_bytes)
     if size < 200:
         return JSONResponse(
             status_code=400, content={"error": f"audio file is too small ({size} bytes)"}
         )
+
+    effective_lang = language or DEFAULT_LANGUAGE or "ar"
+    remote_url = _get_remote_asr_url()
+
+    if remote_url:
+        try:
+            resp = _requests.post(
+                f"{remote_url}/asr",
+                files={"audio": (audio.filename or "audio.wav", audio_bytes, audio.content_type or "audio/wav")},
+                data={"language": effective_lang},
+                timeout=90,
+            )
+            resp.raise_for_status()
+            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
+            text = data.get("text") or data.get("transcript") or resp.text.strip()
+            return {"text": text, "raw_text": text, "language": effective_lang, "source": "remote"}
+        except Exception as exc:
+            print(f"[asr/remote] error: {exc!r} — falling back to local")
+
+    # Local Whisper fallback
+    session_id = str(uuid.uuid4())
+    session_path = SESSIONS_DIR / session_id
+    session_path.mkdir(parents=True, exist_ok=True)
+    audio_path = session_path / (audio.filename or "audio.wav")
+    audio_path.write_bytes(audio_bytes)
     try:
-        result = asr.transcribe(session_path, model_size=model_size, language=effective_lang)
+        result = asr.transcribe(audio_path, model_size=model_size, language=effective_lang)
         return {
             "text": result["text"],
             "raw_text": result["text"],
             "language": result["language"],
             "duration": result["duration"],
             "session_id": session_id,
+            "source": "local",
         }
     except Exception as exc:
-        print(f"[asr] error: {exc!r}")
-        return JSONResponse(status_code=500, content={"error": str(exc)})
+        print(f"[asr/local] error: {exc!r}")
+        hint = (
+            "Set REMOTE_ASR_URL in your .env file to use the remote ASR, "
+            "or configure the local Whisper model."
+        )
+        return JSONResponse(status_code=500, content={"error": str(exc), "hint": hint})
 
 
 # ---------------------------------------------------------------------------

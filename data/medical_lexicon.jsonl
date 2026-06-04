@@ -285,3 +285,4 @@
 {"term": "physical", "type": "descriptor", "aliases": ["phys", "physical exam", "physical examination"], "priority": 0.5}
 {"term": "chest", "type": "anatomy", "aliases": ["thorax"], "priority": 0.6}
 {"term": "Gastritis", "type": "term", "aliases": ["gastreitis"], "priority": 1.0}
+{"term": "amlodipine", "type": "drug", "aliases": ["أملوديبين"], "priority": 1.0}

@@ -1,0 +1,1845 @@
+{
+  "meta": {
+    "remote_asr": "http://flavia-overmellow-uncially.ngrok-free.dev",
+    "endpoint": "http://localhost:8000",
+    "manifest": "D:\\younes\\transcription-pipeline\\eval\\gulf_medical_v1\\manifest.jsonl",
+    "clips": 90,
+    "errors": 0,
+    "timestamp": "2026-06-04T04:04:02.200217",
+    "elapsed_s": 408.84
+  },
+  "results": [
+    {
+      "clip_id": "english_medical_001",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "I have a dull pain behind my left collarbone when coughing. I have asthma and have had a virus for a couple of weeks. I have been coughing quite a bit, and it seems to be not very productive. The pain usually comes after a breathing treatment. Is it a pulled muscle or something worse?",
+      "asr_transcript": "I have a dull pain behind my left collar bone when coughing I have asthma and I've had a virus for a couple of weeks I have been coughing quite a bit and it seems to be not very productive the pain usually comes after a breathing treatment is it a pulled muscle or something worse",
+      "asr_wer": 0.0727,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_002",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "Excessive use of accessory muscles of respiration during coughing leads to pain in the collarbones, as a few accessory muscles are inserted in the clavicle bone.",
+      "asr_transcript": "excessive use of accessory muscles of respiration during coughing leads to pain in the collar bones as a few accessory muscles are inserted in the clavicle bone",
+      "asr_wer": 0.0769,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_003",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "I am having asthma attacks and experiencing pins and needle sensations in my chest, arms, and hands. My family has also been ill with chest congestion, and we have all been coughing a lot. I have had two heart stents placed in the last eleven months. Should I just try to stay comfortable and endure the horrible sensations when coughing, or should I be seen? I haven’t had asthma attacks in a few years either. Never mind, I was hoping you could help; I didn’t realize there was a fee.",
+      "asr_transcript": "i am having asthma attacks and experiencing pins and needle sensations in my chest arms and hands my family has also been ill with chest congestion and we have all been coughing a lot i have had two heart stents placed in the last eleven months should i just try to stay comfortable and endure the horrible sensations when coughing or should i be seen i haven t had asthma attacks in a few years either never mind i was hoping you could help i didn t realize there was a fee",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_004",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "Not a concern. Some nerves might get disturbed during the insertion of stents, which can cause such sensations. There is no need to panic.",
+      "asr_transcript": "not a concern some nerves might get disturbed during the insertion of stents which can cause such sensations there is no need to panic",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_005",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "My husband is having pain in his lower back. If he lies on the floor with no pillows, he cannot lift his legs up. In the mornings, he cannot put his pants or socks on. He has problems transitioning from sitting to standing, but if he waits a few seconds, he is fine. Tonight, as always, he went to the gym and jumped rope, ran, and lifted weights with minimal pain. He has no problem twisting or lifting. Mostly when his back is straight up and down or lying straight, he feels the pain. This pain is not constant, but when it hurts, it hurts. What can we do for help?",
+      "asr_transcript": "my husband is having pain in his lower back if he lies on the floor with no pillows he cannot lift his legs up in the mornings he cannot put his pants or socks on he has problems transitioning from sitting to standing but if he waits a few seconds he is fine tonight as always he went to the gym and jumped rope ran and lifted weights with minimal pain he has no problem twisting or lifting most when his back is straight up and down or lying straight he feels the pain this pain is not constant but when it hurts it hurts what can we do for help",
+      "asr_wer": 0.009,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_006",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "Possibly, it is some muscular or myofascial pain arising in some particular area. He should do warm-up exercises for his back before getting up in the morning and before going to the gym. Some massage and hot fomentation should precede that. However, he should avoid lifting weights and lifting anything in a bent position. He should squat and then lift objects from the ground.",
+      "asr_transcript": "possibly it is some muscular or myofascial pain arising in some particular area he should do warm up exercises for his back before getting up in the morning and before going to the gym some massage in hot foam should precede that however he should avoid lifting weights in lifting anything in a bent position he should squat and then lift objects from the ground",
+      "asr_wer": 0.0462,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_007",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "My daughter just called me. She lives in another state and is waiting for medical papers for coverage from her father to be able to see a doctor. In the meantime, she called and mentioned that the skin over her spinal column is bruised, and she hasn't hurt herself or bumped into anything. She does, on occasion, have back pain, and there are no bruises anywhere else on her body. She is extremely upset and concerned about what could cause it.",
+      "asr_transcript": "my daughter just called me she lives in another state and is waiting for medevs for coverage from her father to be able to see a doctor in the meantime she called and mentioned that the skin over her spinal column is bruised and she hasn't hurt herself or bumped into anything she does on occasion have back pain and there are no bruises anywhere else on her body she is extremely upset and concerned about what could cause it",
+      "asr_wer": 0.0244,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_008",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "Hi, I did review your concern. Your daughter needs medical attention and she needs to be completely evaluated. A complete blood count, platelet count, and a coagulation profile are necessary. Also, a doctor needs to examine her back for any other abnormalities and also how the bruise looks. Some skin lesions can resemble bruises but are not formed as a result of blood extravasation in tissues. Therefore, a complete skin lesion analysis by a dermatologist will also be beneficial. I hope this helps. I wish you and your daughter a healthy life ahead.",
+      "asr_transcript": "Hi I did review your concern your daughter needs medical attention and she needs to be completely evaluated a complete blood count platelet count and a coagulation profile are necessary also a doctor needs to examine her back for any other abnormalities and also how the bruise looks some skin lesions can resemble bruises but are not formed as a result of blood extravasation in tissues therefore a complete skin lesion analysis by a dermatologist will also be beneficial I hope this helps I wish you and your daughter a healthy life ahead",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_009",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "Hello Doctor, I am a male, twenty-seven years old, weighing ninety-eight kilograms, and my height is five feet ten inches. I have been training in the gym for the past three months, but my weight loss has been barely three kilograms. Should I go for any thyroid tests? Also, I feel like I sweat very little compared to some earlier years of my life. My mother was a patient of hyperthyroidism, so what are the chances of me suffering from hypothyroidism? I also suffer from kidney stones.",
+      "asr_transcript": "hello doctor i am a male twenty seven years old weighing ninety eight kilograms and my height is five feet ten inches i have been training in the gym for the past three months but my weight loss has been barely three kilograms should i go for any thyroid tests also i feel like i sweat very little compared to some earlier years of my life my mother was a patient of hyperthyroidism so what are the chances of me suffering from hypothyroidism i also suffer from kidney stones",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "english_medical_010",
+      "category": "english_medical",
+      "language": "en",
+      "ground_truth": "If you have symptoms like constipation, cold intolerance, weight gain even with poor intake of food, and loss of appetite, you may be suffering from hypothyroidism. A thyroid function test should confirm the presence or absence of the problem. Kidney stones are mostly not related to hypothyroidism.",
+      "asr_transcript": "if you have symptoms like constipation cold intolerance weight gain even with poor intake of food and loss of appetite you may be suffering from hypothyroidism a thyroid function test should confirm the presence or absence of the problem kidney stones are mostly not related to hypothyroidism",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_001",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "المريض يأخذ دوليبران كل ثمان ساعات.",
+      "asr_transcript": "المريض ياخذ دوا الليبراني كل ثمانية ساعات",
+      "asr_wer": 0.6667,
+      "expected_terms": [
+        "doliprane"
+      ],
+      "pipeline_flagged": [
+        "دوا الليبراني",
+        "كل ثمانية"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "دوا الليبراني",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "كل ثمانية",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_002",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أعطني علبة دوليبران للحرارة.",
+      "asr_transcript": "اعطني علبة تادو ليبرانا للحرارة",
+      "asr_wer": 0.75,
+      "expected_terms": [
+        "doliprane"
+      ],
+      "pipeline_flagged": [
+        "تادو ليبرانا"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "تادو ليبرانا",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_003",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "هل تأخذ بانادول قبل النوم؟",
+      "asr_transcript": "هل تاخذ panadol قبل النوم",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "panadol"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_004",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "وصف لي الطبيب أوغمنتين بسبب التهاب الحلق.",
+      "asr_transcript": "وصف لي الطبيب او غيمونتين بسبب التهاب الحلق",
+      "asr_wer": 0.2857,
+      "expected_terms": [
+        "augmentin"
+      ],
+      "pipeline_flagged": [
+        "غيمونتين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "غيمونتين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_005",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أحتاج وصفة طبية لأموكسيسيلين.",
+      "asr_transcript": "احتاجة وصفه طبيه amoxicillin",
+      "asr_wer": 1.0,
+      "expected_terms": [
+        "amoxicillin"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_006",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "هل أستخدم سيفترياكسون عن طريق الوريد؟",
+      "asr_transcript": "هل استخدم سيف تريكسونا عن طريق الوريد",
+      "asr_wer": 0.5,
+      "expected_terms": [
+        "ceftriaxone"
+      ],
+      "pipeline_flagged": [
+        "سيف تريكسونا"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "سيف تريكسونا",
+          "chosen": "ceftriaxone",
+          "path": "auto_fix",
+          "confidence": 0.857
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_007",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "تناول حبة ميتفورمين مع وجبة الإفطار.",
+      "asr_transcript": "التناول لحبة metformin مع وجبة الافطار",
+      "asr_wer": 0.6667,
+      "expected_terms": [
+        "metformin"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_008",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "ضغط الدم مرتفع، هل يمكنني أخذ أملوديبين؟",
+      "asr_transcript": "ضغط الدم مرتفع هل يمكنني اخذ امل وديبين",
+      "asr_wer": 0.4286,
+      "expected_terms": [
+        "amlodipine"
+      ],
+      "pipeline_flagged": [
+        "اخذ امل وديبين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "اخذ امل وديبين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_009",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "وصف الطبيب أتورفاستاتين لخفض الكوليسترول.",
+      "asr_transcript": "وصف الطبيب اتي ورفز تاتين لخفض الكوليسترول",
+      "asr_wer": 0.6,
+      "expected_terms": [
+        "atorvastatin"
+      ],
+      "pipeline_flagged": [
+        "اتي ورفز تاتين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "اتي ورفز تاتين",
+          "chosen": "atorvastatin",
+          "path": "auto_fix",
+          "confidence": 0.857
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_010",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أعاني من ارتجاع المعدة، هل آخذ أوميبرازول؟",
+      "asr_transcript": "وعاني من ارتجاع المعده هل اخذ omeprazole",
+      "asr_wer": 0.5714,
+      "expected_terms": [
+        "omeprazole"
+      ],
+      "pipeline_flagged": [
+        "هل اخذ"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "هل اخذ",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_011",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أحتاج بخاخ فينتولين لنوبة الربو.",
+      "asr_transcript": "احتاج بخاخ ventolin لنوبة الربو",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "ventolin"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_012",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "هل دواء سيمبيكورت آمن أثناء الحمل؟",
+      "asr_transcript": "هل دوا سيمبيكورت امن اثنا الحمل",
+      "asr_wer": 0.5,
+      "expected_terms": [
+        "symbicort"
+      ],
+      "pipeline_flagged": [
+        "امن اثنا"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "امن اثنا",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_013",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أتناول الأنسولين قبل كل وجبة.",
+      "asr_transcript": "اتناول الانسولين قبل كل وجبة",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "insulin"
+      ],
+      "pipeline_flagged": [
+        "الانسولين",
+        "قبل كل"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "الانسولين",
+          "chosen": "insulin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "قبل كل",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_014",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أعطاني الطبيب حقنة ديكلوفيناك للألم.",
+      "asr_transcript": "اعطاني الطبيب حقن اديكلوفيناك لولم",
+      "asr_wer": 0.8,
+      "expected_terms": [
+        "diclofenac"
+      ],
+      "pipeline_flagged": [
+        "لولم"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "لولم",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_015",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "خذ بروفين كل ست ساعات بعد الأكل.",
+      "asr_transcript": "خذ بروفيين كل ست ساعات بعد الاكل",
+      "asr_wer": 0.2857,
+      "expected_terms": [
+        "brufen"
+      ],
+      "pipeline_flagged": [
+        "خذ بروفيين",
+        "كل ست"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "خذ بروفيين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "كل ست",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_016",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "وصف لي كلاريتين لحساسية الربيع.",
+      "asr_transcript": "وصف لي كلا رياتين الاحساسية الربية",
+      "asr_wer": 0.8,
+      "expected_terms": [
+        "claritine"
+      ],
+      "pipeline_flagged": [
+        "وصف لي كلا",
+        "رياتين الاحساسية",
+        "الربية"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "وصف لي كلا",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "رياتين الاحساسية",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "الربية",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_017",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أحتاج زيرتك بسبب حساسية الجلد.",
+      "asr_transcript": "احتاج اذيرتك بسبب حساسية الجلد",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "zyrtec"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_018",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أعطني نيكسيوم لمشكلة الحموضة.",
+      "asr_transcript": "اعطني نيكس يوم لمشكلة الحموضة",
+      "asr_wer": 0.75,
+      "expected_terms": [
+        "nexium"
+      ],
+      "pipeline_flagged": [
+        "نيكس يوم"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "نيكس يوم",
+          "chosen": "nexium",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_019",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "تناولي ميكروليت لتعويض السوائل.",
+      "asr_transcript": "التناول يميكرووليده لتعويض السوايل",
+      "asr_wer": 0.75,
+      "expected_terms": [
+        "microlite"
+      ],
+      "pipeline_flagged": [
+        "يميكرووليده"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "يميكرووليده",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_020",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أرجو وصف ليفوفلوكساسين لالتهاب البول.",
+      "asr_transcript": "ارجو وصف الليفووفيلووكساسين لالتهاب البول",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "levofloxacin"
+      ],
+      "pipeline_flagged": [
+        "الليفووفيلووكساسين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "الليفووفيلووكساسين",
+          "chosen": "levofloxacin",
+          "path": "auto_fix",
+          "confidence": 0.875
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_021",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "هل أحتاج ميكوستات بسبب البلغم؟",
+      "asr_transcript": "هل يحتاج ميكوسات بسبب البلغم",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "mucostat"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_022",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أعطاني أوغمنتين شراب للأطفال.",
+      "asr_transcript": "اعطاني اول غيمونتينا شراب للاطفال",
+      "asr_wer": 1.0,
+      "expected_terms": [
+        "augmentin"
+      ],
+      "pipeline_flagged": [
+        "غيمونتينا"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "غيمونتينا",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_023",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "خذ سيتالوبرام في الصباح لمدة شهر.",
+      "asr_transcript": "خن سيتال وبرامي في اس في صباح لمدة شهر",
+      "asr_wer": 1.0,
+      "expected_terms": [
+        "citalopram"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_024",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "وصفة طبية تتضمن لوسارتان وأملوديبين.",
+      "asr_transcript": "وصفا طبية تتضمن لوسارتان وامل وديبين",
+      "asr_wer": 0.6,
+      "expected_terms": [
+        "losartan",
+        "amlodipine"
+      ],
+      "pipeline_flagged": [
+        "لوسارتان",
+        "وامل وديبين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "لوسارتان",
+          "chosen": "losartan",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "وامل وديبين",
+          "chosen": "وamlodipine",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_025",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "هل آخذ كونكور للقلب يوميا؟",
+      "asr_transcript": "هل اخذ كونكور لقلب يوميا",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "concor"
+      ],
+      "pipeline_flagged": [
+        "هل اخذ",
+        "كونكور"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "كونكور",
+          "chosen": "concor",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "هل اخذ",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_026",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "بحاجة إلى ميلوكسيكام لألم الركبة.",
+      "asr_transcript": "بحاجة الي ميلوكي كامل لام الركبة",
+      "asr_wer": 0.8,
+      "expected_terms": [
+        "meloxicam"
+      ],
+      "pipeline_flagged": [
+        "الي ميلوكي"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "الي ميلوكي",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_027",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أعطاني الطبيب حقن إنوكسابارين.",
+      "asr_transcript": "اعطاني الطبيب وحقني انا واقسة ابارين",
+      "asr_wer": 1.25,
+      "expected_terms": [
+        "enoxaparin"
+      ],
+      "pipeline_flagged": [
+        "واقسة ابارين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "واقسة ابارين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_028",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "أتناول وارفارين لمنع الجلطات.",
+      "asr_transcript": "اتناول وارفارين لمنع الجلطات",
+      "asr_wer": 0.25,
+      "expected_terms": [
+        "warfarin"
+      ],
+      "pipeline_flagged": [
+        "وارفارين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "وارفارين",
+          "chosen": "وwarfarin",
+          "path": "auto_fix",
+          "confidence": 0.875
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_029",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "هل تأخذ ميفلوكين قبل السفر؟",
+      "asr_transcript": "هل تاخذ ميفالوكين قبل السفر",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "mefloquine"
+      ],
+      "pipeline_flagged": [
+        "ميفالوكين قبل"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "ميفالوكين قبل",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "medical_vocab_ar_030",
+      "category": "medical_vocab_ar",
+      "language": "ar",
+      "ground_truth": "وصف الطبيب فلوكستين للاكتئاب.",
+      "asr_transcript": "وصف الطبيب في لوكيستين للاكتياب",
+      "asr_wer": 0.75,
+      "expected_terms": [
+        "fluoxetine"
+      ],
+      "pipeline_flagged": [
+        "لوكيستين",
+        "للاكتياب"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "لوكيستين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "للاكتياب",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_001",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "المريض عنده hypertension و نديله Amlodipine يوميا.",
+      "asr_transcript": "المريض عنده حابر تيمسن وناديله ام لودبين يوميا",
+      "asr_wer": 0.7143,
+      "expected_terms": [
+        "hypertension",
+        "amlodipine"
+      ],
+      "pipeline_flagged": [
+        "حابر تيمسن",
+        "وناديله",
+        "ام لودبين يوميا"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "حابر تيمسن",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "وناديله",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "ام لودبين يوميا",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_002",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "تم تشخيص الطفل ب asthma و نوصف له Ventolin.",
+      "asr_transcript": "تم تشخيص الطفل باسفل نوسف له ذنتلين",
+      "asr_wer": 0.5556,
+      "expected_terms": [
+        "asthma",
+        "ventolin"
+      ],
+      "pipeline_flagged": [
+        "ذنتلين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "ذنتلين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_003",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "يعاني المريض من diabetes mellitus type two.",
+      "asr_transcript": "يعاني المريض من ديبت سميلة اسدايتت",
+      "asr_wer": 0.5714,
+      "expected_terms": [
+        "diabetes mellitus type 2"
+      ],
+      "pipeline_flagged": [
+        "ديبت سميلة"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "ديبت سميلة",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_004",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نبدأ المريض ب Metformin خمسمائة ميليجرام مرتين باليوم.",
+      "asr_transcript": "نبدا المريض بمتفر من خمسماية موليدراهم مرتين باليوم",
+      "asr_wer": 0.625,
+      "expected_terms": [
+        "metformin"
+      ],
+      "pipeline_flagged": [
+        "بمتفر",
+        "موليدراهم"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "بمتفر",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "موليدراهم",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_005",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "عنده حساسية، هل عندك Cetirizine في الصيدلية؟",
+      "asr_transcript": "عنده حساسية هل عندك سكر رزين في الصيدلية",
+      "asr_wer": 0.2857,
+      "expected_terms": [
+        "cetirizine"
+      ],
+      "pipeline_flagged": [
+        "سكر رزين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "سكر رزين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_006",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نعطيه IV Ceftriaxone لمدة أسبوع.",
+      "asr_transcript": "نعطيه heif seraksone لمدة اسبوع",
+      "asr_wer": 0.6,
+      "expected_terms": [
+        "ceftriaxone"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_007",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "المريضة حامل، نتجنب Atorvastatin.",
+      "asr_transcript": "المريض التحامل نتجنب اطر غس لتين",
+      "asr_wer": 1.25,
+      "expected_terms": [
+        "atorvastatin"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_008",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نشتري Insulin pen للحقن المنزلي.",
+      "asr_transcript": "نشتري insulin للحقق المنزلي",
+      "asr_wer": 0.4,
+      "expected_terms": [
+        "insulin"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_009",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "عنده gastritis، نوصف Omeprazole قبل الفطور.",
+      "asr_transcript": "عنده دستور تس نوصي في ميزروه قبل الفطور",
+      "asr_wer": 0.8333,
+      "expected_terms": [
+        "gastritis",
+        "omeprazole"
+      ],
+      "pipeline_flagged": [
+        "دستور تس",
+        "ميزروه"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "دستور تس",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "ميزروه",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_010",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نبدأ Warfarin مع متابعة INR كل أسبوع.",
+      "asr_transcript": "نبدا ورفرلا مع متابعة ال inr كل اسبوع",
+      "asr_wer": 0.5714,
+      "expected_terms": [
+        "warfarin",
+        "inr"
+      ],
+      "pipeline_flagged": [
+        "ورفرلا"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "ورفرلا",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_011",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "المريض عنده atrial fibrillation و ناخذ ECG.",
+      "asr_transcript": "المريض عنده اطر الفبر ليس وناخذ اي سي جي",
+      "asr_wer": 1.0,
+      "expected_terms": [
+        "atrial fibrillation",
+        "ecg"
+      ],
+      "pipeline_flagged": [
+        "الفبر ليس"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "الفبر ليس",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_012",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نعمل MRI للظهر بسبب lower back pain.",
+      "asr_transcript": "نعمل مار اي للظهر بسبب لو ورباتلين",
+      "asr_wer": 0.7143,
+      "expected_terms": [
+        "mri",
+        "lower back pain"
+      ],
+      "pipeline_flagged": [
+        "ورباتلين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "ورباتلين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_013",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نوصف Augmentin سبعة أيام للالتهاب.",
+      "asr_transcript": "نوصف اضمن سبعة ايام لالتهاب",
+      "asr_wer": 0.6,
+      "expected_terms": [
+        "augmentin"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_014",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نعطي steroids للتخفيف من التهاب الرئة.",
+      "asr_transcript": "نعطي استرويبز لتخفيف من التهاب الرية",
+      "asr_wer": 0.5,
+      "expected_terms": [
+        "steroids"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_015",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نطلب CBC و urinalysis اليوم.",
+      "asr_transcript": "نطلب سي بي سي وير نلسس اليوم",
+      "asr_wer": 1.0,
+      "expected_terms": [
+        "cbc",
+        "urinalysis"
+      ],
+      "pipeline_flagged": [
+        "سي وير نلسس"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "سي وير نلسس",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_016",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نراقب blood sugar كل ست ساعات.",
+      "asr_transcript": "نراقب blood sugar كل ست ساعات",
+      "asr_wer": 0.0,
+      "expected_terms": [
+        "blood sugar"
+      ],
+      "pipeline_flagged": [
+        "كل ست"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "كل ست",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_017",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "هل تعطيه Doliprane أم Brufen للحرارة؟",
+      "asr_transcript": "هل تعطيه doliprane ambruffa للحرارة",
+      "asr_wer": 0.3333,
+      "expected_terms": [
+        "doliprane",
+        "brufen"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_018",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "المريض على Concor خمسة ميليجرام منذ شهرين.",
+      "asr_transcript": "المريض يعلي كونكر خمسة ميلي درام منذ شهرين",
+      "asr_wer": 0.5714,
+      "expected_terms": [
+        "concor"
+      ],
+      "pipeline_flagged": [
+        "يعلي كونكر"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "يعلي كونكر",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_019",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "عنده chest pain شديد، نطلب troponin.",
+      "asr_transcript": "وعند هو تضيستين شديدا نطلبت رطنا",
+      "asr_wer": 1.0,
+      "expected_terms": [
+        "chest pain",
+        "troponin"
+      ],
+      "pipeline_flagged": [
+        "تضيستين"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "تضيستين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "code_switching_020",
+      "category": "code_switching",
+      "language": "mixed",
+      "ground_truth": "نبدأ chemotherapy الأسبوع القادم.",
+      "asr_transcript": "نبدا تضموثر الاسبوع القادم",
+      "asr_wer": 0.75,
+      "expected_terms": [
+        "chemotherapy"
+      ],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 0.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_001",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "ما أطول عودك!",
+      "asr_transcript": "ما اطول عودك",
+      "asr_wer": 0.3333,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_002",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "ماتت عمتي منذ سنتين.",
+      "asr_transcript": "ما تتعمتي منذ سنتين",
+      "asr_wer": 0.5,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_003",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "الألمانية ليست لغة سهلة.",
+      "asr_transcript": "الالمانيه ليست لغه سهله",
+      "asr_wer": 0.75,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_004",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "طلبت منه أن يبعث الكتاب إلينا.",
+      "asr_transcript": "طلبت منه ان يبعث الكتاب الينا",
+      "asr_wer": 0.3333,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_005",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": ".السيد إيتو رجل متعلم",
+      "asr_transcript": "السيد ايتو رجل متعلم",
+      "asr_wer": 0.25,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_006",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "الحمد لله.",
+      "asr_transcript": "الحمد لله",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_007",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "في الوقت نفسه بدأت الرماح والسهام تقع بين الغزاة",
+      "asr_transcript": "في الوقت نفسه بدات الرماح والسهام تقع بين الغزا",
+      "asr_wer": 0.2222,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_008",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "لا أريد أن أكون ثقيلَ الظِّل ، أريد أن أكون رائعًا! !",
+      "asr_transcript": "لا اريد ان اكون ثقيل ظلي اريد ان اكون رايعة",
+      "asr_wer": 0.8,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_009",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "خذ مظلة معك في حال أمطرت.",
+      "asr_transcript": "خذ مظله معك في حال امطارت",
+      "asr_wer": 0.3333,
+      "expected_terms": [],
+      "pipeline_flagged": [
+        "حال امطارت"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "حال امطارت",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_010",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "وُلد الكلب منذ شهرين.",
+      "asr_transcript": "ولي ذا الكلب منذ شهرين",
+      "asr_wer": 0.5,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_011",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "لقد عاد كل العمال لمنازلهم عدا واحد",
+      "asr_transcript": "لقد عاد كل العمال لمنازلهم عدا واحد",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_012",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "المال لا يجلب السعادة لكن يسمح لنا ان نعيش تعاستنا برفاهية.",
+      "asr_transcript": "المال لا يجلو السعاده لكن يسمح لنا ان نعيش تعاستنا برفاهيه",
+      "asr_wer": 0.2727,
+      "expected_terms": [],
+      "pipeline_flagged": [
+        "لكن"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "لكن",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_013",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "لمن هذه الكتب ؟",
+      "asr_transcript": "لمن هذه الكتب",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_014",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": ".اندلع حريق قرب منزلي",
+      "asr_transcript": "ان دلع حريق قرب منزله",
+      "asr_wer": 0.75,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_015",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "ليس لدى آن أصدقاء لتلعب معهم.",
+      "asr_transcript": "ليس لدي اان اصدقا اني تلعب معهم",
+      "asr_wer": 0.8333,
+      "expected_terms": [],
+      "pipeline_flagged": [
+        "ليس لدي اان"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "ليس لدي اان",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_016",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "كان لديه شعر أشيب.",
+      "asr_transcript": "كان لدي شعر اشيب",
+      "asr_wer": 0.5,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_017",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "لقد اعارني كتابين ، لكنني لم اقرأ ايا منهما بعد.",
+      "asr_transcript": "لقد اعارني كتابين لكنني لم اقرا اي منهما بعد",
+      "asr_wer": 0.2222,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_018",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "كان من عادتها أنها كانت تزورني باستمرار.",
+      "asr_transcript": "كان من عادتها انها كانت تزورني باستمرار",
+      "asr_wer": 0.1429,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_019",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "انتهت المباراة بالتعادل.",
+      "asr_transcript": "انتهت المباراه بالتعادل",
+      "asr_wer": 0.3333,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_020",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "وكانت هذه محادثتهم الوحيدة طوال الوجبة",
+      "asr_transcript": "وكانت هذه محادثتهم الوحيده تطوال الوجبه",
+      "asr_wer": 0.5,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_021",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "كلمني!",
+      "asr_transcript": "كلمني",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_022",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": ".هذه نكتة",
+      "asr_transcript": "هذه النقطه",
+      "asr_wer": 0.5,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_023",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "هل معك ولاعة ؟",
+      "asr_transcript": "هل معك اولاعه",
+      "asr_wer": 0.3333,
+      "expected_terms": [],
+      "pipeline_flagged": [
+        "هل معك"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "هل معك",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_024",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "هل كتبت الواجب بنفسك ؟",
+      "asr_transcript": "هل كتبت الواجب بنفسك",
+      "asr_wer": 0.0,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_025",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": ".وجدنا الباب الرئيسي مقفل",
+      "asr_transcript": "وجدنا الباب الرييسي مقفل",
+      "asr_wer": 0.25,
+      "expected_terms": [],
+      "pipeline_flagged": [
+        "الباب الرييسي"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "الباب الرييسي",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_026",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "أتحس بوجع في بطنك ؟",
+      "asr_transcript": "اتحس بوجع في بطنك",
+      "asr_wer": 0.25,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_027",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "هل أنت سعيد ؟",
+      "asr_transcript": "هل انت سعيد",
+      "asr_wer": 0.3333,
+      "expected_terms": [],
+      "pipeline_flagged": [
+        "هل انت سعيد"
+      ],
+      "pipeline_corrections": [
+        {
+          "span_text": "هل انت سعيد",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_028",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": ".يتحدث بسرعة كبيرة",
+      "asr_transcript": "يتحدث بسرعه كبيره",
+      "asr_wer": 0.6667,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_029",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "كنت أحب السباحة.",
+      "asr_transcript": "كنت احب السباحه",
+      "asr_wer": 0.6667,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    },
+    {
+      "clip_id": "saudi_acoustic_030",
+      "category": "saudi_acoustic",
+      "language": "ar",
+      "ground_truth": "الأبطال دائماً يصلون متأخرين.",
+      "asr_transcript": "الابطال دايما يصلون متاخرين",
+      "asr_wer": 0.75,
+      "expected_terms": [],
+      "pipeline_flagged": [],
+      "pipeline_corrections": [],
+      "term_recall": 1.0,
+      "fp_corrections": 0,
+      "error": null
+    }
+  ]
+}
