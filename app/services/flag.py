@@ -495,6 +495,10 @@ _PHONETIC_ALIAS: Dict[str, str] = {
     "afywrqn": "efferalgan",
     # 'اوغ من تين' was already handled by n-grams but list it as a sanity
     "awqmntyn": "augmentin",
+    # سفيجموميتر / بالسفيجموميتر → sphygmomanometer
+    # Skeleton similarity is too low for normal matching; alias rescues it.
+    "sfyjmwmytr": "sphygmomanometer",
+    "fyjmwmytr": "sphygmomanometer",
 }
 
 
@@ -641,19 +645,50 @@ def _phonetic_candidates(
     return scored[:k]
 
 
+# Correctly-spelled Arabic medical vocabulary — not to be flagged as suspicious.
+# These are the stable, well-established Arabic forms for common clinical terms.
+# The skeleton approach can't distinguish a correct Arabic form from a misspelling
+# with the same consonants (e.g. نيكسيوم and a correct nexium spelling share the
+# same skeleton). This set grows at runtime via register_known_arabic_form().
+_KNOWN_ARABIC_MEDICAL_FORMS: set = {
+    # cholesterol (كوليسترول) — common clitic variants
+    "كوليسترول", "الكوليسترول", "للكوليسترول", "وكوليسترول", "بالكوليسترول",
+    # insulin (أنسولين)
+    "أنسولين", "الأنسولين", "للأنسولين", "وأنسولين", "بالأنسولين",
+    # creatinine (كرياتينين)
+    "كرياتينين", "الكرياتينين", "للكرياتينين", "وكرياتينين",
+    # ibuprofen (إيبوبروفين)
+    "إيبوبروفين", "الإيبوبروفين", "للإيبوبروفين", "بالإيبوبروفين",
+}
+
+
+def register_known_arabic_form(arabic_alias: str) -> None:
+    """Add an Arabic alias to the known-correct set at runtime.
+
+    Called by the HITL endpoint when a clinician registers a correctly-spelled
+    Arabic alias for a lexicon term. This way the set grows automatically as
+    the lexicon grows — no manual maintenance needed.
+    """
+    stripped = arabic_alias.strip()
+    if stripped and any("؀" <= c <= "ۿ" for c in stripped):
+        _KNOWN_ARABIC_MEDICAL_FORMS.add(stripped)
+
+
 def _is_known_medical(word: str, lexicon: List[str]) -> bool:
-    """Check if a word is already a known medical term (exact or near-exact
-    match). If so, it should NOT be flagged — it's already correct."""
-    # Direct match against lexicon (case-insensitive)
+    """Return True if `word` is already a correctly-spelled medical term.
+
+    Checks the explicit known-Arabic-forms set first, then falls back to
+    a direct lexicon match. The set grows at runtime via
+    register_known_arabic_form() when clinicians register Arabic aliases.
+    """
+    if word in _KNOWN_ARABIC_MEDICAL_FORMS:
+        return True
     w = word.lower()
     if w in {t.lower() for t in lexicon}:
         return True
-    # Check transliteration: if the transliterated form exactly matches a
-    # lexicon term, it's a known term written in Arabic script.
     tl = _translit(word)
     for t in lexicon:
-        tl_t = _translit(t)
-        if tl == tl_t:
+        if tl == _translit(t):
             return True
     return False
 
@@ -684,7 +719,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
         if _is_known_medical(word, lexicon):
             single_results.append(None)
             continue
-        single_results.append(_phonetic_candidates(word, lexicon, k=3))
+        single_results.append(_phonetic_candidates(word, lexicon, k=5))
 
     # --- Try n-grams first when there's a strong potential match. This
     # gives split drug names ('برسي تمر' -> paracetamol) priority over
@@ -727,6 +762,12 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 pass  # placeholder
             if n >= 2 and any(w == "و" for w in window):
                 continue
+            # Reject if any word in the window is a known correct Arabic
+            # medical term (e.g. الأنسولين, للكوليسترول) — combining a
+            # correctly-spelled Arabic drug word with its neighbours
+            # produces false-positive bigram flags like 'غيّر الأنسولين'.
+            if any(_is_known_medical(w, lexicon) for w in window):
+                continue
             filler_count = sum(1 for w in window if _is_arabic_filler(w))
             # Reject if more than half the window is filler (or for n=2,
             # if BOTH are filler — protects 'مع الاكل' false positive).
@@ -737,7 +778,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
             has_filler = filler_count > 0
             joined = "".join(window)
             candidates = _phonetic_candidates(
-                joined, lexicon, k=3, threshold=threshold,
+                joined, lexicon, k=5, threshold=threshold,
             )
             if not candidates:
                 continue
@@ -878,6 +919,10 @@ _ARABIC_SHORT_PARTICLES = {
     "ملغ", "مجم",
     # pure conjunction/preposition single chars
     "ف", "ب", "ل", "ك",
+    # 3-char Arabic function words (V2.1 short-word rule would miss these
+    # since len=3 returns False from is_arabic_filler, but they're genuine
+    # structural words — not drug fragments — and must be excluded)
+    "بدل",  # "instead of" — 3 Arabic chars, escapes the ≤3 filler gate
 }
 
 # Fallback for when morphology DBs are unavailable: a compact set covering

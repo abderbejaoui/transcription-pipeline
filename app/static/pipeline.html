@@ -3,7 +3,7 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Correction Pipeline — Full Stages View</title>
+  <title>Correction Pipeline</title>
   <style>
     :root {
       --bg: #0d1117;
@@ -15,569 +15,724 @@
       --text-muted: #8b949e;
       --text-dim: #484f58;
       --green: #3fb950;
-      --green-bg: rgba(63, 185, 80, 0.12);
+      --green-bg: rgba(63,185,80,0.12);
       --red: #f85149;
-      --red-bg: rgba(248, 81, 73, 0.12);
+      --red-bg: rgba(248,81,73,0.14);
       --amber: #d29922;
-      --amber-bg: rgba(210, 153, 34, 0.12);
+      --amber-bg: rgba(210,153,34,0.12);
       --blue: #58a6ff;
-      --blue-bg: rgba(88, 166, 255, 0.08);
+      --blue-bg: rgba(88,166,255,0.08);
       --purple: #bc8cff;
-      --purple-bg: rgba(188, 140, 255, 0.08);
+      --purple-bg: rgba(188,140,255,0.08);
       --accent: #2f81f7;
-      --shadow: 0 1px 3px rgba(0,0,0,0.3), 0 4px 12px rgba(0,0,0,0.2);
+      --shadow: 0 1px 3px rgba(0,0,0,.3),0 4px 12px rgba(0,0,0,.2);
       --radius: 8px;
       --radius-lg: 12px;
-      --font: -apple-system, "Segoe UI", "Noto Sans", Helvetica, Arial, sans-serif;
+      --font: -apple-system,"Segoe UI","Noto Sans",Helvetica,Arial,sans-serif;
     }
-    * { box-sizing: border-box; margin: 0; padding: 0; }
-    body {
-      font-family: var(--font);
-      background: var(--bg);
-      color: var(--text);
-      line-height: 1.6;
-      min-height: 100vh;
-    }
+    *{box-sizing:border-box;margin:0;padding:0;}
+    body{font-family:var(--font);background:var(--bg);color:var(--text);line-height:1.6;min-height:100vh;}
+    .app{max-width:980px;margin:0 auto;padding:24px 20px 80px;}
 
-    /* ---- Layout ---- */
-    .app { max-width: 960px; margin: 0 auto; padding: 24px 20px 80px; }
-    .app-header { margin-bottom: 28px; }
-    .app-header h1 { font-size: 1.5rem; font-weight: 700; letter-spacing: -0.02em; }
-    .app-header .sub {
-      color: var(--text-muted); font-size: 0.88rem; margin-top: 4px;
-      display: flex; align-items: center; gap: 10px; flex-wrap: wrap;
-    }
-    .app-header .sub a { color: var(--accent); text-decoration: none; }
-    .app-header .sub a:hover { text-decoration: underline; }
-    .badge {
-      display: inline-block; font-size: 0.7rem; padding: 2px 8px;
-      border-radius: 20px; font-weight: 600; text-transform: uppercase;
-      letter-spacing: 0.04em;
-    }
-    .badge-green { background: var(--green-bg); color: var(--green); }
-    .badge-amber { background: var(--amber-bg); color: var(--amber); }
-    .badge-blue { background: var(--blue-bg); color: var(--blue); }
-    .badge-purple { background: var(--purple-bg); color: var(--purple); }
+    /* Header */
+    .app-header{margin-bottom:28px;}
+    .app-header h1{font-size:1.45rem;font-weight:700;letter-spacing:-.02em;}
+    .app-header .sub{color:var(--text-muted);font-size:.85rem;margin-top:4px;display:flex;align-items:center;gap:10px;flex-wrap:wrap;}
+    .app-header .sub a{color:var(--accent);text-decoration:none;}
+    .app-header .sub a:hover{text-decoration:underline;}
 
-    /* ---- Cards ---- */
-    .card {
-      background: var(--surface);
-      border: 1px solid var(--border);
-      border-radius: var(--radius-lg);
-      padding: 20px 24px;
-      margin-bottom: 16px;
-      box-shadow: var(--shadow);
-      transition: border-color 0.2s;
-    }
-    .card:hover { border-color: #3d444d; }
-    .card-header {
-      display: flex; align-items: center; gap: 12px;
-      margin-bottom: 14px;
-    }
-    .card-header .step-num {
-      width: 28px; height: 28px; border-radius: 50%;
-      display: flex; align-items: center; justify-content: center;
-      font-size: 0.78rem; font-weight: 700;
-      background: var(--border-light); color: var(--text-muted);
-      flex-shrink: 0;
-    }
-    .card-header .step-num.active { background: var(--accent); color: #fff; }
-    .card-header .step-num.done { background: var(--green); color: #fff; }
-    .card-header h2 { font-size: 0.95rem; font-weight: 600; }
-    .card-header .step-status {
-      margin-left: auto; font-size: 0.78rem; color: var(--text-muted);
-    }
+    /* Cards */
+    .card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius-lg);padding:20px 24px;margin-bottom:16px;box-shadow:var(--shadow);transition:border-color .2s;}
+    .card:hover{border-color:#3d444d;}
+    .card-header{display:flex;align-items:center;gap:12px;margin-bottom:14px;}
+    .step-num{width:28px;height:28px;border-radius:50%;display:flex;align-items:center;justify-content:center;font-size:.75rem;font-weight:700;background:var(--border-light);color:var(--text-muted);flex-shrink:0;}
+    .step-num.active{background:var(--accent);color:#fff;}
+    .step-num.done{background:var(--green);color:#fff;}
+    .card-header h2{font-size:.95rem;font-weight:600;}
+    .card-header .step-status{margin-left:auto;font-size:.78rem;color:var(--text-muted);}
 
-    /* ---- Textarea ---- */
-    textarea {
-      width: 100%; min-height: 120px;
-      background: var(--surface-alt);
-      color: var(--text);
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      padding: 14px 16px;
-      font-size: 1rem;
-      font-family: var(--font);
-      resize: vertical;
-      outline: none;
-      transition: border-color 0.2s;
-    }
-    textarea:focus { border-color: var(--accent); }
+    /* Badges */
+    .badge{display:inline-block;font-size:.68rem;padding:2px 7px;border-radius:20px;font-weight:600;text-transform:uppercase;letter-spacing:.04em;}
+    .bg-green{background:var(--green-bg);color:var(--green);}
+    .bg-red{background:var(--red-bg);color:var(--red);}
+    .bg-amber{background:var(--amber-bg);color:var(--amber);}
+    .bg-blue{background:var(--blue-bg);color:var(--blue);}
+    .bg-purple{background:var(--purple-bg);color:var(--purple);}
 
-    .input-row {
-      display: flex; gap: 10px; align-items: center;
-      margin-top: 12px; flex-wrap: wrap;
-    }
-    .input-row button, .input-row select {
-      padding: 8px 16px;
-      border: 1px solid var(--border);
-      border-radius: var(--radius);
-      font-size: 0.88rem;
-      background: var(--surface-alt);
-      color: var(--text);
-      cursor: pointer;
-      transition: background 0.2s, border-color 0.2s;
-    }
-    .input-row button:hover { background: var(--border-light); }
-    .input-row button:disabled { opacity: 0.5; cursor: default; }
-    .input-row .btn-primary {
-      background: var(--accent); color: #fff; border-color: var(--accent);
-      font-weight: 600;
-    }
-    .input-row .btn-primary:hover { filter: brightness(1.15); }
-    .input-row .btn-record {
-      background: transparent; color: var(--red); border-color: var(--red);
-      font-weight: 600;
-    }
-    .input-row .btn-record.recording {
-      background: var(--red); color: #fff;
-    }
-    .input-row .chip { font-size: 0.8rem; color: var(--text-muted); }
+    /* Textarea / inputs */
+    textarea,input[type=text]{width:100%;background:var(--surface-alt);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:10px 14px;font-size:.95rem;font-family:var(--font);outline:none;transition:border-color .2s;}
+    textarea{min-height:110px;resize:vertical;}
+    textarea:focus,input[type=text]:focus{border-color:var(--accent);}
+    .input-row{display:flex;gap:10px;align-items:center;margin-top:12px;flex-wrap:wrap;}
+    button{padding:8px 16px;border:1px solid var(--border);border-radius:var(--radius);font-size:.87rem;background:var(--surface-alt);color:var(--text);cursor:pointer;font-family:var(--font);transition:background .2s,border-color .2s;}
+    button:hover{background:var(--border-light);}
+    button:disabled{opacity:.45;cursor:default;}
+    .btn-primary{background:var(--accent);color:#fff;border-color:var(--accent);font-weight:600;}
+    .btn-primary:hover{filter:brightness(1.12);}
+    .btn-record{background:transparent;color:var(--red);border-color:var(--red);font-weight:600;}
+    .btn-record.recording{background:var(--red);color:#fff;}
+    .chip{font-size:.8rem;color:var(--text-muted);}
 
-    /* ---- Stage content ---- */
-    .stage-content { display: none; }
-    .stage-content.visible { display: block; }
+    /* Flow arrow */
+    .flow-arrow{text-align:center;color:var(--text-dim);font-size:1.1rem;margin:-4px 0 4px;}
 
-    .inline-diff {
-      display: inline-flex; align-items: center; gap: 6px;
-      flex-wrap: wrap;
-    }
-    .diff-old {
-      color: var(--red); text-decoration: line-through;
-      background: var(--red-bg); padding: 1px 6px; border-radius: 4px;
-    }
-    .diff-arrow { color: var(--text-muted); font-size: 0.85rem; }
-    .diff-new {
-      color: var(--green); font-weight: 600;
-      background: var(--green-bg); padding: 1px 6px; border-radius: 4px;
-    }
+    /* Stage hidden by default */
+    .stage{display:none;}
+    .stage.visible{display:block;}
 
-    table {
-      width: 100%; border-collapse: collapse; font-size: 0.9rem;
-    }
-    th {
-      text-align: left; padding: 8px 10px;
-      color: var(--text-muted); font-weight: 600;
-      border-bottom: 1px solid var(--border);
-      font-size: 0.78rem; text-transform: uppercase; letter-spacing: 0.04em;
-    }
-    td {
-      padding: 8px 10px;
-      border-bottom: 1px solid var(--border-light);
-      vertical-align: top;
-    }
-    tr:last-child td { border-bottom: none; }
+    /* ───── Stage 1: Scoring view ───── */
+    .transcript-view{font-size:1.05rem;line-height:2.2;padding:14px 16px;background:var(--surface-alt);border:1px solid var(--border-light);border-radius:var(--radius);word-break:break-word;}
+    .token{display:inline-block;cursor:default;border-radius:4px;padding:1px 4px;position:relative;}
+    .token.flagged{background:var(--red-bg);color:var(--red);font-weight:600;cursor:pointer;}
+    .token.flagged:hover .tooltip{display:block;}
+    /* Tooltip */
+    .tooltip{display:none;position:absolute;bottom:calc(100% + 6px);left:50%;transform:translateX(-50%);background:#1e2730;border:1px solid var(--border);border-radius:6px;padding:8px 12px;min-width:200px;max-width:280px;font-size:.8rem;color:var(--text);z-index:10;white-space:normal;line-height:1.5;pointer-events:none;}
+    .tooltip::after{content:"";position:absolute;top:100%;left:50%;transform:translateX(-50%);border:5px solid transparent;border-top-color:#1e2730;}
+    .tooltip .t-score{color:var(--amber);font-weight:600;}
+    .tooltip .t-cands{margin-top:4px;color:var(--text-muted);}
+    .tooltip .t-cands span{display:inline-block;background:var(--surface);border:1px solid var(--border-light);border-radius:3px;padding:1px 5px;margin:2px 2px 0 0;font-size:.75rem;}
+    /* Score strip under transcript */
+    .score-strip{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px;}
+    .score-chip{font-size:.75rem;background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.25);border-radius:4px;padding:2px 8px;display:flex;align-items:center;gap:4px;}
+    .score-chip .sc-val{font-weight:700;}
 
-    .ar { direction: rtl; text-align: right; }
+    /* ───── Stage 2: Candidate grid ───── */
+    .cand-grid{display:flex;flex-direction:column;gap:10px;}
+    .cand-row{background:var(--surface-alt);border:1px solid var(--border-light);border-radius:var(--radius);padding:12px 14px;}
+    .cand-row .span-label{font-size:.82rem;color:var(--text-muted);margin-bottom:8px;}
+    .cand-row .span-text{color:var(--red);font-weight:600;}
+    .cand-pills{display:flex;flex-wrap:wrap;gap:6px;}
+    .cand-pill{display:flex;align-items:center;gap:5px;background:var(--surface);border:1px solid var(--border);border-radius:6px;padding:4px 10px;font-size:.83rem;}
+    .cand-pill .rank{color:var(--text-dim);font-size:.7rem;width:14px;text-align:right;}
+    .cand-pill .cterm{font-weight:500;}
+    .cand-pill .cscore{color:var(--text-muted);font-size:.75rem;}
+    .cand-pill.top-1{border-color:var(--green);color:var(--green);}
+    .cand-pill.top-1 .cscore{color:var(--green);}
 
-    .cand-list {
-      display: flex; flex-wrap: wrap; gap: 4px;
-    }
-    .cand-item {
-      background: var(--surface-alt); padding: 2px 8px;
-      border-radius: 4px; font-size: 0.82rem;
-      border: 1px solid var(--border-light);
-    }
-    .cand-item .score { color: var(--text-muted); font-size: 0.75rem; }
+    /* ───── Stage 3: Decision table ───── */
+    table{width:100%;border-collapse:collapse;font-size:.88rem;}
+    th{text-align:left;padding:8px 10px;color:var(--text-muted);font-weight:600;border-bottom:1px solid var(--border);font-size:.75rem;text-transform:uppercase;letter-spacing:.04em;}
+    td{padding:8px 10px;border-bottom:1px solid var(--border-light);vertical-align:middle;}
+    tr:last-child td{border-bottom:none;}
+    .conf-bar-wrap{display:flex;align-items:center;gap:8px;}
+    .conf-bar{height:6px;background:var(--border);border-radius:3px;flex:1;overflow:hidden;}
+    .conf-bar-fill{height:100%;border-radius:3px;background:var(--green);}
+    .conf-num{font-size:.78rem;color:var(--text-muted);width:34px;text-align:right;}
+    .diff-old{color:var(--red);text-decoration:line-through;background:var(--red-bg);padding:1px 5px;border-radius:3px;font-size:.85rem;}
+    .diff-arrow{color:var(--text-muted);font-size:.8rem;margin:0 4px;}
+    .diff-new{color:var(--green);font-weight:600;background:var(--green-bg);padding:1px 5px;border-radius:3px;font-size:.85rem;}
 
-    .empty-state { color: var(--text-dim); font-style: italic; padding: 8px 0; }
+    /* ───── Stage 4: HITL ───── */
+    .hitl-intro{font-size:.85rem;color:var(--text-muted);margin-bottom:14px;padding:10px 14px;background:var(--blue-bg);border:1px solid rgba(88,166,255,.2);border-radius:var(--radius);}
+    .hitl-spans{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
+    .hitl-span-card{background:var(--surface-alt);border:1px solid var(--border-light);border-radius:var(--radius);padding:14px;}
+    .hitl-span-card .hs-label{font-size:.78rem;color:var(--text-muted);margin-bottom:6px;}
+    .hitl-span-card .hs-word{color:var(--red);font-weight:600;font-size:1rem;margin-bottom:10px;}
+    .hitl-span-card .hs-suggestion{font-size:.8rem;color:var(--text-muted);margin-bottom:8px;}
+    .hitl-span-card .hs-form{display:flex;gap:8px;align-items:center;}
+    .hitl-span-card input[type=text]{flex:1;}
+    .hitl-span-card .hs-result{font-size:.8rem;margin-top:6px;display:none;}
 
-    /* ---- Final output ---- */
-    .final-text {
-      font-size: 1.15rem; line-height: 1.7;
-      padding: 12px 16px;
-      background: var(--surface-alt);
-      border-radius: var(--radius);
-      border: 1px solid var(--border-light);
-      white-space: pre-wrap; word-break: break-word;
-    }
+    /* Add new term form */
+    .add-term-panel{border:1px solid var(--border);border-radius:var(--radius);padding:16px 18px;margin-top:4px;}
+    .add-term-panel h3{font-size:.9rem;font-weight:600;margin-bottom:14px;color:var(--text);}
+    .form-row{display:flex;gap:10px;flex-wrap:wrap;margin-bottom:10px;align-items:flex-start;}
+    .form-row .form-group{display:flex;flex-direction:column;gap:4px;flex:1;min-width:140px;}
+    .form-row label{font-size:.78rem;color:var(--text-muted);}
+    select{background:var(--surface-alt);color:var(--text);border:1px solid var(--border);border-radius:var(--radius);padding:8px 10px;font-size:.87rem;outline:none;}
+    select:focus{border-color:var(--accent);}
+    .form-full{width:100%;margin-bottom:10px;}
+    .form-full label{font-size:.78rem;color:var(--text-muted);display:block;margin-bottom:4px;}
+    #addResult{font-size:.82rem;margin-top:8px;padding:8px 12px;border-radius:var(--radius);display:none;}
+    #addResult.ok{background:var(--green-bg);color:var(--green);border:1px solid rgba(63,185,80,.3);}
+    #addResult.err{background:var(--red-bg);color:var(--red);border:1px solid rgba(248,81,73,.3);}
 
-    /* ---- Pipeline flow arrows ---- */
-    .flow-arrow {
-      text-align: center; color: var(--text-dim); font-size: 1.2rem;
-      margin: -6px 0 2px;
-    }
+    /* Final output */
+    .final-text{font-size:1.1rem;line-height:1.8;padding:14px 16px;background:var(--surface-alt);border-radius:var(--radius);border:1px solid var(--border-light);white-space:pre-wrap;word-break:break-word;}
+    .ar{direction:rtl;text-align:right;}
+    .empty{color:var(--text-dim);font-style:italic;font-size:.88rem;}
 
-    /* ---- Responsive ---- */
-    @media (max-width: 640px) {
-      .app { padding: 16px 12px 60px; }
-      .card { padding: 16px; }
+    /* ASR panel */
+    .asr-panel{margin-bottom:14px;padding:12px 14px;background:var(--surface-alt);border-radius:var(--radius);border:1px solid var(--border-light);}
+    .asr-panel .asr-label{font-size:.8rem;color:var(--text-muted);margin-bottom:8px;}
+    audio{width:100%;margin-top:8px;display:none;}
+
+    @media(max-width:640px){
+      .app{padding:16px 12px 60px;}
+      .card{padding:16px;}
+      .form-row{flex-direction:column;}
     }
   </style>
 </head>
 <body>
-  <div class="app">
-    <!-- Header -->
-    <div class="app-header">
-      <h1>🔬 Correction Pipeline</h1>
-      <div class="sub">
-        <span>Full pipeline: Drug Normalization → Flagging → Auto-Correction</span>
-        <span>·</span>
-        <a href="/">← Main app</a>
-      </div>
-    </div>
+<div class="app">
 
-    <!-- Input Card -->
-    <div class="card" id="inputCard">
-      <div class="card-header">
-        <div class="step-num active">1</div>
-        <h2>Input</h2>
-        <span class="step-status" id="inputStatus"></span>
-      </div>
-      <div>
-        <!-- ASR panel -->
-        <div style="margin-bottom:14px;padding:12px 14px;background:var(--surface-alt);border-radius:var(--radius);border:1px solid var(--border-light)">
-          <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:10px;">Audio → transcript (optional)</div>
-          <div class="input-row" style="margin-top:0;">
-            <input type="file" id="audioFile" accept="audio/*" style="font-size:0.85rem;color:var(--text-muted)" />
-            <button id="recordBtn" type="button" class="btn-record">● Record</button>
-            <select id="lang">
-              <option value="">Auto-detect</option>
-              <option value="ar">Arabic</option>
-              <option value="en">English</option>
-            </select>
-            <button id="transcribeBtn" type="button" style="background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600;">Transcribe</button>
-            <span class="chip" id="asrStatus"></span>
-          </div>
-          <audio id="player" controls style="width:100%;margin-top:10px;display:none"></audio>
-        </div>
-
-        <!-- Text input -->
-        <div style="font-size:0.82rem;color:var(--text-muted);margin-bottom:6px;">Enter or transcribe text:</div>
-        <textarea id="input" dir="auto" spellcheck="false" placeholder="Paste a transcript or type Arabic/English medical text here...">وصفنا للمريض ميت فورمين للسكري من النوع الثاني مع الحمية وارسل له فولتران للألم</textarea>
-
-        <div class="input-row">
-          <button id="run" class="btn-primary">▶ Run Pipeline</button>
-          <span class="chip" id="status"></span>
-        </div>
-      </div>
-    </div>
-
-    <!-- Stage 2: Drug Normalization -->
-    <div class="flow-arrow">⬇</div>
-    <div class="card" id="drugNormCard" style="display:none;">
-      <div class="card-header">
-        <div class="step-num">2</div>
-        <h2>Drug Normalization</h2>
-        <span class="step-status" id="drugNormStatus"></span>
-      </div>
-      <div class="stage-content" id="drugNormContent">
-        <div id="drugNormBody"><span class="empty-state">No drug name corrections needed.</span></div>
-      </div>
-    </div>
-
-    <!-- Stage 3: HITL Alias Fixes -->
-    <div class="flow-arrow" id="hitlArrow" style="display:none;">⬇</div>
-    <div class="card" id="hitlCard" style="display:none;">
-      <div class="card-header">
-        <div class="step-num">3</div>
-        <h2>HITL Taught Fixes</h2>
-        <span class="step-status" id="hitlStatus"></span>
-      </div>
-      <div class="stage-content" id="hitlContent">
-        <div id="hitlBody"><span class="empty-state">No HITL alias fixes applied.</span></div>
-      </div>
-    </div>
-
-    <!-- Stage 4: Flagged Spans -->
-    <div class="flow-arrow" id="flagArrow" style="display:none;">⬇</div>
-    <div class="card" id="flagCard" style="display:none;">
-      <div class="card-header">
-        <div class="step-num">4</div>
-        <h2>Flagged Suspicious Spans</h2>
-        <span class="step-status" id="flagStatus"></span>
-      </div>
-      <div class="stage-content" id="flagContent">
-        <div id="flagBody"></div>
-      </div>
-    </div>
-
-    <!-- Stage 5: Auto-Corrections -->
-    <div class="flow-arrow" id="corrArrow" style="display:none;">⬇</div>
-    <div class="card" id="corrCard" style="display:none;">
-      <div class="card-header">
-        <div class="step-num">5</div>
-        <h2>Auto-Corrections Applied</h2>
-        <span class="step-status" id="corrStatus"></span>
-      </div>
-      <div class="stage-content" id="corrContent">
-        <div id="corrBody"></div>
-      </div>
-    </div>
-
-    <!-- Stage 6: Final Output -->
-    <div class="flow-arrow" id="finalArrow" style="display:none;">⬇</div>
-    <div class="card" id="finalCard" style="display:none;">
-      <div class="card-header">
-        <div class="step-num done">✓</div>
-        <h2>Final Corrected Text</h2>
-        <span class="step-status" id="finalStatus"></span>
-      </div>
-      <div class="stage-content" id="finalContent">
-        <div class="final-text" id="finalText"></div>
-        <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap;" id="finalMeta"></div>
-      </div>
+  <!-- Header -->
+  <div class="app-header">
+    <h1>🔬 Correction Pipeline</h1>
+    <div class="sub">
+      <span>Scoring → Retrieval → Decision → HITL feedback</span>
+      <span>·</span>
+      <a href="/">← Main app</a>
     </div>
   </div>
 
-  <script>
-    const $ = id => document.getElementById(id);
+  <!-- ── Input ── -->
+  <div class="card" id="inputCard">
+    <div class="card-header">
+      <div class="step-num active">▶</div>
+      <h2>Input</h2>
+      <span class="step-status" id="inputStatus"></span>
+    </div>
 
-    // ---- Helpers ----
-    const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
-    const isAr = s => /[\u0600-\u06FF]/.test(s || "");
-    const arClass = s => isAr(s) ? ' ar' : '';
+    <div class="asr-panel">
+      <div class="asr-label">Audio → transcript (optional)</div>
+      <div class="input-row" style="margin-top:0">
+        <input type="file" id="audioFile" accept="audio/*" style="font-size:.83rem;color:var(--text-muted)" />
+        <button id="recordBtn" class="btn-record">● Record</button>
+        <select id="lang">
+          <option value="">Auto-detect</option>
+          <option value="ar">Arabic</option>
+          <option value="en">English</option>
+        </select>
+        <button id="transcribeBtn" style="background:var(--blue);color:#fff;border-color:var(--blue);font-weight:600">Transcribe</button>
+        <span class="chip" id="asrStatus"></span>
+      </div>
+      <audio id="player" controls></audio>
+    </div>
 
-    function showCard(id) {
-      const el = typeof id === 'string' ? $(id) : id;
-      if (el) el.style.display = 'block';
-    }
+    <div style="font-size:.8rem;color:var(--text-muted);margin-bottom:6px">Or type / paste text:</div>
+    <textarea id="inputText" dir="auto" spellcheck="false"
+      placeholder="Paste a transcript or type Arabic/English medical text…">وصفنا للمريض ميت فورمين للسكري من النوع الثاني مع الحمية وارسل له فولتران للألم</textarea>
+    <div class="input-row">
+      <button id="runBtn" class="btn-primary">▶ Run Pipeline</button>
+      <label style="font-size:.82rem;color:var(--text-muted);display:flex;align-items:center;gap:6px;cursor:pointer">
+        <input type="checkbox" id="useLlm" /> Enable LLM
+      </label>
+      <span class="chip" id="runStatus"></span>
+    </div>
+  </div>
 
-    function updateStepNum(cardId, label) {
-      const card = $(cardId);
-      if (!card) return;
-      const stepNum = card.querySelector('.step-num');
-      if (stepNum) stepNum.textContent = label;
-    }
+  <!-- ── Stage 1: Scoring & Flagging ── -->
+  <div class="flow-arrow" id="arrow1" style="display:none">⬇</div>
+  <div class="card stage" id="stage1">
+    <div class="card-header">
+      <div class="step-num active">1</div>
+      <h2>Scoring &amp; Flagging</h2>
+      <span class="step-status" id="s1Status"></span>
+    </div>
+    <div id="s1Body"></div>
+  </div>
 
-    // ---- Pipeline runner ----
-    async function run() {
-      const text = $("input").value.trim();
-      if (!text) return;
-      const runBtn = $("run");
-      runBtn.disabled = true;
-      $("status").textContent = "running pipeline…";
+  <!-- ── Stage 2: Candidate Retrieval ── -->
+  <div class="flow-arrow" id="arrow2" style="display:none">⬇</div>
+  <div class="card stage" id="stage2">
+    <div class="card-header">
+      <div class="step-num active">2</div>
+      <h2>Candidate Retrieval</h2>
+      <span class="step-status" id="s2Status"></span>
+    </div>
+    <div id="s2Body"></div>
+  </div>
 
-      // Hide all stage cards initially
-      ["drugNormCard","hitlCard","flagCard","corrCard","finalCard"].forEach(id => $(id).style.display = 'none');
-      ["hitlArrow","flagArrow","corrArrow","finalArrow"].forEach(id => $(id).style.display = 'none');
+  <!-- ── Stage 3: Decision ── -->
+  <div class="flow-arrow" id="arrow3" style="display:none">⬇</div>
+  <div class="card stage" id="stage3">
+    <div class="card-header">
+      <div class="step-num active">3</div>
+      <h2>Correction Decision</h2>
+      <span class="step-status" id="s3Status"></span>
+    </div>
+    <div id="s3Body"></div>
+  </div>
 
-      try {
-        const t0 = performance.now();
-        const res = await fetch("/api/test-pipeline", {
-          method: "POST",
-          headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ transcript: text, case_id: "pipeline-ui", use_llm: false }),
-        });
-        if (!res.ok) throw new Error("HTTP " + res.status + " — " + (await res.text()).slice(0, 200));
-        const data = await res.json();
-        const elapsed = ((performance.now() - t0) / 1000).toFixed(2);
-        $("status").textContent = elapsed + "s";
-        renderStages(data, elapsed);
-      } catch (e) {
-        $("finalText").innerHTML = '<span style="color:var(--red)">' + esc(e.message) + "</span>";
-        $("status").textContent = "error";
-      } finally {
-        runBtn.disabled = false;
-      }
-    }
+  <!-- ── Stage 4: HITL ── -->
+  <div class="flow-arrow" id="arrow4" style="display:none">⬇</div>
+  <div class="card stage" id="stage4">
+    <div class="card-header">
+      <div class="step-num active">4</div>
+      <h2>HITL Feedback</h2>
+      <span class="step-status" id="s4Status"></span>
+    </div>
+    <div id="s4Body"></div>
+  </div>
 
-    function renderStages(data, elapsed) {
-      const corrections = data.corrections || [];
-      const flaggedSpans = data.flagged_spans || [];
-      const retrievalCands = data.retrieval_candidates || [];
-      const corrected = data.corrected || "";
+  <!-- ── Final output ── -->
+  <div class="flow-arrow" id="arrowFinal" style="display:none">⬇</div>
+  <div class="card stage" id="stageFinal">
+    <div class="card-header">
+      <div class="step-num done">✓</div>
+      <h2>Corrected Transcript</h2>
+      <span class="step-status" id="sFinalStatus"></span>
+    </div>
+    <div id="sFinalBody"></div>
+  </div>
 
-      // Separate corrections by type using flagged_spans reasons
-      const hitlFixes = corrections.filter(c => c.path === "hitl_applied");
-      const escalated = corrections.filter(c => c.path === "hitl_escalate");
+</div><!-- .app -->
 
-      // Match auto_fix corrections to flagged_spans by text overlap to detect drug normalization
-      const normSpanTexts = new Set(
-        flaggedSpans.filter(fs => fs.reason === "normalized").map(fs => fs.text.trim().toLowerCase())
-      );
-      const drugFixes = corrections.filter(c =>
-        c.path === "auto_fix" && normSpanTexts.has(c.span_text.trim().toLowerCase())
-      );
-      const drugSpanSet = new Set(drugFixes.map(d => d.span_text.trim().toLowerCase()));
-      const autoFixes = corrections.filter(c =>
-        c.path === "auto_fix" && !drugSpanSet.has(c.span_text.trim().toLowerCase())
-      );
+<script>
+const $ = id => document.getElementById(id);
+const esc = s => String(s ?? "").replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+const isAr = s => /[؀-ۿ]/.test(s || "");
+const arCls = s => isAr(s) ? " ar" : "";
 
-      // Build candidate lookup
-      const candBySpan = {};
-      retrievalCands.forEach(rc => {
-        candBySpan[rc.span_text.trim().toLowerCase()] = (rc.candidates || []).map(c => ({
-          term: c.term,
-          score: c.phonetic_score ?? 0,
-        }));
-      });
+function showEl(id){ const e = $(id); if(e) e.style.display="block"; }
+function addVisible(id){ const e = $(id); if(e) e.classList.add("visible"); }
 
-      // ---- Stage 2: Drug Normalization ----
-      if (drugFixes.length > 0) {
-        showCard("drugNormCard");
-        $("drugNormStatus").textContent = drugFixes.length + " fix(es)";
-        updateStepNum("drugNormCard", "2");
-        $("drugNormBody").innerHTML = renderFixTable(drugFixes, "drug");
-        showStage("drugNormContent");
-        showCard("hitlArrow");
-      }
+// ──────────────────────────────────────────────
+// Run pipeline
+// ──────────────────────────────────────────────
+async function run(){
+  const text = $("inputText").value.trim();
+  if(!text) return;
+  const useLlm = $("useLlm").checked;
 
-      // ---- Stage 3: HITL Fixes ----
-      if (hitlFixes.length > 0) {
-        showCard("hitlCard");
-        $("hitlStatus").textContent = hitlFixes.length + " fix(es)";
-        updateStepNum("hitlCard", "3");
-        $("hitlBody").innerHTML = renderFixTable(hitlFixes, "hitl");
-        showStage("hitlContent");
-        showCard("flagArrow");
-      }
+  $("runBtn").disabled = true;
+  $("runStatus").textContent = "running…";
 
-      // ---- Stage 4: Flagged Spans ----
-      if (flaggedSpans.length > 0) {
-        showCard("flagCard");
-        $("flagStatus").textContent = flaggedSpans.length + " span(s)";
-        updateStepNum("flagCard", "4");
+  // Hide all stages
+  ["arrow1","arrow2","arrow3","arrow4","arrowFinal"].forEach(id => $(id).style.display="none");
+  ["stage1","stage2","stage3","stage4","stageFinal"].forEach(id => $(id).classList.remove("visible"));
 
-        const rows = flaggedSpans.map(fs => {
-          const word = fs.text || "";
-          const reason = fs.reason || "";
-          const suspicion = fs.max_suspicion ?? 0;
-          const cands = candBySpan[word.trim().toLowerCase()] || [];
-          const reasonBadge = reason === "both" ? "badge-purple" :
-                              reason === "low_score" ? "badge-amber" :
-                              reason === "not_in_lexicon" ? "badge-blue" :
-                              reason === "normalized" ? "badge-green" : "badge-amber";
-          return {
-            word, reason, suspicion, reasonBadge,
-            candsHtml: cands.length
-              ? cands.map(c => `<span class="cand-item">${esc(c.term)} <span class="score">${c.score.toFixed(2)}</span></span>`).join("")
-              : '<span class="empty-state">No candidates</span>',
-          };
-        });
-
-        $("flagBody").innerHTML = `<table>
-          <thead><tr><th>Word</th><th>Reason</th><th>Suspicion</th><th>Top Candidates</th></tr></thead>
-          <tbody>${rows.map(r => `<tr>
-            <td class="${arClass(r.word)}" style="font-weight:600;">${esc(r.word)}</td>
-            <td><span class="badge ${r.reasonBadge}">${esc(r.reason)}</span></td>
-            <td>${r.suspicion.toFixed(2)}</td>
-            <td><div class="cand-list">${r.candsHtml}</div></td>
-          </tr>`).join("")}</tbody></table>`;
-        showStage("flagContent");
-        showCard("corrArrow");
-      } else {
-        $("flagBody").innerHTML = '<span class="empty-state">No suspicious spans detected.</span>';
-      }
-
-      // ---- Stage 5: Auto-Corrections ----
-      // Exclude drug normalizations and HITL escalations (shown in their own stages)
-      const appliedFixes = corrections.filter(c =>
-        c.path !== "hitl_escalate" && !drugSpanSet.has(c.span_text.trim().toLowerCase())
-      );
-      if (appliedFixes.length > 0) {
-        showCard("corrCard");
-        $("corrStatus").textContent = appliedFixes.length + " correction(s)";
-        updateStepNum("corrCard", "5");
-        $("corrBody").innerHTML = renderFixTable(appliedFixes, "all");
-        showStage("corrContent");
-        showCard("finalArrow");
-      }
-
-      // ---- Stage 6: Final Output ----
-      showCard("finalCard");
-      updateStepNum("finalCard", "✓");
-      $("finalText").className = "final-text" + arClass(corrected);
-      $("finalText").textContent = corrected;
-      $("finalStatus").textContent = elapsed + "s";
-
-      // Escalation summary
-      if (escalated.length > 0) {
-        $("finalMeta").innerHTML = `<span class="badge badge-amber">${escalated.length} HITL escalation(s)</span>`;
-      } else {
-        $("finalMeta").innerHTML = `<span class="badge badge-green">All corrections auto-applied</span>`;
-      }
-
-      // Smooth scroll to final output
-      $("finalCard").scrollIntoView({ behavior: "smooth", block: "nearest" });
-    }
-
-    function renderFixTable(fixes, type) {
-      if (!fixes.length) return '<span class="empty-state">No fixes applied.</span>';
-      const rows = fixes.map(f => {
-        const pathLabel = f.path === "hitl_applied" ? "HITL" :
-                          f.path === "auto_fix" ? (type === "drug" ? "Drug Normalize" : "Auto") :
-                          f.path === "no_change" ? "No Change" : esc(f.path || "");
-        const badgeCls = f.path === "hitl_applied" ? "badge-purple" :
-                         type === "drug" ? "badge-green" : "badge-blue";
-        return `<tr>
-          <td class="${arClass(f.span_text)}">${esc(f.span_text)}</td>
-          <td class="diff-arrow">→</td>
-          <td class="${arClass(f.chosen)}" style="color:var(--green);font-weight:600;">${esc(f.chosen)}</td>
-          <td><span class="badge ${badgeCls}">${esc(pathLabel)}</span></td>
-          <td style="font-size:0.8rem;color:var(--text-muted)">${(f.confidence ?? 0).toFixed(2)}</td>
-        </tr>`;
-      });
-      return `<table>
-        <thead><tr><th>Original</th><th></th><th>Corrected</th><th>Type</th><th>Confidence</th></tr></thead>
-        <tbody>${rows.join("")}</tbody></table>`;
-    }
-
-    function showStage(id) {
-      const el = $(id);
-      if (el) el.classList.add('visible');
-    }
-
-    // ---- ASR ----
-    let selectedBlob = null;
-
-    async function transcribe() {
-      const blob = selectedBlob || ($("audioFile").files[0] || null);
-      if (!blob) { $("asrStatus").textContent = "pick or record audio first"; return; }
-      $("transcribeBtn").disabled = true;
-      $("asrStatus").textContent = "transcribing…";
-      try {
-        const t0 = performance.now();
-        const fd = new FormData();
-        fd.append("audio", blob, blob.name || "audio.webm");
-        const lang = $("lang").value;
-        if (lang) fd.append("language", lang);
-        const res = await fetch("/api/asr", { method: "POST", body: fd });
-        if (!res.ok) throw new Error("HTTP " + res.status + " — " + (await res.text()).slice(0, 200));
-        const d = await res.json();
-        if (d.error) throw new Error(d.error);
-        $("input").value = d.text || "";
-        $("asrStatus").textContent = ((performance.now() - t0) / 1000).toFixed(2) + "s";
-        if ($("input").value.trim()) run();
-      } catch (e) {
-        $("asrStatus").textContent = "error: " + e.message;
-      } finally {
-        $("transcribeBtn").disabled = false;
-      }
-    }
-
-    $("audioFile").addEventListener("change", () => {
-      selectedBlob = null;
-      const f = $("audioFile").files[0];
-      if (f) { $("player").src = URL.createObjectURL(f); $("player").style.display = "block"; }
+  try {
+    const t0 = performance.now();
+    const res = await fetch("/api/test-pipeline", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ transcript:text, case_id:"pipeline-ui", use_llm:useLlm }),
     });
+    if(!res.ok) throw new Error("HTTP " + res.status + " — " + (await res.text()).slice(0,200));
+    const data = await res.json();
+    const elapsed = ((performance.now()-t0)/1000).toFixed(2);
+    $("runStatus").textContent = elapsed + "s";
+    render(data, elapsed);
+  } catch(e){
+    $("runStatus").textContent = "error: " + e.message;
+  } finally {
+    $("runBtn").disabled = false;
+  }
+}
 
-    let mediaRecorder = null, chunks = [];
-    $("recordBtn").addEventListener("click", async () => {
-      if (mediaRecorder && mediaRecorder.state === "recording") { mediaRecorder.stop(); return; }
-      try {
-        const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        mediaRecorder = new MediaRecorder(stream);
-        chunks = [];
-        mediaRecorder.ondataavailable = e => { if (e.data.size) chunks.push(e.data); };
-        mediaRecorder.onstop = () => {
-          stream.getTracks().forEach(t => t.stop());
-          selectedBlob = new Blob(chunks, { type: "audio/webm" });
-          selectedBlob.name = "recording.webm";
-          $("player").src = URL.createObjectURL(selectedBlob);
-          $("player").style.display = "block";
-          $("recordBtn").textContent = "● Record";
-          $("recordBtn").className = "btn-record";
+function render(data, elapsed){
+  const flaggedSpans  = data.flagged_spans       || [];
+  const retrieval     = data.retrieval_candidates || [];
+  const corrections   = data.corrections          || [];
+  const corrected     = data.corrected            || data.original || "";
+  const original      = data.original             || $("inputText").value.trim();
+
+  // build lookup: span_text (lower) → retrieval candidates
+  const candMap = {};
+  retrieval.forEach(rc => {
+    candMap[rc.span_text.trim().toLowerCase()] = rc.candidates || [];
+  });
+
+  // build lookup: span_text (lower) → correction entry
+  const corrMap = {};
+  corrections.forEach(c => {
+    corrMap[(c.span_text||"").trim().toLowerCase()] = c;
+  });
+
+  renderStage1(original, flaggedSpans, candMap);
+  renderStage2(flaggedSpans, candMap);
+  renderStage3(flaggedSpans, corrMap);
+  renderStage4(flaggedSpans, corrMap, corrections);
+  renderFinal(corrected, corrections, elapsed);
+}
+
+// ──────────────────────────────────────────────
+// Stage 1 — Scoring & Flagging
+// word-by-word transcript; flagged = red + hover tooltip
+// ──────────────────────────────────────────────
+function renderStage1(original, flaggedSpans, candMap){
+  const words = original.split(/(\s+)/);
+  // Build a set of flagged word strings (normalised)
+  // flaggedSpans[].text might be multi-word (n-gram)
+  // We'll highlight any token that appears in a flagged span text
+  const flagInfo = {}; // token-lower → {suspicion, candidates, span_text}
+  flaggedSpans.forEach(fs => {
+    const toks = fs.text.trim().split(/\s+/);
+    const cands = candMap[fs.text.trim().toLowerCase()] || [];
+    toks.forEach(tok => {
+      const tl = tok.toLowerCase();
+      if(!flagInfo[tl] || (fs.max_suspicion||0) > (flagInfo[tl].suspicion||0)){
+        flagInfo[tl] = {
+          suspicion: fs.max_suspicion || 0,
+          span_text: fs.text,
+          candidates: cands,
         };
-        mediaRecorder.start();
-        $("recordBtn").textContent = "■ Stop";
-        $("recordBtn").className = "btn-record recording";
-      } catch (e) { $("asrStatus").textContent = "mic error: " + e.message; }
+      }
     });
+  });
 
-    $("transcribeBtn").addEventListener("click", transcribe);
-    $("run").addEventListener("click", run);
-    $("input").addEventListener("keydown", e => { if (e.ctrlKey && e.key === "Enter") run(); });
-  </script>
+  let html = '<div class="transcript-view">';
+  words.forEach(w => {
+    if(!w.trim()){ html += esc(w); return; }
+    const wl = w.toLowerCase();
+    const info = flagInfo[wl];
+    if(info){
+      const pct = Math.round(info.suspicion * 100);
+      const candHtml = info.candidates.slice(0,5).map((c,i) =>
+        `<span>${i===0?"→":""} ${esc(c.term)} (${c.phonetic_score.toFixed(2)})</span>`
+      ).join(" ");
+      html += `<span class="token flagged">
+        ${esc(w)}
+        <span class="tooltip">
+          <div>Suspicion: <span class="t-score">${pct}%</span></div>
+          <div class="t-cands">${candHtml || "no candidates"}</div>
+        </span>
+      </span>`;
+    } else {
+      html += `<span class="token">${esc(w)}</span>`;
+    }
+  });
+  html += "</div>";
+
+  // Score strip: one chip per flagged span
+  if(flaggedSpans.length){
+    html += '<div class="score-strip">';
+    flaggedSpans.forEach(fs => {
+      const pct = Math.round((fs.max_suspicion||0)*100);
+      html += `<span class="score-chip"><span class="${arCls(fs.text)}">${esc(fs.text)}</span><span class="sc-val">${pct}%</span></span>`;
+    });
+    html += "</div>";
+  }
+
+  $("s1Body").innerHTML = html;
+  $("s1Status").textContent = flaggedSpans.length
+    ? flaggedSpans.length + " span(s) flagged"
+    : "clean — nothing flagged";
+
+  showEl("arrow1"); addVisible("stage1");
+}
+
+// ──────────────────────────────────────────────
+// Stage 2 — Candidate Retrieval
+// Per-span up to 5 phonetically-close candidates
+// ──────────────────────────────────────────────
+function renderStage2(flaggedSpans, candMap){
+  if(!flaggedSpans.length){
+    $("s2Body").innerHTML = '<span class="empty">No suspicious spans — no candidates to retrieve.</span>';
+    showEl("arrow2"); addVisible("stage2");
+    $("s2Status").textContent = "skipped";
+    return;
+  }
+
+  let html = '<div class="cand-grid">';
+  flaggedSpans.forEach(fs => {
+    const cands = candMap[fs.text.trim().toLowerCase()] || [];
+    const pills = cands.slice(0,5).map((c,i) => `
+      <div class="cand-pill ${i===0?"top-1":""}">
+        <span class="rank">#${i+1}</span>
+        <span class="cterm">${esc(c.term)}</span>
+        <span class="cscore">${c.phonetic_score.toFixed(3)}</span>
+      </div>`).join("");
+    html += `<div class="cand-row">
+      <div class="span-label">Span: <span class="span-text${arCls(fs.text)}">${esc(fs.text)}</span>
+        &nbsp;·&nbsp; suspicion <strong>${Math.round((fs.max_suspicion||0)*100)}%</strong>
+      </div>
+      <div class="cand-pills">${pills || '<span class="empty">No phonetic candidates</span>'}</div>
+    </div>`;
+  });
+  html += "</div>";
+
+  $("s2Body").innerHTML = html;
+  $("s2Status").textContent = flaggedSpans.length + " span(s)";
+  showEl("arrow2"); addVisible("stage2");
+}
+
+// ──────────────────────────────────────────────
+// Stage 3 — Decision
+// Shows chosen term, decision path (source), confidence
+// ──────────────────────────────────────────────
+const PATH_LABELS = {
+  phonetic:     {label:"Phonetic",    cls:"bg-green"},
+  llm_select:   {label:"LLM select",  cls:"bg-purple"},
+  llm:          {label:"LLM detect",  cls:"bg-blue"},
+  auto_fix:     {label:"Auto",        cls:"bg-green"},
+  hitl_applied: {label:"HITL taught", cls:"bg-purple"},
+  no_change:    {label:"No change",   cls:"bg-amber"},
+  hitl_escalate:{label:"Escalated",   cls:"bg-amber"},
+};
+
+function renderStage3(flaggedSpans, corrMap){
+  const rows = flaggedSpans.map(fs => {
+    const c = corrMap[fs.text.trim().toLowerCase()];
+    const chosen = c ? c.chosen : null;
+    const path   = c ? (c.path || "auto_fix") : "—";
+    const conf   = c ? (c.confidence || 0) : 0;
+    const pct    = Math.round(conf * 100);
+    const pinfo  = PATH_LABELS[path] || {label:path, cls:"bg-amber"};
+
+    const decisionHtml = chosen
+      ? `<span class="diff-old${arCls(fs.text)}">${esc(fs.text)}</span>
+         <span class="diff-arrow">→</span>
+         <span class="diff-new">${esc(chosen)}</span>`
+      : `<span class="empty">no correction</span>`;
+
+    const confHtml = `<div class="conf-bar-wrap">
+      <div class="conf-bar"><div class="conf-bar-fill" style="width:${pct}%"></div></div>
+      <span class="conf-num">${pct}%</span>
+    </div>`;
+
+    return `<tr>
+      <td class="${arCls(fs.text)}">${esc(fs.text)}</td>
+      <td>${decisionHtml}</td>
+      <td><span class="badge ${pinfo.cls}">${esc(pinfo.label)}</span></td>
+      <td>${confHtml}</td>
+    </tr>`;
+  }).join("");
+
+  $("s3Body").innerHTML = rows
+    ? `<table>
+        <thead><tr><th>Span</th><th>Decision</th><th>Source</th><th>Confidence</th></tr></thead>
+        <tbody>${rows}</tbody>
+       </table>`
+    : '<span class="empty">No decisions made.</span>';
+
+  $("s3Status").textContent = Object.keys(corrMap).length + " decision(s)";
+  showEl("arrow3"); addVisible("stage3");
+}
+
+// ──────────────────────────────────────────────
+// Stage 4 — HITL Feedback
+// Per-span input to teach a canonical mapping
+// + standalone "Add new term" form
+// ──────────────────────────────────────────────
+function renderStage4(flaggedSpans, corrMap, corrections){
+  // Collect spans that need human attention:
+  // escalated (hitl_escalate), or uncertain (confidence < 0.8), or uncorrected
+  const hitlSpans = flaggedSpans.filter(fs => {
+    const c = corrMap[fs.text.trim().toLowerCase()];
+    if(!c) return true; // no correction at all
+    if(c.path === "hitl_escalate") return true;
+    if((c.confidence||0) < 0.80) return true;
+    return false;
+  });
+
+  let html = `<div class="hitl-intro">
+    Map any flagged word to its correct medical term.
+    Submitting saves it as a pronunciation alias so the pipeline auto-corrects it next time.
+  </div>`;
+
+  if(hitlSpans.length){
+    html += '<div class="hitl-spans">';
+    hitlSpans.forEach((fs, i) => {
+      const c = corrMap[fs.text.trim().toLowerCase()];
+      const suggestion = c && c.chosen ? c.chosen : "";
+      const reasonTag  = c && c.path === "hitl_escalate"
+        ? '<span class="badge bg-amber">escalated</span>'
+        : c && (c.confidence||0) < 0.80
+          ? `<span class="badge bg-amber">low confidence ${Math.round((c.confidence||0)*100)}%</span>`
+          : '<span class="badge bg-red">uncorrected</span>';
+
+      html += `<div class="hitl-span-card">
+        <div class="hs-label">Flagged span &nbsp;${reasonTag}</div>
+        <div class="hs-word${arCls(fs.text)}">${esc(fs.text)}</div>
+        ${suggestion ? `<div class="hs-suggestion">Pipeline suggestion: <strong>${esc(suggestion)}</strong></div>` : ""}
+        <div class="hs-form">
+          <input type="text" id="hitl_input_${i}" placeholder="Correct medical term (e.g. metformin)"
+            value="${esc(suggestion)}" />
+          <button onclick="submitHitl(${i}, '${esc(fs.text)}')" style="white-space:nowrap">
+            Save alias
+          </button>
+        </div>
+        <div class="hs-result" id="hitl_result_${i}"></div>
+      </div>`;
+    });
+    html += '</div>';
+  } else {
+    html += '<p style="font-size:.85rem;color:var(--text-muted);margin-bottom:14px">All spans were auto-corrected with high confidence. Use the form below to add new terms to the lexicon.</p>';
+  }
+
+  // Standalone "add new term" form
+  html += `<div class="add-term-panel">
+    <h3>Add / update a term in the medical lexicon</h3>
+    <div class="form-row">
+      <div class="form-group">
+        <label>Canonical term *</label>
+        <input type="text" id="addTerm" placeholder="e.g. metformin" />
+      </div>
+      <div class="form-group">
+        <label>Type</label>
+        <select id="addType">
+          <option value="drug">Drug</option>
+          <option value="diagnosis">Diagnosis</option>
+          <option value="device">Device</option>
+          <option value="test">Test</option>
+          <option value="anatomy">Anatomy</option>
+          <option value="symptom">Symptom</option>
+          <option value="term">General term</option>
+        </select>
+      </div>
+      <div class="form-group">
+        <label>Priority (0–2)</label>
+        <input type="text" id="addPriority" value="1.0" style="max-width:80px" />
+      </div>
+    </div>
+    <div class="form-full">
+      <label>Aliases / pronunciation variants (comma-separated)</label>
+      <input type="text" id="addAliases" placeholder="ميت فورمين, metformina, glucophage" />
+    </div>
+    <div class="form-full">
+      <label>Description (optional — auto-generated if left blank)</label>
+      <textarea id="addDescription" style="min-height:60px"
+        placeholder="e.g. Metformin is a biguanide antidiabetic used as first-line therapy for type 2 diabetes…"></textarea>
+    </div>
+    <button class="btn-primary" onclick="submitAddTerm()">Add to lexicon</button>
+    <div id="addResult"></div>
+  </div>`;
+
+  $("s4Body").innerHTML = html;
+  $("s4Status").textContent = hitlSpans.length
+    ? hitlSpans.length + " span(s) need review"
+    : "all auto-corrected";
+
+  showEl("arrow4"); addVisible("stage4");
+}
+
+// ──────────────────────────────────────────────
+// Final output
+// ──────────────────────────────────────────────
+function renderFinal(corrected, corrections, elapsed){
+  const applied = corrections.filter(c => c.path !== "hitl_escalate" && c.path !== "no_change");
+  $("sFinalBody").innerHTML = `
+    <div class="final-text${arCls(corrected)}">${esc(corrected)}</div>
+    <div style="margin-top:10px;display:flex;gap:8px;flex-wrap:wrap">
+      <span class="badge ${applied.length ? "bg-green" : "bg-amber"}">${applied.length} correction(s) applied</span>
+      <span class="badge bg-blue">${elapsed}s</span>
+    </div>`;
+  $("sFinalStatus").textContent = elapsed + "s";
+  showEl("arrowFinal"); addVisible("stageFinal");
+  $("stageFinal").scrollIntoView({behavior:"smooth", block:"nearest"});
+}
+
+// ──────────────────────────────────────────────
+// HITL: save alias for a flagged span
+// ──────────────────────────────────────────────
+async function submitHitl(idx, spanText){
+  const canonical = $(`hitl_input_${idx}`).value.trim();
+  const resultEl  = $(`hitl_result_${idx}`);
+  if(!canonical){ resultEl.textContent = "Enter a canonical term."; resultEl.style.display="block"; return; }
+
+  resultEl.textContent = "Saving…"; resultEl.style.display="block"; resultEl.style.color="var(--text-muted)";
+  try {
+    const res = await fetch("/api/lexicon/add", {
+      method:"POST",
+      headers:{"Content-Type":"application/json"},
+      body: JSON.stringify({ term: canonical, aliases: [spanText], type: "drug" }),
+    });
+    const d = await res.json();
+    if(d.ok){
+      resultEl.textContent = `✓ "${spanText}" saved as alias of "${canonical}"`;
+      resultEl.style.color = "var(--green)";
+    } else {
+      resultEl.textContent = "Error: " + (d.detail || JSON.stringify(d));
+      resultEl.style.color = "var(--red)";
+    }
+  } catch(e){
+    resultEl.textContent = "Network error: " + e.message;
+    resultEl.style.color = "var(--red)";
+  }
+}
+
+// ──────────────────────────────────────────────
+// Add new term form submit
+// ──────────────────────────────────────────────
+async function submitAddTerm(){
+  const term  = $("addTerm").value.trim();
+  const resultEl = $("addResult");
+  if(!term){ resultEl.className="err"; resultEl.textContent="Term is required."; resultEl.style.display="block"; return; }
+
+  const aliasRaw = $("addAliases").value.trim();
+  const aliases  = aliasRaw ? aliasRaw.split(",").map(a=>a.trim()).filter(Boolean) : [];
+  const desc     = $("addDescription").value.trim();
+  const priority = parseFloat($("addPriority").value) || 1.0;
+
+  resultEl.className=""; resultEl.textContent="Saving…"; resultEl.style.display="block";
+  try {
+    const body = { term, type: $("addType").value, aliases, priority };
+    if(desc) body.description = desc;
+    const res = await fetch("/api/lexicon/add", {
+      method:"POST", headers:{"Content-Type":"application/json"},
+      body: JSON.stringify(body),
+    });
+    const d = await res.json();
+    if(d.ok){
+      resultEl.className="ok";
+      resultEl.textContent = `✓ "${term}" saved${d.description ? " with description" : " (description generating in background)"}`;
+      $("addTerm").value=""; $("addAliases").value=""; $("addDescription").value="";
+    } else {
+      resultEl.className="err";
+      resultEl.textContent = "Error: " + (d.detail || JSON.stringify(d));
+    }
+  } catch(e){
+    resultEl.className="err";
+    resultEl.textContent = "Network error: " + e.message;
+  }
+  resultEl.style.display="block";
+}
+
+// ──────────────────────────────────────────────
+// ASR
+// ──────────────────────────────────────────────
+let selectedBlob = null;
+
+$("audioFile").addEventListener("change", () => {
+  selectedBlob = null;
+  const f = $("audioFile").files[0];
+  if(f){ $("player").src = URL.createObjectURL(f); $("player").style.display="block"; }
+});
+
+let mediaRecorder = null, chunks = [];
+$("recordBtn").addEventListener("click", async () => {
+  if(mediaRecorder && mediaRecorder.state === "recording"){ mediaRecorder.stop(); return; }
+  try{
+    const stream = await navigator.mediaDevices.getUserMedia({audio:true});
+    mediaRecorder = new MediaRecorder(stream);
+    chunks = [];
+    mediaRecorder.ondataavailable = e => { if(e.data.size) chunks.push(e.data); };
+    mediaRecorder.onstop = () => {
+      stream.getTracks().forEach(t=>t.stop());
+      selectedBlob = new Blob(chunks, {type:"audio/webm"});
+      selectedBlob.name = "recording.webm";
+      $("player").src = URL.createObjectURL(selectedBlob);
+      $("player").style.display = "block";
+      $("recordBtn").textContent = "● Record";
+      $("recordBtn").className = "btn-record";
+    };
+    mediaRecorder.start();
+    $("recordBtn").textContent = "■ Stop";
+    $("recordBtn").className = "btn-record recording";
+  } catch(e){ $("asrStatus").textContent = "mic error: "+e.message; }
+});
+
+async function transcribe(){
+  const blob = selectedBlob || ($("audioFile").files[0]||null);
+  if(!blob){ $("asrStatus").textContent="pick or record audio first"; return; }
+  $("transcribeBtn").disabled=true; $("asrStatus").textContent="transcribing…";
+  try{
+    const t0 = performance.now();
+    const fd = new FormData();
+    fd.append("audio", blob, blob.name||"audio.webm");
+    const lang = $("lang").value;
+    if(lang) fd.append("language", lang);
+    const res = await fetch("/api/asr",{method:"POST",body:fd});
+    if(!res.ok) throw new Error("HTTP "+res.status+" — "+(await res.text()).slice(0,200));
+    const d = await res.json();
+    if(d.error) throw new Error(d.error);
+    $("inputText").value = d.text || "";
+    $("asrStatus").textContent = ((performance.now()-t0)/1000).toFixed(2)+"s";
+    if($("inputText").value.trim()) run();
+  } catch(e){
+    $("asrStatus").textContent = "error: "+e.message;
+  } finally {
+    $("transcribeBtn").disabled=false;
+  }
+}
+
+$("transcribeBtn").addEventListener("click", transcribe);
+$("runBtn").addEventListener("click", run);
+$("inputText").addEventListener("keydown", e => { if(e.ctrlKey && e.key==="Enter") run(); });
+</script>
 </body>
 </html>

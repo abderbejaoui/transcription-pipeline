@@ -47,6 +47,15 @@ _PHONETIC_ALIAS: Dict[str, str] = {
     "afywrqan": "efferalgan",
     "afywrqn": "efferalgan",
     "awqmntyn": "augmentin",
+    "sfyjmwmytr": "sphygmomanometer",
+    "fyjmwmytr": "sphygmomanometer",
+}
+
+_KNOWN_ARABIC_MEDICAL_FORMS: set = {
+    "كوليسترول", "الكوليسترول", "للكوليسترول", "وكوليسترول", "بالكوليسترول",
+    "أنسولين", "الأنسولين", "للأنسولين", "وأنسولين", "بالأنسولين",
+    "كرياتينين", "الكرياتينين", "للكرياتينين", "وكرياتينين",
+    "إيبوبروفين", "الإيبوبروفين", "للإيبوبروفين", "بالإيبوبروفين",
 }
 
 
@@ -167,6 +176,8 @@ def phonetic_candidates(
 
 def _is_known_medical(word: str, lexicon: List[str]) -> bool:
     """True if `word` is already a known medical term (exact or translit match)."""
+    if word in _KNOWN_ARABIC_MEDICAL_FORMS:
+        return True
     w = word.lower()
     if w in {t.lower() for t in lexicon}:
         return True
@@ -203,7 +214,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
         if _is_known_medical(word, lexicon):
             single_results.append(None)
             continue
-        single_results.append(phonetic_candidates(word, lexicon, k=3))
+        single_results.append(phonetic_candidates(word, lexicon, k=5))
 
     def _try_ngram(n: int, threshold: float, filler_threshold: float) -> None:
         for i in range(len(words) - n + 1):
@@ -214,6 +225,8 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 continue
             if n >= 2 and any(w == "و" for w in window):
                 continue
+            if any(_is_known_medical(w, lexicon) for w in window):
+                continue
             filler_count = sum(1 for w in window if is_arabic_filler(w))
             if n == 2 and filler_count >= 2:
                 continue
@@ -221,7 +234,7 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
                 continue
             has_filler = filler_count > 0
             joined = "".join(window)
-            candidates = phonetic_candidates(joined, lexicon, k=3, threshold=threshold)
+            candidates = phonetic_candidates(joined, lexicon, k=5, threshold=threshold)
             if not candidates:
                 continue
             top = candidates[0]

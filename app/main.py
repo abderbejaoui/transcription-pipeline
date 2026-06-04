@@ -146,6 +146,14 @@ class TeachRequest(BaseModel):
     priority: float = Field(1.0, ge=0.0, le=2.0)
 
 
+class LexiconAddRequest(BaseModel):
+    term: str
+    type: str = Field("drug")
+    aliases: List[str] = Field(default_factory=list)
+    priority: float = Field(1.0, ge=0.0, le=2.0)
+    description: Optional[str] = None
+
+
 class LearnFromEditRequest(BaseModel):
     raw_text: str
     corrected_text: str
@@ -241,6 +249,39 @@ def teach(req: TeachRequest) -> Dict[str, Any]:
         daemon=True,
     ).start()
     return {"ok": True, "entry": entry}
+
+
+@app.post("/api/lexicon/add")
+def lexicon_add(req: LexiconAddRequest) -> Dict[str, Any]:
+    """Add or update a medical term in the lexicon with pronunciation aliases and description.
+
+    - Merges new aliases into an existing term, or creates a new entry.
+    - Registers the canonical term in medical_terms.txt for phonetic retrieval.
+    - Saves Arabic aliases to hitl_aliases.json for exact-match pre-correction.
+    - Saves the description immediately if provided; otherwise generates one async.
+    """
+    entry = lexicon.add_term(
+        term=req.term, type_=req.type, aliases=req.aliases, priority=req.priority
+    )
+    flag.add_retrieval_term(req.term)
+    flag.record_taught_aliases(req.term, req.aliases)
+    flag.invalidate_lexicon_cache()
+    # Auto-extend the known-Arabic-forms set so any correctly-spelled Arabic
+    # alias taught by a clinician is not flagged as suspicious in future runs.
+    for alias in req.aliases:
+        if any("؀" <= c <= "ۿ" for c in alias):
+            flag.register_known_arabic_form(alias)
+
+    if req.description:
+        descriptions.save(req.term, req.description)
+    else:
+        threading.Thread(
+            target=lambda: descriptions.get_or_generate(req.term, type_hint=req.type),
+            daemon=True,
+        ).start()
+
+    desc = descriptions.get(req.term)
+    return {"ok": True, "entry": entry, "description": desc}
 
 
 class CorrectRequest(BaseModel):

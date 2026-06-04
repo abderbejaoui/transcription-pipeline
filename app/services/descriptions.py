@@ -115,6 +115,16 @@ def get(term: str) -> Optional[str]:
     return _cache.get(_key(term))
 
 
+def save(term: str, description: str) -> None:
+    """Persist a manually-provided description, bypassing LLM generation."""
+    _load()
+    k = _key(term)
+    with _lock:
+        if k not in _cache:
+            _cache[k] = description
+            _append(term, description)
+
+
 def get_or_generate(
     term: str,
     *,
