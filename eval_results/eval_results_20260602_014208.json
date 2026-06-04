@@ -1,0 +1,797 @@
+{
+  "meta": {
+    "endpoint": "http://localhost:8000",
+    "test_set_path": "eval\\pipeline_testset.jsonl",
+    "cases_run": 36,
+    "errors": 36,
+    "timestamp": "2026-06-02T01:42:08.655351",
+    "elapsed_seconds": 80.86
+  },
+  "stage_reports": [
+    {
+      "stage_name": "scoring_and_flagging",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "notes": "gold_spans=0 tp=0 fp=0",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-002",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-003",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-004",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-005",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-006",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-007",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-008",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-009",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-010",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-011",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-012",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-013",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-014",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-015",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-016",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-017",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-018",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-019",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-020",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-021",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-022",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-023",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-024",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-025",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-026",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-027",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-028",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-029",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-030",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-031",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-032",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-033",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-034",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-035",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-036",
+          "error": "http_404"
+        }
+      ]
+    },
+    {
+      "stage_name": "phonetic_retrieval",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "notes": "retrieval_cases=0 top1_correct=0 topk_correct=0 hitl_cases_excluded=0",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-002",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-003",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-004",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-005",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-006",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-007",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-008",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-009",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-010",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-011",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-012",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-013",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-014",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-015",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-016",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-017",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-018",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-019",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-020",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-021",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-022",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-023",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-024",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-025",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-026",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-027",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-028",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-029",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-030",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-031",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-032",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-033",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-034",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-035",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-036",
+          "error": "http_404"
+        }
+      ]
+    },
+    {
+      "stage_name": "correction_decision",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "notes": "total_decisions=0 correct=0",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-002",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-003",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-004",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-005",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-006",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-007",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-008",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-009",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-010",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-011",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-012",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-013",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-014",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-015",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-016",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-017",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-018",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-019",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-020",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-021",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-022",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-023",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-024",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-025",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-026",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-027",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-028",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-029",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-030",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-031",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-032",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-033",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-034",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-035",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-036",
+          "error": "http_404"
+        }
+      ]
+    },
+    {
+      "stage_name": "false_positive_guard",
+      "precision": 0.0,
+      "recall": 1.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "notes": "clean_cases=3 correct_clean=0",
+      "raw": [
+        {
+          "case_id": "TC-020",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-021",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-022",
+          "error": "http_404"
+        }
+      ]
+    },
+    {
+      "stage_name": "end_to_end",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.0,
+      "accuracy": 0.0,
+      "notes": "total=36 exact_matches=0 count_matches=0 correction_count_acc=0.0000",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-002",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-003",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-004",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-005",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-006",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-007",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-008",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-009",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-010",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-011",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-012",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-013",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-014",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-015",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-016",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-017",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-018",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-019",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-020",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-021",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-022",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-023",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-024",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-025",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-026",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-027",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-028",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-029",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-030",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-031",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-032",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-033",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-034",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-035",
+          "error": "http_404"
+        },
+        {
+          "case_id": "TC-036",
+          "error": "http_404"
+        }
+      ]
+    }
+  ],
+  "overall_mean_f1": 0.0,
+  "raw_responses": {
+    "TC-001": {
+      "error": "http_404",
+      "case_id": "TC-001"
+    },
+    "TC-002": {
+      "error": "http_404",
+      "case_id": "TC-002"
+    },
+    "TC-003": {
+      "error": "http_404",
+      "case_id": "TC-003"
+    },
+    "TC-004": {
+      "error": "http_404",
+      "case_id": "TC-004"
+    },
+    "TC-005": {
+      "error": "http_404",
+      "case_id": "TC-005"
+    },
+    "TC-006": {
+      "error": "http_404",
+      "case_id": "TC-006"
+    },
+    "TC-007": {
+      "error": "http_404",
+      "case_id": "TC-007"
+    },
+    "TC-008": {
+      "error": "http_404",
+      "case_id": "TC-008"
+    },
+    "TC-009": {
+      "error": "http_404",
+      "case_id": "TC-009"
+    },
+    "TC-010": {
+      "error": "http_404",
+      "case_id": "TC-010"
+    },
+    "TC-011": {
+      "error": "http_404",
+      "case_id": "TC-011"
+    },
+    "TC-012": {
+      "error": "http_404",
+      "case_id": "TC-012"
+    },
+    "TC-013": {
+      "error": "http_404",
+      "case_id": "TC-013"
+    },
+    "TC-014": {
+      "error": "http_404",
+      "case_id": "TC-014"
+    },
+    "TC-015": {
+      "error": "http_404",
+      "case_id": "TC-015"
+    },
+    "TC-016": {
+      "error": "http_404",
+      "case_id": "TC-016"
+    },
+    "TC-017": {
+      "error": "http_404",
+      "case_id": "TC-017"
+    },
+    "TC-018": {
+      "error": "http_404",
+      "case_id": "TC-018"
+    },
+    "TC-019": {
+      "error": "http_404",
+      "case_id": "TC-019"
+    },
+    "TC-020": {
+      "error": "http_404",
+      "case_id": "TC-020"
+    },
+    "TC-021": {
+      "error": "http_404",
+      "case_id": "TC-021"
+    },
+    "TC-022": {
+      "error": "http_404",
+      "case_id": "TC-022"
+    },
+    "TC-023": {
+      "error": "http_404",
+      "case_id": "TC-023"
+    },
+    "TC-024": {
+      "error": "http_404",
+      "case_id": "TC-024"
+    },
+    "TC-025": {
+      "error": "http_404",
+      "case_id": "TC-025"
+    },
+    "TC-026": {
+      "error": "http_404",
+      "case_id": "TC-026"
+    },
+    "TC-027": {
+      "error": "http_404",
+      "case_id": "TC-027"
+    },
+    "TC-028": {
+      "error": "http_404",
+      "case_id": "TC-028"
+    },
+    "TC-029": {
+      "error": "http_404",
+      "case_id": "TC-029"
+    },
+    "TC-030": {
+      "error": "http_404",
+      "case_id": "TC-030"
+    },
+    "TC-031": {
+      "error": "http_404",
+      "case_id": "TC-031"
+    },
+    "TC-032": {
+      "error": "http_404",
+      "case_id": "TC-032"
+    },
+    "TC-033": {
+      "error": "http_404",
+      "case_id": "TC-033"
+    },
+    "TC-034": {
+      "error": "http_404",
+      "case_id": "TC-034"
+    },
+    "TC-035": {
+      "error": "http_404",
+      "case_id": "TC-035"
+    },
+    "TC-036": {
+      "error": "http_404",
+      "case_id": "TC-036"
+    }
+  }
+}

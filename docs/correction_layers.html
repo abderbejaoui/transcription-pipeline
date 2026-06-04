@@ -1,0 +1,179 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Phonetic & Semantic Correction Layers</title>
+<style>
+  :root{
+    --navy:#1c2a52;
+    --teal:#1aa6a0;
+    --teal-d:#0f7d78;
+    --orange:#f5a623;
+    --orange-d:#d4860a;
+    --purple:#7b3fe4;
+    --gray:#8a93a6;
+    --panel-bg:#f4f6fb;
+    --recall:#1aa6a0;
+    --prec:#f5a623;
+  }
+  *{box-sizing:border-box;margin:0;padding:0;}
+  body{
+    font-family:"Segoe UI",Helvetica,Arial,sans-serif;
+    background:#ffffff;color:var(--navy);
+    padding:50px 46px;
+  }
+  h1{font-size:46px;font-weight:800;letter-spacing:-0.5px;margin-bottom:8px;}
+  .lead{font-size:15px;color:var(--gray);margin-bottom:34px;}
+
+  .layer{margin-bottom:30px;}
+  .layer-head{display:flex;align-items:center;gap:14px;margin-bottom:12px;}
+  .layer-name{font-size:22px;font-weight:800;}
+  .role{font-size:13px;font-weight:700;padding:4px 12px;border-radius:20px;color:#fff;}
+  .role.recall{background:var(--teal);}
+  .role.prec{background:var(--orange);}
+  .layer-note{font-size:13px;color:var(--gray);}
+
+  .panel{
+    border:3px solid var(--purple);border-radius:16px;
+    background:var(--panel-bg);padding:22px 12px;
+    display:flex;align-items:stretch;gap:10px;
+  }
+  .panel.teal{border-color:var(--teal);}
+  .panel.orange{border-color:var(--orange);}
+
+  .card{
+    flex:1;background:#fff;border-radius:11px;
+    padding:18px 15px 16px;box-shadow:0 1px 3px rgba(28,42,82,.07);
+    display:flex;flex-direction:column;
+  }
+  .badge{
+    width:34px;height:34px;border-radius:9px;
+    color:#fff;font-size:15px;font-weight:700;
+    display:flex;align-items:center;justify-content:center;margin-bottom:12px;
+  }
+  .teal .badge{background:var(--teal);}
+  .orange .badge{background:var(--orange);}
+  .ctitle{font-size:15px;font-weight:700;margin-bottom:7px;line-height:1.2;}
+  .method{font-size:12px;color:var(--gray);line-height:1.55;flex:1;}
+  .method b{color:var(--navy);font-weight:600;}
+  .tag{
+    margin-top:12px;font-size:11px;font-weight:700;
+    padding:3px 9px;border-radius:6px;align-self:flex-start;
+  }
+  .tag.recall{background:#e6f6f5;color:var(--teal-d);}
+  .tag.prec{background:#fdf0d9;color:var(--orange-d);}
+
+  .arrow{display:flex;align-items:center;color:var(--gray);font-size:20px;}
+
+  .bridge{
+    text-align:center;font-size:14px;color:var(--navy);
+    background:#f0f2f9;border-radius:10px;padding:12px 18px;margin:8px 0 30px;
+  }
+  .bridge b{color:var(--purple);}
+</style>
+</head>
+<body>
+  <h1>Phonetic &amp; Semantic Correction</h1>
+  <div class="lead">Two cooperating layers. The phonetic layer casts a wide net (maximize recall); the semantic layer disposes of weak/ill-fitting candidates (restore precision).</div>
+
+  <!-- PHONETIC -->
+  <div class="layer">
+    <div class="layer-head">
+      <span class="layer-name">Phonetic Layer</span>
+      <span class="role recall">deterministic &middot; recall-oriented</span>
+      <span class="layer-note">flag.py &middot; drug_normalize.py &middot; correction.py</span>
+    </div>
+    <div class="panel teal">
+      <div class="card teal">
+        <div class="badge">1</div>
+        <div class="ctitle">Normalization</div>
+        <div class="method">Arabic&rarr;Latin <b>transliteration</b>, tashkeel strip, clitic strip (al-/wa-/bi-)</div>
+        <span class="tag recall">unlocks cross-script recall</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card teal">
+        <div class="badge">2</div>
+        <div class="ctitle">Skeleton Encoding</div>
+        <div class="method"><b>Consonant skeleton</b> + phonetic-class fold (p&rarr;b, v&rarr;f, c/g/q&rarr;k); <b>CEQ classes</b></div>
+        <span class="tag recall">robust to vowel/voicing loss</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card teal">
+        <div class="badge">3</div>
+        <div class="ctitle">Similarity Scoring</div>
+        <div class="method">Norm. <b>Levenshtein</b>; weighted <b>Editex</b> + <b>Jaro-Winkler</b>; metaphone / rapidfuzz</div>
+        <span class="tag prec">separates real vs. coincidence</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card teal">
+        <div class="badge">4</div>
+        <div class="ctitle">Candidate Generation</div>
+        <div class="method"><b>Sliding window 1&ndash;3</b> (3-gram&rarr;2-gram&rarr;1) to merge split drug names</div>
+        <span class="tag recall">recovers split tokens</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card teal">
+        <div class="badge">5</div>
+        <div class="ctitle">Precision Guards</div>
+        <div class="method"><b>Filler blocklist</b>, length-ratio, <b>LCS&ge;3</b>, prefix/suffix gates, hijack guard</div>
+        <span class="tag prec">kills false positives</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card teal">
+        <div class="badge">6</div>
+        <div class="ctitle">Rank &amp; Rescue</div>
+        <div class="method">drug&gt;disease tiebreaker; <b>phonetic-alias table</b> ("if all gone"&rarr;efferalgan)</div>
+        <span class="tag recall">recovers known mishearings</span>
+      </div>
+    </div>
+  </div>
+
+  <div class="bridge">Phonetic layer outputs <b>flagged spans + ranked candidates</b> (loose thresholds 0.45&ndash;0.55) &rarr; handed to the semantic layer</div>
+
+  <!-- SEMANTIC -->
+  <div class="layer">
+    <div class="layer-head">
+      <span class="layer-name">Semantic Layer</span>
+      <span class="role prec">LLM-grounded &middot; precision-oriented</span>
+      <span class="layer-note">asr.py &middot; llm_detect.py &middot; llm_decide.py</span>
+    </div>
+    <div class="panel orange">
+      <div class="card orange">
+        <div class="badge">1</div>
+        <div class="ctitle">Context Biasing</div>
+        <div class="method">Medical term list injected into the ASR decode prompt</div>
+        <span class="tag prec">fewer errors at source</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card orange">
+        <div class="badge">2</div>
+        <div class="ctitle">LLM DETECT</div>
+        <div class="method">LLM marks suspicious index ranges by <b>medical judgement</b> (catches non-phonetic / novel)</div>
+        <span class="tag recall">recall on missed errors</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card orange">
+        <div class="badge">3</div>
+        <div class="ctitle">Candidate Descriptions</div>
+        <div class="method">Each candidate carries a one-line <b>clinical description</b> into the reranker</div>
+        <span class="tag prec">enables meaning-based choice</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card orange">
+        <div class="badge">4</div>
+        <div class="ctitle">LLM DECIDE (rerank)</div>
+        <div class="method">Pick candidate fitting patient context; <b>NO_CHANGE default</b>; <b>candidate-constrained</b> (no hallucination)</div>
+        <span class="tag prec">dominant precision control</span>
+      </div>
+      <div class="arrow">&rarr;</div>
+      <div class="card orange">
+        <div class="badge">5</div>
+        <div class="ctitle">Safe Apply</div>
+        <div class="method"><b>Sim&ge;0.85 auto-fix</b> bypass; lexicon-membership gate; span-aware edit</div>
+        <span class="tag prec">trusted edits only</span>
+      </div>
+    </div>
+  </div>
+
+</body>
+</html>
