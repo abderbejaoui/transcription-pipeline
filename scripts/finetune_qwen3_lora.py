@@ -715,6 +715,7 @@ def make_eval_callback(
     early_stopping_metric: str = "wer",
     early_stopping_threshold: float = 0.001,
     output_dir: Optional[Path] = None,
+    eval_at_start: bool = False,
 ):
     """Build the held-out eval callback.
 
@@ -748,12 +749,10 @@ def make_eval_callback(
             self.best_step: int = -1
             self.evals_without_improvement: int = 0
 
-        def on_step_end(self, args, state, control, **kwargs):
-            if state.global_step == 0 or state.global_step % every_steps != 0:
-                return control
-            model = kwargs.get("model")
-            if model is None:
-                return control
+        def _do_eval(self, model, step: int) -> Optional[float]:
+            """Run every eval manifest at the given step; return the primary
+            metric (first manifest) or None if it failed. Used both by the
+            periodic on_step_end hook and the optional eval-at-start hook."""
             model.eval()
             primary_metric_value: Optional[float] = None
             for idx, man in enumerate(eval_manifests):
@@ -761,16 +760,39 @@ def make_eval_callback(
                     wer, cer, n = _run_eval(
                         model, processor, man, max_samples=max_samples,
                     )
-                    print(f"[eval-cb step={state.global_step}] {man.name}: "
+                    print(f"[eval-cb step={step}] {man.name}: "
                           f"WER={wer*100:.2f}%  CER={cer*100:.2f}%  n={n}",
                           flush=True)
-                    self.history[man.name].append((state.global_step, wer, cer))
+                    self.history[man.name].append((step, wer, cer))
                     if idx == 0:  # primary manifest
                         primary_metric_value = wer if early_stopping_metric == "wer" else cer
                 except Exception as exc:
-                    print(f"[eval-cb step={state.global_step}] {man.name} FAILED: "
+                    print(f"[eval-cb step={step}] {man.name} FAILED: "
                           f"{exc!r}", flush=True)
             model.train()
+            return primary_metric_value
+
+        def on_train_begin(self, args, state, control, **kwargs):
+            # Prove the validation path works BEFORE training (catches a
+            # broken eval up-front instead of hours in). No early-stop
+            # bookkeeping here — this is a baseline sanity check only.
+            if not eval_at_start:
+                return control
+            model = kwargs.get("model")
+            if model is None:
+                return control
+            print("[eval-cb] eval-at-start: baseline held-out eval (step 0)",
+                  flush=True)
+            self._do_eval(model, state.global_step)
+            return control
+
+        def on_step_end(self, args, state, control, **kwargs):
+            if state.global_step == 0 or state.global_step % every_steps != 0:
+                return control
+            model = kwargs.get("model")
+            if model is None:
+                return control
+            primary_metric_value = self._do_eval(model, state.global_step)
 
             # Early-stopping bookkeeping (only if enabled and primary eval succeeded).
             if early_stopping_patience > 0 and primary_metric_value is not None:
@@ -885,6 +907,22 @@ def main() -> int:
     ap.add_argument("--max-grad-norm", type=float, default=1.0)
     ap.add_argument("--eval-every-steps", type=int, default=2000)
     ap.add_argument(
+        "--max-steps",
+        type=int,
+        default=-1,
+        help=("Hard cap on optimizer steps. -1 (default) trains for "
+              "--num-epochs. Set a small value (e.g. 10) for a SMOKE TEST "
+              "that exercises the full train+eval+save path quickly before "
+              "committing to a multi-hour run."),
+    )
+    ap.add_argument(
+        "--eval-at-start",
+        action="store_true",
+        help=("Run a held-out eval ONCE before training begins (step 0). "
+              "Use this to prove the validation path works up-front instead "
+              "of discovering a broken eval hours into training."),
+    )
+    ap.add_argument(
         "--eval-max-samples",
         type=int,
         default=500,
@@ -997,6 +1035,7 @@ def main() -> int:
         gradient_accumulation_steps=args.gradient_accumulation_steps,
         learning_rate=args.learning_rate,
         num_train_epochs=args.num_epochs,
+        max_steps=args.max_steps,
         warmup_ratio=args.warmup_ratio,
         warmup_steps=args.warmup_steps,
         weight_decay=args.weight_decay,
@@ -1033,6 +1072,7 @@ def main() -> int:
         early_stopping_metric=args.early_stopping_metric,
         early_stopping_threshold=args.early_stopping_threshold,
         output_dir=args.output_dir,
+        eval_at_start=args.eval_at_start,
     )
 
     sampler = build_weighted_sampler(records)
