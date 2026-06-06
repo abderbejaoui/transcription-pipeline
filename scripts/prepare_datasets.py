@@ -145,7 +145,11 @@ def _pick_text(row: Dict[str, Any], keys: List[str]) -> str:
 
 def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
     """Write a HF audio object (dict with array+sampling_rate, or a path)
-    to a 16 kHz mono WAV. Returns True on success."""
+    to a 16 kHz mono WAV. Returns True on success.
+
+    Raises on failure so the caller can record *why* a clip was skipped
+    (a silent ``return False`` once hid a 100%-skip bug for a whole run).
+    """
     import numpy as np
     import soundfile as sf
 
@@ -156,14 +160,16 @@ def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
         sr = audio_obj.get("sampling_rate")
         if arr is None and audio_obj.get("path"):
             audio_obj = audio_obj["path"]
+        elif arr is None and audio_obj.get("bytes"):
+            # Streaming datasets sometimes hand back undecoded bytes.
+            import io
+            arr, sr = sf.read(io.BytesIO(audio_obj["bytes"]),
+                              dtype="float32", always_2d=False)
     if arr is None and isinstance(audio_obj, str):
-        try:
-            import librosa
-            arr, sr = librosa.load(audio_obj, sr=target_sr, mono=True)
-        except Exception:
-            return False
+        import librosa
+        arr, sr = librosa.load(audio_obj, sr=target_sr, mono=True)
     if arr is None:
-        return False
+        raise ValueError(f"could not extract audio array from {type(audio_obj)!r}")
 
     arr = np.asarray(arr, dtype="float32")
     if arr.ndim > 1:
@@ -176,7 +182,7 @@ def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
             import librosa
             arr = librosa.resample(arr, orig_sr=sr, target_sr=target_sr)
     if arr.size == 0:
-        return False
+        raise ValueError("decoded audio is empty")
     dst.parent.mkdir(parents=True, exist_ok=True)
     sf.write(dst, arr, target_sr)
     return True
@@ -204,8 +210,12 @@ def prepare_one(
           f"(dialect={spec.dialect}, stage={spec.stage})")
 
     written = 0
-    skipped = 0
     n_cs = 0
+    skip_no_text = 0
+    skip_no_audio = 0
+    skip_decode = 0
+    first_row_dumped = False
+    first_decode_err_dumped = False
     with manifest_path.open("w", encoding="utf-8") as mf:
         for split in spec.splits:
             try:
@@ -215,17 +225,45 @@ def prepare_one(
             except Exception as exc:
                 print(f"[prep]   split '{split}' unavailable: {exc!r}")
                 continue
+            # Force the audio column to decode to {array, sampling_rate}.
+            # Without this, some streaming datasets hand back an undecoded
+            # path/bytes dict and EVERY clip silently fails to save.
+            try:
+                from datasets import Audio
+                if spec.audio_key in (ds.features or {}):
+                    ds = ds.cast_column(
+                        spec.audio_key, Audio(sampling_rate=target_sr)
+                    )
+            except Exception as exc:
+                print(f"[prep]   (could not cast audio column: {exc!r})")
+
             for row in ds:
                 if max_clips is not None and written >= max_clips:
                     break
+                # Dump the schema of the very first row so a wrong text/audio
+                # key name is obvious instead of producing a silent 0-clip run.
+                if not first_row_dumped:
+                    first_row_dumped = True
+                    print(f"[prep]   first-row keys: {list(row.keys())}")
+
                 text = _pick_text(row, spec.text_keys)
                 if not text:
-                    skipped += 1
+                    skip_no_text += 1
                     continue
                 audio_obj = row.get(spec.audio_key) or row.get("audio")
+                if audio_obj is None:
+                    skip_no_audio += 1
+                    continue
                 rel = f"audio/{written:07d}.wav"
-                if not _save_wav(audio_obj, audio_dir / f"{written:07d}.wav", target_sr):
-                    skipped += 1
+                try:
+                    _save_wav(audio_obj, audio_dir / f"{written:07d}.wav", target_sr)
+                except Exception as exc:
+                    skip_decode += 1
+                    if not first_decode_err_dumped:
+                        first_decode_err_dumped = True
+                        import traceback
+                        print(f"[prep]   first decode failure (shown once): {exc!r}")
+                        traceback.print_exc()
                     continue
                 cs = is_code_switch(text)
                 if cs:
@@ -248,16 +286,25 @@ def prepare_one(
             if max_clips is not None and written >= max_clips:
                 break
 
+    skipped = skip_no_text + skip_no_audio + skip_decode
     summary = {
         "slug": spec.slug, "hf_id": spec.hf_id, "dialect": spec.dialect,
         "stage": spec.stage, "clips": written, "code_switch_clips": n_cs,
-        "skipped": skipped, "notes": spec.notes,
+        "skipped": skipped, "skip_no_text": skip_no_text,
+        "skip_no_audio": skip_no_audio, "skip_decode": skip_decode,
+        "notes": spec.notes,
     }
     (out_dir / "summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
     print(f"[prep] {spec.slug}: wrote {written} clips ({n_cs} CS), "
-          f"skipped {skipped} -> {manifest_path}")
+          f"skipped {skipped} "
+          f"(no_text={skip_no_text}, no_audio={skip_no_audio}, "
+          f"decode_fail={skip_decode}) -> {manifest_path}")
+    if written == 0:
+        print(f"[prep] WARNING: {spec.slug} produced 0 clips. "
+              f"Check the first-row keys above against text_keys="
+              f"{spec.text_keys} and audio_key='{spec.audio_key}'.")
     return manifest_path
 
 
