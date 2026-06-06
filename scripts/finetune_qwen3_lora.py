@@ -324,7 +324,26 @@ DEFAULT_LORA_TARGET_SUFFIXES = [
 ]
 
 
-def _find_lora_target_modules(model, suffixes: Sequence[str]) -> List[str]:
+def _audio_tower_layer_count(model) -> int:
+    """Return the number of transformer blocks in the audio encoder, i.e.
+    the highest index N appearing in ``audio_tower(.layers|.blocks).<N>``.
+    Returns 0 if no audio-tower layers are found.
+    """
+    import re
+    max_idx = -1
+    pat = re.compile(r"audio_(?:tower|encoder)\..*?(?:layers|blocks)\.(\d+)\.")
+    for name, _ in model.named_modules():
+        m = pat.search(name + ".")
+        if m:
+            max_idx = max(max_idx, int(m.group(1)))
+    return max_idx + 1
+
+
+def _find_lora_target_modules(
+    model,
+    suffixes: Sequence[str],
+    unfreeze_encoder_layers: int = 0,
+) -> List[str]:
     """Walk model.named_modules() and return full module paths for every
     Linear whose name ends in one of `suffixes` AND lives under the LLM
     decoder transformer blocks (NOT under audio_tower).
@@ -333,21 +352,51 @@ def _find_lora_target_modules(model, suffixes: Sequence[str]) -> List[str]:
     (verified via scripts.inspect_qwen3_modules). The audio encoder lives
     at `thinker.audio_tower.layers.*`. We accept anything under
     `thinker.model.layers` and explicitly reject `audio_tower`/`audio_encoder`.
+
+    When ``unfreeze_encoder_layers > 0`` (teacher's *Change 4 — encoder
+    unfreezing*), we ALSO add LoRA to the matching linears in the LAST N
+    transformer blocks of the audio encoder. Only the highest-index N
+    blocks are touched (the layers nearest the decoder, which carry the
+    most accent/dialect-specific acoustic information). The convolutional
+    front-end and the lower encoder blocks stay frozen.
     """
+    import re
     import torch.nn as nn
+
+    enc_lo = None
+    if unfreeze_encoder_layers and unfreeze_encoder_layers > 0:
+        n_enc = _audio_tower_layer_count(model)
+        if n_enc <= 0:
+            raise RuntimeError(
+                "--unfreeze-encoder-layers was set but no audio_tower layers "
+                "were found. Run `python -m scripts.inspect_qwen3_modules` to "
+                "inspect the actual encoder module names."
+            )
+        enc_lo = max(0, n_enc - unfreeze_encoder_layers)
+
+    enc_pat = re.compile(r"audio_(?:tower|encoder)\..*?(?:layers|blocks)\.(\d+)\.")
+
     targets: List[str] = []
     for name, mod in model.named_modules():
         if not isinstance(mod, nn.Linear):
             continue
-        # Skip the audio tower entirely.
-        if "audio_tower" in name or "audio_encoder" in name:
+        tail = name.rsplit(".", 1)[-1]
+        if tail not in suffixes:
             continue
-        # Must live in the LLM decoder transformer blocks.
+        is_encoder = ("audio_tower" in name) or ("audio_encoder" in name)
+        if is_encoder:
+            # Only the last N encoder blocks, and only when explicitly opted in.
+            if enc_lo is None:
+                continue
+            m = enc_pat.search(name + ".")
+            if m is None or int(m.group(1)) < enc_lo:
+                continue
+            targets.append(name)
+            continue
+        # Decoder path: must live in the LLM decoder transformer blocks.
         if "model.layers" not in name:
             continue
-        tail = name.rsplit(".", 1)[-1]
-        if tail in suffixes:
-            targets.append(name)
+        targets.append(name)
     return targets
 
 
@@ -419,6 +468,8 @@ def apply_lora(
     alpha: int,
     dropout: float,
     use_rslora: bool = False,
+    use_dora: bool = False,
+    unfreeze_encoder_layers: int = 0,
 ):
     """Inject LoRA adapters into the LLM decoder linears.
 
@@ -428,6 +479,20 @@ def apply_lora(
     higher ranks, causing r>32 to plateau LOWER than smaller ranks.
     rsLoRA unlocks the benefit of larger ranks (r=64, 128, 256+).
     Use it whenever ``r > 32``.
+
+    When ``use_dora=True`` (teacher's *Change 1 — DoRA*, Liu et al. 2024,
+    arXiv:2402.09353), PEFT decomposes each weight into magnitude and
+    direction and learns them separately. DoRA consistently beats plain
+    LoRA, especially at low rank, with NO inference overhead after merge
+    (the magnitude/direction are folded back into W). Training is ~+39%
+    slower. ``use_dora`` and ``use_rslora`` are independent and may be
+    combined.
+
+    When ``unfreeze_encoder_layers > 0`` (teacher's *Change 4*), LoRA is
+    additionally placed on the last N audio-encoder blocks. The encoder
+    weights themselves stay frozen — only their LoRA adapters train — so
+    instability is bounded. Use a LOWER LR on those adapters via
+    ``--encoder-lora-lr`` (handled in main()).
     """
     from peft import LoraConfig, get_peft_model, TaskType
 
@@ -435,21 +500,33 @@ def apply_lora(
     for p in model.parameters():
         p.requires_grad = False
 
-    # Belt-and-suspenders: ensure audio tower is frozen and not touched.
-    for n, p in model.named_parameters():
-        if "audio_tower" in n or "audio_encoder" in n:
-            p.requires_grad = False
-
-    explicit_targets = _find_lora_target_modules(model, target_suffixes)
+    explicit_targets = _find_lora_target_modules(
+        model, target_suffixes, unfreeze_encoder_layers=unfreeze_encoder_layers,
+    )
     if not explicit_targets:
         raise RuntimeError(
             "Could not find any LoRA target modules under thinker.model.layers. "
             "Run `python -m scripts.inspect_qwen3_modules` to print the "
             "actual module names from your installed Qwen3-ASR."
         )
+
+    # Belt-and-suspenders: ensure the BASE audio-tower weights stay frozen.
+    # We never set their requires_grad to True; PEFT only trains the LoRA
+    # adapters we explicitly target (including any encoder targets above).
+    target_set = set(explicit_targets)
+    n_encoder_targets = sum(
+        1 for t in explicit_targets
+        if ("audio_tower" in t) or ("audio_encoder" in t)
+    )
+    for n, p in model.named_parameters():
+        if "audio_tower" in n or "audio_encoder" in n:
+            p.requires_grad = False
+
     print(f"[lora] {len(explicit_targets)} target modules "
-          f"(first 3: {explicit_targets[:3]})")
-    print(f"[lora] r={r}  alpha={alpha}  dropout={dropout}  use_rslora={use_rslora}")
+          f"({n_encoder_targets} on encoder; first 3: {explicit_targets[:3]})")
+    print(f"[lora] r={r}  alpha={alpha}  dropout={dropout}  "
+          f"use_rslora={use_rslora}  use_dora={use_dora}  "
+          f"unfreeze_encoder_layers={unfreeze_encoder_layers}")
 
     # PEFT will call model.enable_input_require_grads() which uses
     # get_input_embeddings(); the outer Qwen3-ASR class doesn't implement
@@ -464,6 +541,7 @@ def apply_lora(
         task_type=TaskType.CAUSAL_LM,
         target_modules=explicit_targets,  # explicit full paths
         use_rslora=use_rslora,
+        use_dora=use_dora,
     )
     model = get_peft_model(model, cfg)
     model.print_trainable_parameters()
@@ -757,6 +835,46 @@ def main() -> int:
               "the default lora_alpha/r scaling causes high-rank adapters "
               "to learn slower and plateau lower than low-rank ones."),
     )
+    ap.add_argument(
+        "--use-dora",
+        action="store_true",
+        help=("Use DoRA (weight-decomposed LoRA; Liu et al. 2024, "
+              "arXiv:2402.09353). Consistently beats plain LoRA, especially "
+              "at low rank, with NO inference overhead after merge. Training "
+              "is ~+39%% slower. Independent of --use-rslora."),
+    )
+    ap.add_argument(
+        "--unfreeze-encoder-layers",
+        type=int,
+        default=0,
+        help=("Also place LoRA adapters on the LAST N transformer blocks of "
+              "the audio encoder (teacher's Change 4). The encoder base "
+              "weights stay frozen; only their LoRA adapters train. 0 "
+              "(default) keeps the encoder fully frozen. Try 2-4 for accent/"
+              "dialect adaptation. Pair with a lower --encoder-lora-lr."),
+    )
+    ap.add_argument(
+        "--encoder-lora-lr",
+        type=float,
+        default=None,
+        help=("Separate (lower) learning rate for the encoder LoRA adapters "
+              "when --unfreeze-encoder-layers > 0. Defaults to 0.1 x "
+              "--learning-rate. Ignored if no encoder layers are unfrozen."),
+    )
+    ap.add_argument(
+        "--lr-scheduler-type",
+        default="linear",
+        choices=["linear", "cosine", "cosine_with_restarts", "polynomial",
+                 "constant", "constant_with_warmup"],
+        help="LR schedule (passed to TrainingArguments). Default 'linear'.",
+    )
+    ap.add_argument(
+        "--warmup-steps",
+        type=int,
+        default=0,
+        help=("Absolute warmup steps. If > 0, OVERRIDES --warmup-ratio "
+              "(HuggingFace precedence). Default 0 = use --warmup-ratio."),
+    )
     ap.add_argument("--lora-target-suffixes", nargs="+", default=DEFAULT_LORA_TARGET_SUFFIXES)
     ap.add_argument("--per-device-train-batch-size", type=int, default=4)
     ap.add_argument("--gradient-accumulation-steps", type=int, default=16)
@@ -850,12 +968,14 @@ def main() -> int:
     if args.gradient_checkpointing:
         model.gradient_checkpointing_enable()
 
-    # 3. LoRA on the LLM decoder linears only.
+    # 3. LoRA on the LLM decoder linears (+ optionally last N encoder blocks).
     model = apply_lora(
         model,
         target_suffixes=args.lora_target_suffixes,
         r=args.lora_r, alpha=args.lora_alpha, dropout=args.lora_dropout,
         use_rslora=args.use_rslora,
+        use_dora=args.use_dora,
+        unfreeze_encoder_layers=args.unfreeze_encoder_layers,
     )
 
     # 4. Dataset via upstream preprocess.
@@ -878,9 +998,10 @@ def main() -> int:
         learning_rate=args.learning_rate,
         num_train_epochs=args.num_epochs,
         warmup_ratio=args.warmup_ratio,
+        warmup_steps=args.warmup_steps,
         weight_decay=args.weight_decay,
         max_grad_norm=args.max_grad_norm,
-        lr_scheduler_type="linear",
+        lr_scheduler_type=args.lr_scheduler_type,
         bf16=use_bf16,
         fp16=not use_bf16,
         gradient_checkpointing=args.gradient_checkpointing,
@@ -916,6 +1037,17 @@ def main() -> int:
 
     sampler = build_weighted_sampler(records)
 
+    # When encoder layers are unfrozen, give their LoRA adapters a lower LR.
+    encoder_lora_lr = None
+    if args.unfreeze_encoder_layers and args.unfreeze_encoder_layers > 0:
+        encoder_lora_lr = (
+            args.encoder_lora_lr
+            if args.encoder_lora_lr is not None
+            else args.learning_rate * 0.1
+        )
+        print(f"[opt] encoder LoRA LR = {encoder_lora_lr:g} "
+              f"(decoder LoRA LR = {args.learning_rate:g})")
+
     class CastFloatInputsTrainer(Trainer):
         """Upstream cast — Qwen3-ASR expects all float inputs in model dtype."""
         def _prepare_inputs(self, inputs):
@@ -933,6 +1065,60 @@ def main() -> int:
             # newer versions: (self, train_dataset)
             # We accept either and return our pre-built weighted sampler.
             return sampler
+
+        def create_optimizer(self):
+            # Default path when not unfreezing the encoder: keep upstream behaviour.
+            if encoder_lora_lr is None:
+                return super().create_optimizer()
+            if self.optimizer is not None:
+                return self.optimizer
+            # Two parameter groups: encoder LoRA (lower LR) vs everything else.
+            decay = self.args.weight_decay
+            enc_params, base_params = [], []
+            for n, p in self.model.named_parameters():
+                if not p.requires_grad:
+                    continue
+                if ("audio_tower" in n) or ("audio_encoder" in n):
+                    enc_params.append(p)
+                else:
+                    base_params.append(p)
+            # `get_optimizer_cls_and_kwargs` signature drifts across
+            # transformers versions: static(args) vs static(args, model) vs
+            # instance(self.args). Try the known forms in order.
+            optimizer_cls = optimizer_kwargs = None
+            for call in (
+                lambda: Trainer.get_optimizer_cls_and_kwargs(self.args, self.model),
+                lambda: Trainer.get_optimizer_cls_and_kwargs(self.args),
+                lambda: self.get_optimizer_cls_and_kwargs(self.args),
+            ):
+                try:
+                    optimizer_cls, optimizer_kwargs = call()
+                    break
+                except TypeError:
+                    continue
+            if optimizer_cls is None:
+                # Last resort: let the base build a single-group optimizer,
+                # then override the encoder group's LR in-place below.
+                opt = super().create_optimizer()
+                for group in opt.param_groups:
+                    if any(
+                        id(p) in {id(e) for e in enc_params} for p in group["params"]
+                    ):
+                        group["lr"] = encoder_lora_lr
+                self.optimizer = opt
+                return self.optimizer
+            optimizer_kwargs.pop("lr", None)
+            groups = [
+                {"params": base_params, "lr": self.args.learning_rate,
+                 "weight_decay": decay},
+            ]
+            if enc_params:
+                groups.append(
+                    {"params": enc_params, "lr": encoder_lora_lr,
+                     "weight_decay": decay}
+                )
+            self.optimizer = optimizer_cls(groups, **optimizer_kwargs)
+            return self.optimizer
 
     trainer = CastFloatInputsTrainer(
         model=model,

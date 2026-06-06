@@ -282,6 +282,124 @@ weight to 0.7/0.3 or shrink the medical corpus.
 If you see < 40% you are in unprecedented territory — verify there's no
 test leak.
 
+---
+
+# Appendix A: Gulf code-switch data pipeline (real audio only)
+
+These four scripts replace the legacy `build_train_corpus` flow when you
+want a curated, **leakage-safe**, real-audio-only Gulf code-switch corpus.
+No synthetic data. See `DATASETS.md` for the full inventory, licenses, and
+the two-stage curriculum rationale.
+
+## A1. Prepare datasets from Hugging Face
+
+```bash
+# List the registered (ungated, loadable) Gulf datasets:
+python -m scripts.prepare_datasets --list
+
+# Prepare one, capped for a smoke test:
+python -m scripts.prepare_datasets --dataset mixat --max-clips 200
+
+# Prepare everything for a stage:
+python -m scripts.prepare_datasets --stage 1 --all      # broad Gulf base
+python -m scripts.prepare_datasets --stage 2 --all      # code-switch focus
+```
+
+Each dataset lands at `data/preprocessed/<slug>/manifest.jsonl` with 16 kHz
+mono WAVs. Manifest schema:
+`{audio_path, text, source, dialect, code_switch, weight, stage}`.
+
+The script **refuses** anything in `SYNTHETIC_BLOCKLIST`
+(e.g. `vadimbelsky/uae_arabic_english_bilingual_dataset_40k`).
+
+## A2. Mine extra code-switch rows from existing manifests
+
+```bash
+python -m scripts.mine_code_switch \
+    --in data/preprocessed/*/manifest.jsonl \
+    --out data/splits/mined_cs.jsonl \
+    --weight 3.0 --min-latin-tokens 1 --stage 2
+```
+
+Emits a Stage-2, up-weighted, CS-only manifest. Stage-2 up-weighting needs
+**no code change** — it is just the `weight` field consumed by the weighted
+sampler in `finetune_qwen3_lora.py`.
+
+## A3. Split into disjoint train / val (leakage guard)
+
+`finetune_qwen3_lora.py` takes explicit `--train-manifest` and
+`--eval-manifests`; it does NOT split internally. Use this to carve a
+held-out val set deterministically:
+
+```bash
+python -m scripts.split_manifest \
+    --in data/preprocessed/*/manifest.jsonl \
+    --out-prefix data/splits/gulf \
+    --val-frac 0.05 --stratify-by dialect --dedup-text
+# -> data/splits/gulf.train.jsonl  data/splits/gulf.val.jsonl
+```
+
+It is seeded (reproducible), stratifies by a field so every bucket appears
+on both sides, can dedup by transcript text, and **aborts** if the two sides
+share any clip (prints `leakage=0` on success).
+
+## A4. Two-stage curriculum run
+
+Stage 1 (broad Gulf), then resume into Stage 2 (code-switch up-weighted):
+
+```bash
+# Stage 1
+python -m scripts.finetune_qwen3_lora \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --train-manifest data/splits/stage1.train.jsonl \
+    --eval-manifests data/splits/stage1.val.jsonl eval/casablanca_UAE/manifest.jsonl \
+    --output-dir runs/qwen3_stage1 \
+    --lora-r 64 --lora-alpha 128 --use-rslora \
+    --lr-scheduler-type cosine --warmup-steps 200 \
+    2>&1 | tee logs/stage1.log
+
+# Stage 2 — resume from Stage 1, code-switch manifest is up-weighted
+python -m scripts.finetune_qwen3_lora \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --train-manifest data/splits/stage2.train.jsonl \
+    --eval-manifests data/splits/stage2.val.jsonl eval/casablanca_UAE/manifest.jsonl \
+    --output-dir runs/qwen3_stage2 \
+    --resume-from-checkpoint runs/qwen3_stage1/final_adapter \
+    --lora-r 64 --lora-alpha 128 --use-rslora \
+    --learning-rate 5e-5 --lr-scheduler-type cosine --warmup-steps 100 \
+    2>&1 | tee logs/stage2.log
+```
+
+## A5. Held-out evaluation
+
+```bash
+python -m scripts.test_asr \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --adapter runs/qwen3_stage2/final_adapter \
+    --manifest data/splits/stage2.val.jsonl eval/casablanca_UAE/manifest.jsonl \
+    --breakdown
+```
+
+`test_asr.py` imports the *exact* inference path used during training
+(`_run_eval`, `_build_prefix_messages`), so its WER/CER match the
+in-training eval numbers. `--breakdown` buckets by source / dialect /
+code_switch. Add `--fast` for a quick comparable single number.
+
+## New finetune CLI flags (teacher recommendations)
+
+| Flag | Default | Purpose |
+|---|---|---|
+| `--use-rslora` | off | rank-stabilized LoRA scaling (recommended at r=64) |
+| `--use-dora` | off | DoRA (weight-decomposed LoRA); ~+39% train time |
+| `--unfreeze-encoder-layers N` | 0 | LoRA-adapt the last N audio-tower blocks |
+| `--encoder-lora-lr LR` | `learning_rate*0.1` | separate (lower) LR for encoder LoRA params |
+| `--lr-scheduler-type` | linear | e.g. `cosine` |
+| `--warmup-steps N` | 0 | absolute warmup; overrides `--warmup-ratio` when >0 |
+
+Encoder LoRA params (names containing `audio_tower`) are routed to their own
+lower-LR optimizer group automatically when `--unfreeze-encoder-layers > 0`.
+The audio-tower *base* weights stay frozen — only the adapters train.
+
 ## What is intentionally NOT in this runbook
 
 - Synthetic medical TTS training data — vadimbelsky proved this fails
