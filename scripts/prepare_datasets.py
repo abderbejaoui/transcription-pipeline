@@ -155,6 +155,15 @@ def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
 
     arr = None
     sr = None
+    
+    # Handle newer datasets library AudioDecoder (torchcodec lazy wrapper).
+    # Call .decode() to get the {array, sampling_rate} dict.
+    if hasattr(audio_obj, "decode") and callable(audio_obj.decode):
+        try:
+            audio_obj = audio_obj.decode()
+        except Exception:
+            pass  # fall through to attribute access or error
+    
     if isinstance(audio_obj, dict):
         arr = audio_obj.get("array")
         sr = audio_obj.get("sampling_rate")
@@ -165,6 +174,12 @@ def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
             import io
             arr, sr = sf.read(io.BytesIO(audio_obj["bytes"]),
                               dtype="float32", always_2d=False)
+    
+    # Fallback: some lazy decoders expose .array and .sampling_rate directly.
+    if arr is None and hasattr(audio_obj, "array") and hasattr(audio_obj, "sampling_rate"):
+        arr = getattr(audio_obj, "array", None)
+        sr = getattr(audio_obj, "sampling_rate", None)
+    
     if arr is None and isinstance(audio_obj, str):
         import librosa
         arr, sr = librosa.load(audio_obj, sr=target_sr, mono=True)
