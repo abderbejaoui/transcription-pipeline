@@ -3,9 +3,33 @@
 End-to-end Gulf Arabic ASR fine-tuning of **Qwen3-ASR-1.7B**.
 
 **Hard constraints**
-- **Real recorded audio only — NO synthetic / TTS / spliced data.**
+- **Phase 1 (acoustic) is real recorded audio only — NO synthetic / TTS / spliced data.**
 - Research-only: non-commercial licenses (CC-BY-NC-SA / OpenRAIL-M) are acceptable.
 - Gulf-focused (Emirati / Saudi / Khaliji). Non-Gulf Arabic only as robustness padding.
+
+## Two-phase training plan (Phase 1 vs Phase 2)
+
+**These are separate from the Stage 1 / Stage 2 *curriculum* inside Phase 1.**
+A *phase* is a whole training run; a *stage* is the curriculum order within Phase 1.
+
+| | **Phase 1 — real acoustic finetune** | **Phase 2 — medical vocabulary** |
+|---|---|---|
+| Data | ~1,900h **real** Gulf/Arabic (Stage 1 base + Stage 2 code-switch) | 21h **synthetic** medical Gulf **+** real pure-Gulf rehearsal (sampled from Phase 1: SADA22 etc.) + code-switch + english-medical |
+| Teaches | How the model *hears*: dialect, accent, ar↔en code-switch | Medical **spellings / vocabulary** (tier-1 drugs) |
+| Impact | **Dominant** — shapes core capability, broad WER gain | Narrow vocab slice on top |
+| Synthetic? | **No** | **Yes — but mixed, never synthetic-only** |
+| Order | Run first | Run after Phase 1 WER numbers land |
+
+**Why Phase 2 keeps the synthetic data but mixes it (Arm B):** training a LoRA on
+synthetic-only audio was tried and regressed badly (≈25.58% CER on real Casablanca–UAE)
+because the adapter over-fits the TTS acoustic fingerprint. The fix is **not** to drop
+the data but to (a) **merge Phase 1 → base (`merge_and_unload`)** so Gulf skill can't be
+forgotten, then train a **fresh** medical LoRA on a **shuffled, rehearsal-heavy** manifest
+where the 21h synthetic is a *minority* of acoustic hours, at low LR. Keep a control arm
+(fresh medical LoRA on stock base) for comparison. The ~9,700-name drug tail the 21h can't
+cover is handled by **inference-time hotword biasing + `MedicalCorrector`**, not training.
+
+---
 
 The data feeds a **two-stage curriculum** (teacher's *Change Five — Staged Training*):
 
