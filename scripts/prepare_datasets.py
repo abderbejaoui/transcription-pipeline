@@ -96,9 +96,10 @@ class DatasetSpec:
     disabled: Optional[str] = None
 
 
-# Only datasets that are openly loadable via `datasets.load_dataset` are wired
-# here. Gated ones (ZAEBUC, Ramsa, ADI17) need a manual download first; add a
-# spec with the local path once you have access.
+# Datasets that are openly loadable via `datasets.load_dataset` are wired here
+# directly. Gated / request-only ones (ZAEBUC-Spoken, Oman-Speech) are present
+# as `disabled` stubs documenting how to obtain them and where to drop the
+# files; clear the `disabled` flag once you have a local copy.
 REGISTRY: Dict[str, DatasetSpec] = {
     # --- Stage 2: code-switch -------------------------------------------------
     "mixat": DatasetSpec(
@@ -186,6 +187,34 @@ REGISTRY: Dict[str, DatasetSpec] = {
         notes=("~1000h multi-dialect Arabic YouTube (filtered to type='c' "
                "clean). CC-BY-4.0. Largest open base pool. Loads via "
                "trust_remote_code=True. weight 0.7 (MSA/pan-Arabic anchor)."),
+    ),
+    # --- Held-out EVAL benchmarks (never enter the training pool) -------------
+    # Casablanca: 8-dialect Arabic ASR benchmark (UBC-NLP). Only validation +
+    # test splits are released. We pull ONLY the Emirati subset and tag every
+    # row eval_only=True. License is CC-BY-NC-ND-4.0 (No-Derivatives), so it is
+    # safe as a benchmark but must NOT be used to train/finetune.
+    "casablanca": DatasetSpec(
+        slug="casablanca", hf_id="UBC-NLP/Casablanca", config="Emirati",
+        dialect="emirati", stage=2, weight=0.0, cs_weight=0.0,
+        splits=["validation", "test"],
+        text_keys=["transcription", "text", "transcript", "sentence"],
+        eval_only=True,
+        notes=("Emirati subset of Casablanca (UBC-NLP, arXiv:2410.04527). "
+               "val+test only, CC-BY-NC-ND-4.0 -> EVAL-ONLY (No-Derivatives: "
+               "never train on it). Has dialect/gender/code-switch annots."),
+    ),
+    "zaebuc": DatasetSpec(
+        slug="zaebuc", hf_id="ZAEBUC-Spoken", dialect="gulf", stage=2,
+        weight=2.0, cs_weight=3.0,
+        text_keys=["transcript", "transcription", "text", "sentence"],
+        disabled=("NOT openly on Hugging Face (verified 2026-06-06): the only "
+                  "HF hit 'UniversalCEFR/zaebuc_ar' is the WRITTEN ZAEBUC "
+                  "(CEFR text), not the spoken speech corpus. ZAEBUC-Spoken "
+                  "(~12h Gulf+MSA+Egyptian+English spontaneous code-switch, "
+                  "NYUAD/CAMeL Lab) is distributed by author request. Fill the "
+                  "request form, drop the audio+transcripts into "
+                  "data/raw/zaebuc_spoken/, build a local-path loader, then "
+                  "clear this flag. BEST new CS asset once obtained."),
     ),
     # OMAN-SPEECH: ~40h Omani Arabic across 11 Wilayats (ABJADNLP 2026). There
     # is NO Hugging Face repo or public download — the corpus is described only
