@@ -17,8 +17,9 @@ import os
 import sys
 
 # Schema-tolerant field lookups (different prep runs used different keys).
-SOURCE_KEYS = ("source", "dataset", "corpus", "origin")
-DURATION_KEYS = ("duration", "duration_sec", "dur", "length", "seconds")
+SOURCE_KEYS = ("source", "source_manifest", "dataset", "corpus", "origin")
+DURATION_KEYS = ("duration", "duration_s", "duration_sec", "dur",
+                 "length", "seconds")
 AUDIO_KEYS = ("audio_path", "audio_filepath", "audio", "path", "wav", "file")
 
 
@@ -27,6 +28,24 @@ def _first(row: dict, keys: tuple[str, ...], default=None):
         if k in row and row[k] not in (None, ""):
             return row[k]
     return default
+
+
+def _normalize_source(val) -> str:
+    """Reduce a path-like source_manifest to a dataset name.
+
+    e.g. 'data/dgx_full/raw_datasets/worldspeech_kuwait/manifest.jsonl'
+         -> 'worldspeech_kuwait'
+    """
+    if not isinstance(val, str):
+        return str(val)
+    s = val.replace("\\", "/").strip("/")
+    if "/" not in s:
+        return s
+    parts = s.split("/")
+    # Drop a trailing manifest filename; use its parent dir as the name.
+    if parts[-1].endswith((".jsonl", ".json", ".tsv", ".csv")):
+        parts = parts[:-1]
+    return parts[-1] if parts else s
 
 
 def _human(seconds: float) -> str:
@@ -61,7 +80,7 @@ def inspect(path: str, label: str, default_clip_sec: float) -> float:
                 continue
             if schema_keys is None:
                 schema_keys = list(row.keys())
-            src = _first(row, SOURCE_KEYS, "unknown")
+            src = _normalize_source(_first(row, SOURCE_KEYS, "unknown"))
             dur = _first(row, DURATION_KEYS)
             if dur is None:
                 missing_dur += 1
