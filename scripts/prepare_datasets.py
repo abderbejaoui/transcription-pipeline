@@ -456,6 +456,7 @@ def prepare_one(
     max_clips: Optional[int],
     target_sr: int = 16_000,
     local_dir: Optional[Path] = None,
+    max_hours: Optional[float] = None,
 ) -> Path:
     if spec.local_loader is None:
         from datasets import load_dataset
@@ -477,6 +478,8 @@ def prepare_one(
 
     written = 0
     n_cs = 0
+    total_dur = 0.0  # seconds written so far (for --max-hours budget)
+    max_secs = (max_hours * 3600.0) if max_hours else None
     skip_no_text = 0
     skip_no_audio = 0
     skip_decode = 0
@@ -528,6 +531,8 @@ def prepare_one(
         for _split_label, ds in _iter_sources():
             for row in ds:
                 if max_clips is not None and written >= max_clips:
+                    break
+                if max_secs is not None and total_dur >= max_secs:
                     break
                 # Dump the schema of the very first row so a wrong text/audio
                 # key name is obvious instead of producing a silent 0-clip run.
@@ -591,9 +596,13 @@ def prepare_one(
                     row_out["eval_only"] = True
                 mf.write(json.dumps(row_out, ensure_ascii=False) + "\n")
                 written += 1
+                total_dur += dur_sec
                 if written % 500 == 0:
-                    print(f"[prep]   {written} clips ({n_cs} code-switch)...")
+                    print(f"[prep]   {written} clips "
+                          f"({total_dur/3600.0:.1f}h, {n_cs} code-switch)...")
             if max_clips is not None and written >= max_clips:
+                break
+            if max_secs is not None and total_dur >= max_secs:
                 break
 
     skipped = (skip_no_text + skip_no_audio + skip_decode
@@ -601,6 +610,7 @@ def prepare_one(
     summary = {
         "slug": spec.slug, "hf_id": spec.hf_id, "dialect": spec.dialect,
         "stage": spec.stage, "clips": written, "code_switch_clips": n_cs,
+        "hours": round(total_dur / 3600.0, 3),
         "skipped": skipped, "skip_no_text": skip_no_text,
         "skip_no_audio": skip_no_audio, "skip_decode": skip_decode,
         "skip_cer": skip_cer, "skip_type": skip_type,
@@ -609,7 +619,8 @@ def prepare_one(
     (out_dir / "summary.json").write_text(
         json.dumps(summary, ensure_ascii=False, indent=2), encoding="utf-8"
     )
-    print(f"[prep] {spec.slug}: wrote {written} clips ({n_cs} CS), "
+    print(f"[prep] {spec.slug}: wrote {written} clips "
+          f"({total_dur/3600.0:.1f}h, {n_cs} CS), "
           f"skipped {skipped} "
           f"(no_text={skip_no_text}, no_audio={skip_no_audio}, "
           f"decode_fail={skip_decode}, cer={skip_cer}, type={skip_type}) "
@@ -631,6 +642,10 @@ def main() -> int:
     ap.add_argument("--list", action="store_true", help="List datasets and exit.")
     ap.add_argument("--max-clips", type=int, default=None,
                     help="Cap clips per dataset (smoke test).")
+    ap.add_argument("--max-hours", type=float, default=None,
+                    help="Cap hours of audio written PER dataset. Stops a "
+                         "dataset once it reaches this many hours (huge time "
+                         "saver for sada22/masc). Counts decoded duration.")
     ap.add_argument("--out-root", type=Path, default=DEFAULT_OUT_ROOT)
     ap.add_argument("--local-dir", type=Path, default=None,
                     help="Root folder of a downloaded local-loader corpus "
@@ -679,7 +694,7 @@ def main() -> int:
     for spec in specs:
         try:
             prepare_one(spec, args.out_root, args.max_clips,
-                        local_dir=args.local_dir)
+                        local_dir=args.local_dir, max_hours=args.max_hours)
             prepared.append(spec.slug)
         except Exception as exc:
             print(f"[prep] {spec.slug} FAILED: {exc!r}", file=sys.stderr)
