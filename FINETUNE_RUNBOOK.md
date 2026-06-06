@@ -2,6 +2,214 @@
 
 Run order, exact commands, expected timings, kill criteria. Read top to bottom.
 
+> **⚠️ AUTHORITATIVE SECTION BELOW (`A`).** Sections 0–7 further down are the
+> OLD `build_train_corpus` plan and are kept only for the Phase-2 *medical-text*
+> recipe. For the current dataset pipeline (prepare → split → smoke → train →
+> test) follow **Part A** start to finish. The `*_corpus` commands in §0–§2 are
+> SUPERSEDED by Part A.
+
+---
+
+# Part A — Dataset pipeline (CURRENT, verified 2026-06-06)
+
+Host: DGX Spark `spark-a6f4`. Repo: `/home/abder/abder/transcription/transcription-pipeline`.
+Python: `.venv` (python3.12). Run long jobs inside the `qwen3` tmux session.
+`transformers` is PINNED to 4.57.6 — **never** `pip install -U transformers`.
+
+**Final dataset decision (post quality audit):**
+
+| Dataset | Role | In training pool? |
+|---|---|---|
+| your existing 804h corpus (already **contains SADA**) | Phase-1 base acoustic | ✅ yes |
+| `mixat` (15h Emirati-Eng CS) | Phase-2 code-switch | ✅ yes |
+| `sada22` | re-prep / verify only — **already inside the 804h, do NOT add hours** | optional |
+| `scc22` | held-out Saudi-Eng CS benchmark | ❌ eval-only (`eval_only:true`) |
+| `casablanca` (Emirati subset) | held-out benchmark | ❌ eval-only |
+| `sawtarabi` | **ELIMINATED** (no card, unverifiable) | ❌ disabled |
+| `emirati_shows` | **ELIMINATED** (~0.5h, custom loader) | ❌ disabled |
+| `masc` | +1000h, needs raw-file loader (future win) | ⏸ disabled until loader |
+| `ADI17` | **ELIMINATED** (no transcripts) | ❌ never |
+
+`scc22`/`casablanca` are tagged `eval_only:true` in their manifests, and
+`split_manifest.py` drops any `eval_only` row from the train/val split, so they
+**cannot** leak into training.
+
+## A0. One-time preflight (cheap, do this first)
+
+```bash
+cd /home/abder/abder/transcription/transcription-pipeline
+git pull --no-rebase --no-edit origin main
+source .venv/bin/activate
+
+# 0a. Confirm the pin is intact (MUST print 4.57.6)
+python -c "import transformers; print('transformers', transformers.__version__)"
+
+# 0b. Confirm the registry reflects the audit (mixat/scc22/sada22 active;
+#     sawtarabi/emirati_shows/masc DISABLED)
+python scripts/prepare_datasets.py --list
+
+# 0c. Confirm the LoRA target layout is intact (language_model count > 0)
+python -m scripts.inspect_qwen3_modules
+```
+
+## A1. Smoke prep (download + preprocess, capped) — proves decoding works
+
+```bash
+# CUDA_VISIBLE_DEVICES="" avoids the harmless torchcodec/CUDA teardown
+# core-dump after "[prep] done". HF_HUB_DOWNLOAD_TIMEOUT guards flaky pulls.
+HF_HUB_DOWNLOAD_TIMEOUT=30 CUDA_VISIBLE_DEVICES="" \
+  python -m scripts.prepare_datasets --all --max-clips 200
+```
+
+**PASS criteria:** for each active set you see
+`wrote N clips ... decode_fail=0` with N>0, and
+`SKIP emirati_shows / sawtarabi / masc`. If any active set writes 0 clips,
+read the `first-row keys:` line it printed and fix `text_keys`/`audio_key`
+before going further. **Do not proceed past a 0-clip set.**
+
+## A2. Real prep (full, no cap) — run in tmux
+
+```bash
+tmux new -s prep    # or: tmux attach -t qwen3
+HF_HUB_DOWNLOAD_TIMEOUT=30 CUDA_VISIBLE_DEVICES="" \
+  python -m scripts.prepare_datasets --all 2>&1 | tee logs/prep_all.log
+# detach: Ctrl-b d   ;   reattach: tmux attach -t prep
+```
+
+Check each `data/preprocessed/<slug>/summary.json` for `clips` and
+`decode_fail`. `decode_fail` should be ~0.
+
+## A3. Build the disjoint train/val split (validation set)
+
+```bash
+mkdir -p data/splits
+python scripts/split_manifest.py \
+    --in data/preprocessed/*/manifest.jsonl \
+    --out-prefix data/splits/gulf \
+    --val-frac 0.05 \
+    --stratify-by source \
+    --dedup-text
+```
+
+**PASS criteria — the last lines MUST read:**
+```
+[split] excluded <K> eval_only (held-out benchmark) row(s) from the train/val split
+[split] train=<N>  val=<M>  (val_frac=0.05x, leakage=0)
+```
+`leakage=0` is non-negotiable. If it ever prints `FATAL: ... leakage`, stop.
+Writes `data/splits/gulf.train.jsonl` and `data/splits/gulf.val.jsonl`.
+
+## A4. ⭐ Validation smoke test — PROVE eval works BEFORE the long run
+
+This is the step that was broken in your previous fine-tune. `--eval-at-start`
+runs the held-out eval at **step 0**, and `--max-steps 6` exercises the full
+train→eval→save path in a couple of minutes.
+
+```bash
+python -m scripts.finetune_qwen3_lora \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --train-manifest data/splits/gulf.train.jsonl \
+    --eval-manifests data/splits/gulf.val.jsonl \
+    --output-dir runs/smoke \
+    --max-steps 6 \
+    --eval-at-start \
+    --eval-max-samples 8 \
+    --early-stopping-patience 0 \
+    2>&1 | tee logs/smoke.log
+```
+
+**PASS criteria — you MUST see, at step 0, a line like:**
+```
+[eval-cb] eval-at-start: baseline held-out eval (step 0)
+[eval-cb step=0] gulf.val.jsonl: WER=XX.XX%  CER=YY.YY%  n=8
+```
+- `n=8` (NOT `n=0`) and **WER is a real number, not `nan`**. If WER is `nan`
+  or `n=0`, the eval path is broken — STOP and fix before any long run.
+- Training then runs 6 steps and saves. If this whole block is green, the
+  validation logic is proven and you can launch the real run with confidence.
+
+## A5. Phase 1 — base acoustic LoRA (real-only, from Qwen3 BASE fresh)
+
+Phase 1 trains Gulf acoustic from the **base** model (not your old 804h
+checkpoint). Your 804h corpus already includes SADA — point `--train-manifest`
+at your full 804h manifest (don't double-add `sada22`).
+
+```bash
+mkdir -p runs/phase1
+python -m scripts.finetune_qwen3_lora \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --train-manifest <PATH_TO_YOUR_804h_TRAIN_MANIFEST> \
+    --eval-manifests data/splits/gulf.val.jsonl \
+                     data/preprocessed/scc22/manifest.jsonl \
+    --output-dir runs/phase1 \
+    --num-epochs 3 \
+    --learning-rate 1e-4 \
+    --lora-r 32 --lora-alpha 64 --lora-dropout 0.05 \
+    --use-dora \
+    --per-device-train-batch-size 4 \
+    --gradient-accumulation-steps 16 \
+    --eval-every-steps 2000 \
+    --eval-at-start \
+    --early-stopping-patience 3 --early-stopping-metric wer \
+    2>&1 | tee logs/phase1.log
+```
+
+The FIRST `--eval-manifests` entry (`gulf.val`) drives early stopping; the
+second (`scc22`, eval-only) is a held-out generalisation read.
+Best adapter is saved to `runs/phase1/best_adapter` on every improvement.
+
+**Kill criteria:** loss `NaN` → LR 5e-5; WER rises 2 evals running → halve LR,
+resume from last checkpoint; OOM → batch-size 2 / grad-accum 32.
+
+## A6. Phase 2 — medical CS mixed with real rehearsal (resume from Phase 1)
+
+Phase 2 = **synthetic medical CS MIXED with real data** (never synthetic-only).
+Approx mix: ~20h synthetic medical CS + ~25h real CS (`mixat` + mined CS) +
+~100h Gulf rehearsal sampled from the Phase-1 corpus. Resume from the NEW
+Phase-1 checkpoint.
+
+```bash
+# Build the mixed manifest first (synthetic + real CS + rehearsal sample).
+python scripts/sample_rehearsal.py --help   # rehearsal sampler
+python scripts/mine_code_switch.py --help   # CS up-weighting
+
+mkdir -p runs/phase2
+python -m scripts.finetune_qwen3_lora \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --resume-from-checkpoint runs/phase1/best_adapter \
+    --train-manifest data/splits/phase2_mixed.train.jsonl \
+    --eval-manifests data/splits/gulf.val.jsonl \
+                     data/preprocessed/scc22/manifest.jsonl \
+    --output-dir runs/phase2 \
+    --num-epochs 2 \
+    --learning-rate 5e-5 \
+    --lora-r 32 --lora-alpha 64 --lora-dropout 0.05 --use-dora \
+    --eval-every-steps 1000 \
+    --eval-at-start \
+    --early-stopping-patience 3 \
+    2>&1 | tee logs/phase2.log
+```
+
+## A7. Final held-out test (the real WER/CER numbers)
+
+```bash
+# Full-set eval (no sampling cap) on the held-out benchmarks.
+python scripts/test_asr.py \
+    --model-path Qwen/Qwen3-ASR-1.7B \
+    --adapter runs/phase2/best_adapter \
+    --manifest data/preprocessed/scc22/manifest.jsonl \
+    --breakdown \
+    --out eval_results/phase2_scc22.json
+
+# (Repeat for any casablanca Emirati eval manifest once prepared.)
+```
+
+`--breakdown` prints per-source / per-dialect / CS-vs-non-CS WER+CER.
+
+---
+
+# Part B — Legacy plan (medical-text Phase 2 reference only)
+
 ## 0. Preconditions (verify once)
 
 ```bash

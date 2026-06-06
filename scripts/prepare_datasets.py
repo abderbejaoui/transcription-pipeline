@@ -72,6 +72,12 @@ class DatasetSpec:
     audio_key: str = "audio"
     config: Optional[str] = None    # HF dataset config name
     notes: str = ""
+    # If True this dataset is a HELD-OUT benchmark: it is prepared like any
+    # other, but every manifest row is tagged `"eval_only": true` so the
+    # split/training pipeline never pulls it into the training pool (it is a
+    # benchmark only). Use for sets published as test/validation splits, or
+    # sets you deliberately hold out to measure generalisation.
+    eval_only: bool = False
     # If set, this dataset cannot be loaded by plain `load_dataset` and is
     # skipped by --all / --stage (still attemptable via --dataset). The string
     # explains why and what manual step is needed.
@@ -94,7 +100,9 @@ REGISTRY: Dict[str, DatasetSpec] = {
         weight=2.0, cs_weight=3.0,
         splits=["test"],  # only a 'test' split is published
         text_keys=["ProcessedText", "Original_text", "text", "transcript"],
-        notes="Saudilang Code-Switch Corpus, ~5h. CC-BY-NC-SA, ungated. test split only.",
+        eval_only=True,
+        notes=("Saudi-English code-switch, ~5h, TEST split only, all-male. "
+               "CC-BY-NC-SA, ungated. HELD-OUT EVAL set (never trained on)."),
     ),
     # --- Stage 1: base Gulf / Arabic acoustic --------------------------------
     "sada22": DatasetSpec(
@@ -108,17 +116,21 @@ REGISTRY: Dict[str, DatasetSpec] = {
         dialect="emirati", stage=1, weight=1.5,
         text_keys=["text", "transcript", "transcription", "sentence"],
         notes="467 pure-Emirati clips. AFL-3.0, ungated.",
-        disabled=("audiofolder dataset: transcripts live in a SEPARATE .tsv, "
-                  "not auto-joined by load_dataset (audio column only). "
-                  "Needs a custom loader that pairs the audio zip with the tsv."),
+        disabled=("ELIMINATED (quality audit 2026-06-06): only ~467 clips "
+                  "(~0.5-1h), audiofolder with transcripts in a SEPARATE .tsv "
+                  "that load_dataset does not auto-join, and the card warns "
+                  "other dialects are sometimes kept. Too small to justify a "
+                  "custom loader. Re-enable only if a cheap loader is built."),
     ),
     "sawtarabi": DatasetSpec(
         slug="sawtarabi", hf_id="ArabicSpeech/sawtarabi", dialect="arabic",
         stage=1, weight=1.0,
-        # prefer non-diacritized text for ASR targets; fall back to diacritized
         text_keys=["text_not_diacritized", "text_diacritized",
                    "text", "transcript", "transcription", "sentence"],
-        notes="~3.3k Arabic clips, small base pool. Uses text_not_diacritized.",
+        notes="~3.3k Arabic clips.",
+        disabled=("ELIMINATED (quality audit 2026-06-06): NO dataset card, "
+                  "dataset viewer unavailable, unknown dialect/provenance/"
+                  "quality. ~3.3k clips of unverifiable value. Dropped."),
     ),
     "masc": DatasetSpec(
         slug="masc", hf_id="pain/MASC", dialect="arabic", stage=1, weight=1.0,
@@ -315,7 +327,7 @@ def prepare_one(
                 weight = spec.weight
                 if cs and spec.cs_weight is not None:
                     weight = spec.cs_weight
-                mf.write(json.dumps({
+                row_out = {
                     "audio_path": rel,
                     "text": text,
                     "source": spec.slug,
@@ -323,7 +335,12 @@ def prepare_one(
                     "code_switch": cs,
                     "weight": weight,
                     "stage": spec.stage,
-                }, ensure_ascii=False) + "\n")
+                }
+                # Tag held-out benchmark sets so split/training never pulls
+                # them into the training pool (they are eval-only).
+                if spec.eval_only:
+                    row_out["eval_only"] = True
+                mf.write(json.dumps(row_out, ensure_ascii=False) + "\n")
                 written += 1
                 if written % 500 == 0:
                     print(f"[prep]   {written} clips ({n_cs} code-switch)...")

@@ -83,6 +83,18 @@ def main() -> int:
         print("[split] no rows read.", file=sys.stderr)
         return 1
 
+    # Held-out benchmark rows (tagged eval_only by prepare_datasets.py) must
+    # NEVER enter the train/val split — they are a separate test set. Drop them
+    # here so a stray eval-only manifest in the glob cannot leak into training.
+    n_eval_only = sum(1 for r in rows if r.get("eval_only"))
+    if n_eval_only:
+        rows = [r for r in rows if not r.get("eval_only")]
+        print(f"[split] excluded {n_eval_only} eval_only (held-out benchmark) "
+              f"row(s) from the train/val split")
+    if not rows:
+        print("[split] no trainable rows after eval_only filter.", file=sys.stderr)
+        return 1
+
     if args.dedup_text:
         seen = set()
         deduped = []
