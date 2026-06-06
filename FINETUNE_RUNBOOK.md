@@ -48,7 +48,10 @@ python -c "import transformers; print('transformers', transformers.__version__)"
 #     sawtarabi/emirati_shows/masc DISABLED)
 python scripts/prepare_datasets.py --list
 
-# 0c. Confirm the LoRA target layout is intact (language_model count > 0)
+# 0c. Confirm the LoRA target layout is intact.
+#     Decoder lives at thinker.model.layers.* (there is NO `language_model`
+#     name in this build). Expect:  decoder: ~197 Linear ... LoRA targets ~196.
+#     If [summary] prints 0 modules, STOP — the layout changed upstream.
 python -m scripts.inspect_qwen3_modules
 ```
 

@@ -5,10 +5,12 @@ It will:
   - Load Qwen/Qwen3-ASR-1.7B via the official wrapper (no GPU needed if
     you use --cpu-only).
   - Walk `model.named_modules()` and print every nn.Linear, grouped by
-    sub-tree (audio_tower vs language_model).
+    sub-tree (audio_tower vs decoder). In Qwen3-ASR-1.7B the LLM decoder
+    lives at `thinker.model.layers.*` (there is NO `language_model` name),
+    which is exactly what the trainer's _find_lora_target_modules targets.
   - Show how many would be picked up by the default suffix filter
-    (q_proj/k_proj/v_proj/o_proj/gate_proj/up_proj/down_proj) under
-    language_model only.
+    (q_proj/k_proj/v_proj/o_proj/gate_proj/up_proj/down_proj) under the
+    decoder blocks only.
 
 Usage:
   python -m scripts.inspect_qwen3_modules
@@ -51,13 +53,17 @@ def main() -> int:
         if isinstance(mod, torch.nn.Linear):
             if "audio_tower" in name or "audio_encoder" in name:
                 bucket = "audio_tower"
-            elif "language_model" in name:
-                bucket = "language_model"
+            # The LLM decoder lives at `thinker.model.layers.*` in this build
+            # (NOT under a `language_model` sub-name). That is exactly what the
+            # trainer's _find_lora_target_modules() targets, so bucket it as the
+            # decoder when its name carries `model.layers`.
+            elif "model.layers" in name:
+                bucket = "decoder"
             else:
                 bucket = "other"
             buckets[bucket].append(name)
 
-    for bucket in ("audio_tower", "language_model", "other"):
+    for bucket in ("audio_tower", "decoder", "other"):
         names = buckets.get(bucket, [])
         print(f"\n=== {bucket}: {len(names)} Linear modules ===")
         for n in names[:8]:
@@ -65,12 +71,13 @@ def main() -> int:
         if len(names) > 8:
             print(f"  ... ({len(names) - 8} more)")
 
-    # Default-filter count
+    # Default-filter count — mirror the trainer's selection: decoder Linear
+    # modules under `model.layers` whose name ends in one of the suffixes.
     matched = [
-        n for n in buckets["language_model"]
+        n for n in buckets["decoder"]
         if n.rsplit(".", 1)[-1] in set(args.suffixes)
     ]
-    print(f"\n[summary] LoRA targets (language_model & suffix in {args.suffixes}):")
+    print(f"\n[summary] LoRA targets (decoder `model.layers` & suffix in {args.suffixes}):")
     print(f"          {len(matched)} modules")
     for n in matched[:6]:
         print(f"  {n}")
