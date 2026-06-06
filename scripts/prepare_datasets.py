@@ -39,6 +39,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import re
 import sys
 import unicodedata
@@ -94,6 +95,15 @@ class DatasetSpec:
     # skipped by --all / --stage (still attemptable via --dataset). The string
     # explains why and what manual step is needed.
     disabled: Optional[str] = None
+    # For corpora that are NOT on the HF Hub as a loadable dataset (GitHub /
+    # gated / request-only). Name of a local row-iterator registered in
+    # LOCAL_LOADERS that yields {"text": str, "audio": <path|dict>} dicts from
+    # files the user has downloaded under ``--local-dir``. When set, prepare_one
+    # uses it instead of load_dataset. A spec may have BOTH local_loader and a
+    # `disabled` note: the note documents how to obtain the data; once it is on
+    # disk, pass --dataset <slug> --local-dir <path> (the disabled flag is
+    # ignored for an explicit --dataset run).
+    local_loader: Optional[str] = None
 
 
 # Datasets that are openly loadable via `datasets.load_dataset` are wired here
@@ -179,14 +189,67 @@ REGISTRY: Dict[str, DatasetSpec] = {
                   "quality. ~3.3k clips of unverifiable value. Dropped."),
     ),
     "masc": DatasetSpec(
-        slug="masc", hf_id="pain/MASC", dialect="arabic", stage=1, weight=0.7,
+        slug="masc", hf_id="MohamedRashad/MASC-Arabic", dialect="arabic",
+        stage=1, weight=0.7,
         text_keys=["text", "transcript", "transcription", "sentence"],
         splits=["train"],
-        trust_remote_code=True,        # ships a MASC.py loading script
         type_key="type", type_keep=["c"],  # keep clean clips only (c vs n)
         notes=("~1000h multi-dialect Arabic YouTube (filtered to type='c' "
-               "clean). CC-BY-4.0. Largest open base pool. Loads via "
-               "trust_remote_code=True. weight 0.7 (MSA/pan-Arabic anchor)."),
+               "clean). CC-BY-4.0. Largest open base pool. PARQUET mirror of "
+               "pain/MASC (no loading script -> works on datasets>=3.x; the "
+               "original pain/MASC ships MASC.py which modern datasets "
+               "refuses). Same schema: text/type/audio. weight 0.7."),
+    ),
+    "saudi_asrv1": DatasetSpec(
+        slug="saudi_asrv1", hf_id="musabalosimi/saudi_dialect_asrv1.0",
+        dialect="saudi", stage=1, weight=1.2,
+        text_keys=["text", "transcript", "transcription", "sentence"],
+        splits=["train"],
+        notes=("Saudi dialect ASR v1.0, ~8.25k clips (61GB audio), "
+               "ungated parquet. Pure Saudi acoustic top-up for Stage 1."),
+    ),
+    "common_voice_ar": DatasetSpec(
+        slug="common_voice_ar",
+        hf_id="mozilla-foundation/common_voice_17_0", config="ar",
+        dialect="msa", stage=1, weight=0.3,
+        text_keys=["sentence", "text", "transcript"],
+        splits=["train"],
+        notes=("Common Voice 17 Arabic (~157h, mostly MSA). CC0. Low-weight "
+               "MSA robustness padding. May require HF login (accept terms)."),
+    ),
+    "ramsa": DatasetSpec(
+        slug="ramsa", hf_id="RAMSA", dialect="emirati", stage=1, weight=1.5,
+        text_keys=["text", "transcript", "transcription", "sentence"],
+        disabled=("GATED / request-only (verified 2026-06-06): ~41h Emirati "
+                  "(157 speakers), distributed by emailing the authors. Not on "
+                  "HF as an open download. Obtain, drop into data/raw/ramsa/, "
+                  "build a local-path loader, then clear this flag."),
+    ),
+    "alsanaa": DatasetSpec(
+        slug="alsanaa", hf_id="MahaAlBlooki/alsanaa-emirati-dataset",
+        dialect="emirati", stage=1, weight=1.5,
+        text_keys=["text", "transcript", "transcription", "sentence"],
+        local_loader="alsanaa",
+        disabled=("LOCAL-DIR loader (verified 2026-06-06): ~4h single-speaker "
+                  "Emirati (Aloula radio + Alsanaa book), GitHub-distributed, "
+                  "HF mirror is gated (401). Get it with:\n"
+                  "    git clone https://github.com/MahaAlBlooki/"
+                  "alsanaa-emirati-dataset data/raw/alsanaa\n"
+                  "then run:\n"
+                  "    python scripts/prepare_datasets.py --dataset alsanaa "
+                  "--local-dir data/raw/alsanaa\n"
+                  "Layout: audio/*.mp3 + transcriptions.txt ('<id> <text>' "
+                  "per line). Tiny (1 speaker) -> low diversity."),
+    ),
+    "arzen": DatasetSpec(
+        slug="arzen", hf_id="ArzEn-ST", dialect="egyptian", stage=2,
+        weight=0.5, cs_weight=0.8,
+        text_keys=["transcript", "text", "transcription", "sentence"],
+        disabled=("SPEECH corpus is request-gated (verified 2026-06-06): the "
+                  "HF 'ArzEn_MultiGenre_*' repos are TEXT-only parallel data, "
+                  "NOT the ~12h Egyptian-English speech corpus (ArzEn-ST, "
+                  "request from authors). Non-Gulf CS PADDING only. Obtain, "
+                  "drop into data/raw/arzen/, build loader, clear this flag."),
     ),
     # --- Held-out EVAL benchmarks (never enter the training pool) -------------
     # Casablanca: 8-dialect Arabic ASR benchmark (UBC-NLP). Only validation +
@@ -194,14 +257,16 @@ REGISTRY: Dict[str, DatasetSpec] = {
     # row eval_only=True. License is CC-BY-NC-ND-4.0 (No-Derivatives), so it is
     # safe as a benchmark but must NOT be used to train/finetune.
     "casablanca": DatasetSpec(
-        slug="casablanca", hf_id="UBC-NLP/Casablanca", config="Emirati",
+        slug="casablanca", hf_id="UBC-NLP/Casablanca", config="UAE",
         dialect="emirati", stage=2, weight=0.0, cs_weight=0.0,
         splits=["validation", "test"],
         text_keys=["transcription", "text", "transcript", "sentence"],
         eval_only=True,
-        notes=("Emirati subset of Casablanca (UBC-NLP, arXiv:2410.04527). "
-               "val+test only, CC-BY-NC-ND-4.0 -> EVAL-ONLY (No-Derivatives: "
-               "never train on it). Has dialect/gender/code-switch annots."),
+        notes=("UAE (Emirati) subset of Casablanca (UBC-NLP, "
+               "arXiv:2410.04527). Config is 'UAE' (NOT 'Emirati'); available "
+               "configs are Algeria/Egypt/Jordan/Mauritania/Morocco/Palestine/"
+               "UAE/Yemen. val+test only, CC-BY-NC-ND-4.0 -> EVAL-ONLY "
+               "(No-Derivatives: never train on it)."),
     ),
     "zaebuc": DatasetSpec(
         slug="zaebuc", hf_id="ZAEBUC-Spoken", dialect="gulf", stage=2,
@@ -334,13 +399,66 @@ def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> float:
     return float(arr.shape[0]) / float(target_sr)  # duration in seconds
 
 
+# --- Local-folder loaders -------------------------------------------------
+# For corpora that are NOT loadable via datasets.load_dataset (GitHub-hosted /
+# gated / request-only). Each loader is a generator that takes the local root
+# directory the user downloaded into (--local-dir) and yields plain row dicts
+# {"text": str, "audio": <path-str>} that prepare_one treats exactly like a
+# load_dataset row (text_keys + audio_key still apply).
+
+def _load_alsanaa(root: Path):
+    """alsanaa-emirati-dataset (github.com/MahaAlBlooki/alsanaa-emirati-dataset).
+
+    Layout: audio/<id>.mp3 + transcriptions.txt with one '<id> <text>' per
+    line. We join each transcript id to its audio file.
+    """
+    txt = root / "transcriptions.txt"
+    audio_dir = root / "audio"
+    if not txt.exists():
+        raise FileNotFoundError(
+            f"{txt} not found. Clone the repo into {root} first:\n"
+            f"  git clone https://github.com/MahaAlBlooki/"
+            f"alsanaa-emirati-dataset {root}")
+    if not audio_dir.is_dir():
+        raise FileNotFoundError(f"{audio_dir} not found (expected audio/ folder).")
+    for line in txt.read_text(encoding="utf-8").splitlines():
+        line = line.strip()
+        if not line:
+            continue
+        # '<id> <transcription...>' — split on first whitespace run.
+        parts = line.split(maxsplit=1)
+        if len(parts) != 2:
+            continue
+        uid, text = parts[0], parts[1].strip()
+        if not text:
+            continue
+        # Find the audio file by id (mp3/wav/m4a).
+        cand = None
+        for ext in (".mp3", ".wav", ".m4a", ".flac", ".ogg"):
+            p = audio_dir / f"{uid}{ext}"
+            if p.exists():
+                cand = p
+                break
+        if cand is None:
+            continue
+        yield {"text": text, "audio": str(cand)}
+
+
+# slug -> generator(root: Path) -> Iterable[dict]
+LOCAL_LOADERS: Dict[str, Any] = {
+    "alsanaa": _load_alsanaa,
+}
+
+
 def prepare_one(
     spec: DatasetSpec,
     out_root: Path,
     max_clips: Optional[int],
     target_sr: int = 16_000,
+    local_dir: Optional[Path] = None,
 ) -> Path:
-    from datasets import load_dataset
+    if spec.local_loader is None:
+        from datasets import load_dataset
 
     if spec.hf_id.lower() in SYNTHETIC_BLOCKLIST:
         raise ValueError(
@@ -352,7 +470,9 @@ def prepare_one(
     audio_dir.mkdir(parents=True, exist_ok=True)
     manifest_path = out_dir / "manifest.jsonl"
 
-    print(f"[prep] {spec.slug} <- {spec.hf_id} "
+    src_label = (f"LOCAL:{local_dir}" if spec.local_loader and local_dir
+                 else spec.hf_id)
+    print(f"[prep] {spec.slug} <- {src_label} "
           f"(dialect={spec.dialect}, stage={spec.stage})")
 
     written = 0
@@ -364,7 +484,22 @@ def prepare_one(
     skip_type = 0
     first_row_dumped = False
     first_decode_err_dumped = False
-    with manifest_path.open("w", encoding="utf-8") as mf:
+
+    # Build the list of (label, row-iterable) sources. For HF datasets this is
+    # one streamed split per spec.splits; for a local_loader it is a single
+    # generator over the downloaded folder.
+    def _iter_sources():
+        if spec.local_loader is not None:
+            loader = LOCAL_LOADERS.get(spec.local_loader)
+            if loader is None:
+                raise ValueError(
+                    f"no LOCAL_LOADERS entry named '{spec.local_loader}'")
+            if local_dir is None:
+                raise ValueError(
+                    f"{spec.slug} needs --local-dir <path> "
+                    f"(download instructions: {spec.disabled})")
+            yield ("local", loader(Path(local_dir)))
+            return
         for split in spec.splits:
             load_kwargs: Dict[str, Any] = dict(
                 path=spec.hf_id, name=spec.config, split=split, streaming=True,
@@ -387,7 +522,10 @@ def prepare_one(
                     )
             except Exception as exc:
                 print(f"[prep]   (could not cast audio column: {exc!r})")
+            yield (split, ds)
 
+    with manifest_path.open("w", encoding="utf-8") as mf:
+        for _split_label, ds in _iter_sources():
             for row in ds:
                 if max_clips is not None and written >= max_clips:
                     break
@@ -494,6 +632,10 @@ def main() -> int:
     ap.add_argument("--max-clips", type=int, default=None,
                     help="Cap clips per dataset (smoke test).")
     ap.add_argument("--out-root", type=Path, default=DEFAULT_OUT_ROOT)
+    ap.add_argument("--local-dir", type=Path, default=None,
+                    help="Root folder of a downloaded local-loader corpus "
+                         "(e.g. alsanaa/ramsa/zaebuc/arzen). Required when the "
+                         "selected --dataset has a local_loader.")
     args = ap.parse_args()
 
     if args.list:
@@ -520,12 +662,13 @@ def main() -> int:
         ap.error("Pass one of --dataset, --stage, --all, or --list.")
         return 2
 
-    # --all / --stage skip datasets that need manual handling. An explicit
-    # --dataset still attempts them (so you can debug a custom loader).
+    # --all / --stage skip datasets that need manual handling, UNLESS they have
+    # a local_loader and the user passed --local-dir (then we can ingest them).
+    # An explicit --dataset still attempts a disabled spec (debug a loader).
     if not args.dataset:
         kept = []
         for spec in specs:
-            if spec.disabled:
+            if spec.disabled and not (spec.local_loader and args.local_dir):
                 print(f"[prep] SKIP {spec.slug}: {spec.disabled}")
             else:
                 kept.append(spec)
@@ -535,7 +678,8 @@ def main() -> int:
     prepared: List[str] = []
     for spec in specs:
         try:
-            prepare_one(spec, args.out_root, args.max_clips)
+            prepare_one(spec, args.out_root, args.max_clips,
+                        local_dir=args.local_dir)
             prepared.append(spec.slug)
         except Exception as exc:
             print(f"[prep] {spec.slug} FAILED: {exc!r}", file=sys.stderr)
@@ -545,4 +689,13 @@ def main() -> int:
 
 
 if __name__ == "__main__":
-    sys.exit(main())
+    rc = main()
+    # Some audio backends (torchaudio/soundfile/torchcodec) register C-level
+    # atexit/finalizer hooks that race the interpreter shutdown and abort with
+    # "PyGILState_Release: thread state ... must be current" *after* the run
+    # already succeeded. Flush our own buffers, then hard-exit to skip those
+    # finalizers entirely so a good run doesn't core-dump (and so --all does
+    # not abort between datasets).
+    sys.stdout.flush()
+    sys.stderr.flush()
+    os._exit(rc)
