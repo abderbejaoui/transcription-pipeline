@@ -58,15 +58,49 @@ def _read_text(rec: Dict) -> str:
     return t.split("<asr_text>", 1)[1] if "<asr_text>" in t else t
 
 
+_DURATION_KEYS = ("duration", "duration_s", "duration_sec", "dur",
+                  "length", "seconds")
+
+# Aliases so a manifest written with one schema (e.g. ``source_manifest``)
+# can still be stratified by the canonical field name (``source``).
+_FIELD_ALIASES = {
+    "source": ("source", "source_manifest", "dataset", "corpus", "origin"),
+    "dialect": ("dialect", "lang", "language"),
+}
+
+
+def _norm_source(val) -> str:
+    """Reduce a path-like source value to a short dataset name."""
+    if not isinstance(val, str):
+        return str(val)
+    s = val.replace("\\", "/").strip("/")
+    if "/" not in s:
+        return s
+    parts = s.split("/")
+    if parts[-1].endswith((".jsonl", ".json", ".tsv", ".csv")):
+        parts = parts[:-1]
+    return parts[-1] if parts else s
+
+
+def _field(rec: Dict, name: str, default: str = "unknown") -> str:
+    """Resolve a stratify field across schema aliases, normalizing paths."""
+    for k in _FIELD_ALIASES.get(name, (name,)):
+        v = rec.get(k)
+        if v not in (None, ""):
+            return _norm_source(v) if name == "source" else str(v)
+    return default
+
+
 def _clip_sec(rec: Dict, default_sec: float) -> float:
     """Best-effort clip duration in seconds for hour accounting."""
-    d = rec.get("duration")
-    try:
-        d = float(d)
-        if d > 0:
-            return d
-    except (TypeError, ValueError):
-        pass
+    for k in _DURATION_KEYS:
+        d = rec.get(k)
+        try:
+            d = float(d)
+            if d > 0:
+                return d
+        except (TypeError, ValueError):
+            continue
     return default_sec
 
 
@@ -146,7 +180,7 @@ def main() -> int:
     if args.stratify_by:
         groups: Dict[str, List[Dict]] = defaultdict(list)
         for r in rows:
-            groups[str(r.get(args.stratify_by, "unknown"))].append(r)
+            groups[_field(r, args.stratify_by)].append(r)
         train, val = [], []
         for key, items in groups.items():
             rng.shuffle(items)
@@ -181,7 +215,7 @@ def main() -> int:
         carve_key = args.stratify_by or "source"
         buckets: Dict[str, List[Dict]] = defaultdict(list)
         for r in train:
-            buckets[str(r.get(carve_key, "unknown"))].append(r)
+            buckets[_field(r, carve_key)].append(r)
         total_sec = sum(_clip_sec(r, args.default_clip_sec) for r in train)
         if total_sec <= 0:
             print("[split] FATAL: train has zero total duration; cannot carve.",
