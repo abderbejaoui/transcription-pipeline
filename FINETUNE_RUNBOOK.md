@@ -400,11 +400,23 @@ Encoder LoRA params (names containing `audio_tower`) are routed to their own
 lower-LR optimizer group automatically when `--unfreeze-encoder-layers > 0`.
 The audio-tower *base* weights stay frozen — only the adapters train.
 
+## Phase 1 vs Phase 2 (what trains on what)
+
+- **Phase 1 (this runbook):** real-audio acoustic finetune (~1,900h Gulf +
+  code-switch, Stage 1 then Stage 2). NO synthetic. Dominant-impact run.
+- **Phase 2 (after Phase 1 WER lands):** medical-vocabulary stage. Keeps the
+  21h synthetic medical Gulf data but **mixed, never synthetic-only** — Arm B:
+  `merge_and_unload` Phase 1 into the base, then a fresh medical LoRA on a
+  shuffled, rehearsal-heavy manifest (synthetic 21h + Gulf rehearsal +
+  code-switch + english-medical) at low LR, plus a stock-base control arm.
+  See `V2_TRAINING_PLAN.md` and `DATASETS.md` for the mix ratios.
+
 ## What is intentionally NOT in this runbook
 
-- Synthetic medical TTS training data — vadimbelsky proved this fails
-  (25.58% CER on real Casablanca-UAE). We use text-only decoder adaptation
-  + hotword biasing instead. That's Phase 2, after Round-1 results land.
+- Synthetic-**only** medical TTS acoustic training — tried, regressed
+  (25.58% CER on real Casablanca-UAE). Phase 2 instead **mixes** the 21h
+  synthetic with real rehearsal (Arm B, above) and leans on hotword biasing
+  for the long-tail drug names.
 - MAS-LoRA dialect experts (SA vs UAE separate adapters) — useful only if
   Round 1 shows the model is forgetting one dialect to learn the other.
   Decide post-Round-1 from the per-source eval breakdown.
