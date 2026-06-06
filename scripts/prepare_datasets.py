@@ -188,6 +188,50 @@ REGISTRY: Dict[str, DatasetSpec] = {
                "clean). CC-BY-4.0. Largest open base pool. Loads via "
                "trust_remote_code=True. weight 0.7 (MSA/pan-Arabic anchor)."),
     ),
+    "saudi_asrv1": DatasetSpec(
+        slug="saudi_asrv1", hf_id="musabalosimi/saudi_dialect_asrv1.0",
+        dialect="saudi", stage=1, weight=1.2,
+        text_keys=["text", "transcript", "transcription", "sentence"],
+        splits=["train"],
+        notes=("Saudi dialect ASR v1.0, ~8.25k clips (61GB audio), "
+               "ungated parquet. Pure Saudi acoustic top-up for Stage 1."),
+    ),
+    "common_voice_ar": DatasetSpec(
+        slug="common_voice_ar",
+        hf_id="mozilla-foundation/common_voice_17_0", config="ar",
+        dialect="msa", stage=1, weight=0.3,
+        text_keys=["sentence", "text", "transcript"],
+        splits=["train"],
+        notes=("Common Voice 17 Arabic (~157h, mostly MSA). CC0. Low-weight "
+               "MSA robustness padding. May require HF login (accept terms)."),
+    ),
+    "ramsa": DatasetSpec(
+        slug="ramsa", hf_id="RAMSA", dialect="emirati", stage=1, weight=1.5,
+        text_keys=["text", "transcript", "transcription", "sentence"],
+        disabled=("GATED / request-only (verified 2026-06-06): ~41h Emirati "
+                  "(157 speakers), distributed by emailing the authors. Not on "
+                  "HF as an open download. Obtain, drop into data/raw/ramsa/, "
+                  "build a local-path loader, then clear this flag."),
+    ),
+    "alsanaa": DatasetSpec(
+        slug="alsanaa", hf_id="MahaAlBlooki/alsanaa-emirati-dataset",
+        dialect="emirati", stage=1, weight=1.5,
+        text_keys=["text", "transcript", "transcription", "sentence"],
+        disabled=("NOT loadable via load_dataset (verified 2026-06-06): ~4h "
+                  "single-speaker Emirati, distributed via GitHub, no HF "
+                  "viewer. Download the repo into data/raw/alsanaa/, build a "
+                  "local loader, then clear this flag. Tiny (1 speaker)."),
+    ),
+    "arzen": DatasetSpec(
+        slug="arzen", hf_id="ArzEn-ST", dialect="egyptian", stage=2,
+        weight=0.5, cs_weight=0.8,
+        text_keys=["transcript", "text", "transcription", "sentence"],
+        disabled=("SPEECH corpus is request-gated (verified 2026-06-06): the "
+                  "HF 'ArzEn_MultiGenre_*' repos are TEXT-only parallel data, "
+                  "NOT the ~12h Egyptian-English speech corpus (ArzEn-ST, "
+                  "request from authors). Non-Gulf CS PADDING only. Obtain, "
+                  "drop into data/raw/arzen/, build loader, clear this flag."),
+    ),
     # --- Held-out EVAL benchmarks (never enter the training pool) -------------
     # Casablanca: 8-dialect Arabic ASR benchmark (UBC-NLP). Only validation +
     # test splits are released. We pull ONLY the Emirati subset and tag every
