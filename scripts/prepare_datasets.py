@@ -72,6 +72,18 @@ class DatasetSpec:
     audio_key: str = "audio"
     config: Optional[str] = None    # HF dataset config name
     notes: str = ""
+    # Some HF datasets ship a Python loading script (e.g. MASC). Modern
+    # `datasets` refuses these unless you opt in. Set True to pass
+    # trust_remote_code=True to load_dataset for this spec only.
+    trust_remote_code: bool = False
+    # Optional per-row quality gate. Drop a clip if row[cer_key] > cer_max.
+    # Used for WorldSpeech (it ships a char-error-rate vs its internal ASR).
+    cer_key: Optional[str] = None
+    cer_max: Optional[float] = None
+    # Optional per-row category gate: keep a clip only if str(row[type_key])
+    # is in type_keep. Used for MASC (type 'c'=clean, 'n'=noisy -> keep 'c').
+    type_key: Optional[str] = None
+    type_keep: Optional[List[str]] = None
     # If True this dataset is a HELD-OUT benchmark: it is prepared like any
     # other, but every manifest row is tagged `"eval_only": true` so the
     # split/training pipeline never pulls it into the training pool (it is a
@@ -110,6 +122,39 @@ REGISTRY: Dict[str, DatasetSpec] = {
         weight=1.0, text_keys=["ProcessedText", "text", "transcript"],
         notes="668h Saudi Khaliji broadcast. CC-BY-NC-SA, ungated.",
     ),
+    # WorldSpeech Gulf country splits. Each config is a country. text lives in
+    # `human_transcript`; we drop clips whose `cer` (vs the dataset's own ASR
+    # alignment) is high to remove mis-aligned material. Audio is 24 kHz and
+    # resampled to 16 kHz on save. ~454h of real Gulf parliamentary speech.
+    "worldspeech_bh": DatasetSpec(
+        slug="worldspeech_bh", hf_id="disco-eth/WorldSpeech", config="ar_bh",
+        dialect="gulf", stage=1, weight=1.0,
+        text_keys=["human_transcript", "text", "transcript"],
+        cer_key="cer", cer_max=0.25,
+        notes="272.5h Bahrain parliamentary. CC-BY-NC-4.0, gated (click Agree).",
+    ),
+    "worldspeech_kw": DatasetSpec(
+        slug="worldspeech_kw", hf_id="disco-eth/WorldSpeech", config="ar_kw",
+        dialect="gulf", stage=1, weight=1.0,
+        text_keys=["human_transcript", "text", "transcript"],
+        cer_key="cer", cer_max=0.25,
+        notes="175.5h Kuwait parliamentary. CC-BY-NC-4.0, gated (click Agree).",
+    ),
+    "worldspeech_sa": DatasetSpec(
+        slug="worldspeech_sa", hf_id="disco-eth/WorldSpeech", config="ar_sa",
+        dialect="saudi", stage=1, weight=1.0,
+        text_keys=["human_transcript", "text", "transcript"],
+        cer_key="cer", cer_max=0.25,
+        notes="6.1h Saudi gov archive. CC-BY-NC-4.0, gated (click Agree).",
+    ),
+    "worldspeech_un": DatasetSpec(
+        slug="worldspeech_un", hf_id="disco-eth/WorldSpeech", config="ar_un",
+        dialect="msa", stage=1, weight=0.3,
+        text_keys=["human_transcript", "text", "transcript"],
+        cer_key="cer", cer_max=0.25,
+        notes=("11.1h UN Arabic (MSA anchor, low weight). CC-BY-NC-4.0, gated. "
+               "UN terms: non-commercial/research."),
+    ),
     "emirati_shows": DatasetSpec(
         slug="emirati_shows",
         hf_id="eabayed/EmiratiDialictShowsAudioTranscription",
@@ -133,12 +178,28 @@ REGISTRY: Dict[str, DatasetSpec] = {
                   "quality. ~3.3k clips of unverifiable value. Dropped."),
     ),
     "masc": DatasetSpec(
-        slug="masc", hf_id="pain/MASC", dialect="arabic", stage=1, weight=1.0,
+        slug="masc", hf_id="pain/MASC", dialect="arabic", stage=1, weight=0.7,
         text_keys=["text", "transcript", "transcription", "sentence"],
-        notes="~1000h multi-dialect Arabic. CC-BY-4.0. Largest open base pool.",
-        disabled=("uses a deprecated dataset loader script (MASC.py); modern "
-                  "`datasets` refuses script datasets. Needs manual parquet/raw "
-                  "download or `datasets<2.x` in a separate env."),
+        splits=["train"],
+        trust_remote_code=True,        # ships a MASC.py loading script
+        type_key="type", type_keep=["c"],  # keep clean clips only (c vs n)
+        notes=("~1000h multi-dialect Arabic YouTube (filtered to type='c' "
+               "clean). CC-BY-4.0. Largest open base pool. Loads via "
+               "trust_remote_code=True. weight 0.7 (MSA/pan-Arabic anchor)."),
+    ),
+    # OMAN-SPEECH: ~40h Omani Arabic across 11 Wilayats (ABJADNLP 2026). There
+    # is NO Hugging Face repo or public download — the corpus is described only
+    # in the paper (aclanthology.org/2026.abjadnlp-1.31). Left as a disabled
+    # stub: fill in a LOCAL path-based loader once you obtain the audio from the
+    # authors, then clear `disabled` and point `hf_id` at the local dir.
+    "oman_speech": DatasetSpec(
+        slug="oman_speech", hf_id="OMAN-SPEECH", dialect="omani", stage=1,
+        weight=1.5,
+        notes="~40h Omani multi-Wilayat. Paper-only (ABJADNLP 2026).",
+        disabled=("NOT on Hugging Face / no public download (verified "
+                  "2026-06-06). Paper-only: aclanthology.org/2026.abjadnlp-1.31. "
+                  "Obtain from authors, drop into data/raw/oman_speech/, then "
+                  "build a local loader and clear this flag."),
     ),
 }
 
@@ -168,9 +229,9 @@ def _pick_text(row: Dict[str, Any], keys: List[str]) -> str:
     return ""
 
 
-def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
+def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> float:
     """Write a HF audio object (dict with array+sampling_rate, or a path)
-    to a 16 kHz mono WAV. Returns True on success.
+    to a 16 kHz mono WAV. Returns the clip duration in seconds on success.
 
     Raises on failure so the caller can record *why* a clip was skipped
     (a silent ``return False`` once hid a 100%-skip bug for a whole run).
@@ -241,7 +302,7 @@ def _save_wav(audio_obj: Any, dst: Path, target_sr: int = 16_000) -> bool:
         raise ValueError("decoded audio is empty")
     dst.parent.mkdir(parents=True, exist_ok=True)
     sf.write(dst, arr, target_sr)
-    return True
+    return float(arr.shape[0]) / float(target_sr)  # duration in seconds
 
 
 def prepare_one(
@@ -270,14 +331,19 @@ def prepare_one(
     skip_no_text = 0
     skip_no_audio = 0
     skip_decode = 0
+    skip_cer = 0
+    skip_type = 0
     first_row_dumped = False
     first_decode_err_dumped = False
     with manifest_path.open("w", encoding="utf-8") as mf:
         for split in spec.splits:
+            load_kwargs: Dict[str, Any] = dict(
+                path=spec.hf_id, name=spec.config, split=split, streaming=True,
+            )
+            if spec.trust_remote_code:
+                load_kwargs["trust_remote_code"] = True
             try:
-                ds = load_dataset(
-                    spec.hf_id, spec.config, split=split, streaming=True,
-                )
+                ds = load_dataset(**load_kwargs)
             except Exception as exc:
                 print(f"[prep]   split '{split}' unavailable: {exc!r}")
                 continue
@@ -306,13 +372,28 @@ def prepare_one(
                 if not text:
                     skip_no_text += 1
                     continue
+                # Optional category gate (e.g. MASC type 'c'=clean vs 'n'=noisy).
+                if spec.type_key and spec.type_keep is not None:
+                    if str(row.get(spec.type_key)) not in spec.type_keep:
+                        skip_type += 1
+                        continue
+                # Optional alignment-quality gate (e.g. WorldSpeech `cer`).
+                if spec.cer_key and spec.cer_max is not None:
+                    cer_val = row.get(spec.cer_key)
+                    try:
+                        if cer_val is not None and float(cer_val) > spec.cer_max:
+                            skip_cer += 1
+                            continue
+                    except (TypeError, ValueError):
+                        pass  # unparseable cer -> keep the clip
                 audio_obj = row.get(spec.audio_key) or row.get("audio")
                 if audio_obj is None:
                     skip_no_audio += 1
                     continue
                 rel = f"audio/{written:07d}.wav"
                 try:
-                    _save_wav(audio_obj, audio_dir / f"{written:07d}.wav", target_sr)
+                    dur_sec = _save_wav(
+                        audio_obj, audio_dir / f"{written:07d}.wav", target_sr)
                 except Exception as exc:
                     skip_decode += 1
                     if not first_decode_err_dumped:
@@ -335,6 +416,7 @@ def prepare_one(
                     "code_switch": cs,
                     "weight": weight,
                     "stage": spec.stage,
+                    "duration": round(dur_sec, 3),
                 }
                 # Tag held-out benchmark sets so split/training never pulls
                 # them into the training pool (they are eval-only).
@@ -347,12 +429,14 @@ def prepare_one(
             if max_clips is not None and written >= max_clips:
                 break
 
-    skipped = skip_no_text + skip_no_audio + skip_decode
+    skipped = (skip_no_text + skip_no_audio + skip_decode
+               + skip_cer + skip_type)
     summary = {
         "slug": spec.slug, "hf_id": spec.hf_id, "dialect": spec.dialect,
         "stage": spec.stage, "clips": written, "code_switch_clips": n_cs,
         "skipped": skipped, "skip_no_text": skip_no_text,
         "skip_no_audio": skip_no_audio, "skip_decode": skip_decode,
+        "skip_cer": skip_cer, "skip_type": skip_type,
         "notes": spec.notes,
     }
     (out_dir / "summary.json").write_text(
@@ -361,7 +445,8 @@ def prepare_one(
     print(f"[prep] {spec.slug}: wrote {written} clips ({n_cs} CS), "
           f"skipped {skipped} "
           f"(no_text={skip_no_text}, no_audio={skip_no_audio}, "
-          f"decode_fail={skip_decode}) -> {manifest_path}")
+          f"decode_fail={skip_decode}, cer={skip_cer}, type={skip_type}) "
+          f"-> {manifest_path}")
     if written == 0:
         print(f"[prep] WARNING: {spec.slug} produced 0 clips. "
               f"Check the first-row keys above against text_keys="

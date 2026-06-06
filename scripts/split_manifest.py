@@ -25,6 +25,14 @@ Examples
         --in data/preprocessed/*/manifest.jsonl \
         --out-prefix data/splits/gulf --val-frac 0.03 \
         --stratify-by dialect --dedup-text
+
+    # Phase-1 split AND carve ~100h of train into a Phase-2 rehearsal pool
+    # (the carved clips are REMOVED from <prefix>.train.jsonl):
+    python scripts/split_manifest.py \
+        --in data/preprocessed/*/manifest.jsonl \
+        --out-prefix data/splits/phase1 --val-frac 0.02 \
+        --stratify-by source --dedup-text \
+        --carve-hours 100 --carve-out data/splits/phase2_rehearsal.jsonl
 """
 from __future__ import annotations
 
@@ -50,6 +58,18 @@ def _read_text(rec: Dict) -> str:
     return t.split("<asr_text>", 1)[1] if "<asr_text>" in t else t
 
 
+def _clip_sec(rec: Dict, default_sec: float) -> float:
+    """Best-effort clip duration in seconds for hour accounting."""
+    d = rec.get("duration")
+    try:
+        d = float(d)
+        if d > 0:
+            return d
+    except (TypeError, ValueError):
+        pass
+    return default_sec
+
+
 def main() -> int:
     ap = argparse.ArgumentParser(
         description=__doc__,
@@ -64,11 +84,25 @@ def main() -> int:
                     help="Manifest field to stratify on (e.g. source, dialect).")
     ap.add_argument("--dedup-text", action="store_true",
                     help="Drop duplicate transcripts before splitting.")
+    ap.add_argument("--carve-hours", type=float, default=0.0,
+                    help="Move ~N hours of TRAIN clips into a separate Phase-2 "
+                         "rehearsal manifest (removed from the train set). "
+                         "0 (default) disables carving.")
+    ap.add_argument("--carve-out", type=Path, default=None,
+                    help="Path for the carved Phase-2 rehearsal manifest. "
+                         "Required when --carve-hours > 0.")
+    ap.add_argument("--default-clip-sec", type=float, default=8.0,
+                    help="Assumed seconds/clip when a row has no 'duration' "
+                         "field, used for hour accounting (default 8.0).")
     ap.add_argument("--seed", type=int, default=42)
     args = ap.parse_args()
 
     if not (0.0 < args.val_frac < 1.0):
         ap.error("--val-frac must be in (0, 1).")
+    if args.carve_hours < 0.0:
+        ap.error("--carve-hours must be >= 0.")
+    if args.carve_hours > 0.0 and args.carve_out is None:
+        ap.error("--carve-out is required when --carve-hours > 0.")
 
     rows: List[Dict] = []
     for man in args.inputs:
@@ -135,6 +169,57 @@ def main() -> int:
               f"(leakage). Aborting.", file=sys.stderr)
         return 2
 
+    # ------------------------------------------------------------------ carve
+    # Optionally pull ~N hours OUT of the train set into a separate Phase-2
+    # rehearsal manifest. The carved clips are REMOVED from train so the same
+    # audio is never seen in both phases. We carve proportionally across the
+    # stratify field (or `source` as a fallback) so the rehearsal pool stays as
+    # diverse as the full corpus rather than draining one dataset.
+    carved: List[Dict] = []
+    if args.carve_hours > 0.0:
+        target_sec = args.carve_hours * 3600.0
+        carve_key = args.stratify_by or "source"
+        buckets: Dict[str, List[Dict]] = defaultdict(list)
+        for r in train:
+            buckets[str(r.get(carve_key, "unknown"))].append(r)
+        total_sec = sum(_clip_sec(r, args.default_clip_sec) for r in train)
+        if total_sec <= 0:
+            print("[split] FATAL: train has zero total duration; cannot carve.",
+                  file=sys.stderr)
+            return 2
+        if target_sec >= total_sec:
+            print(f"[split] FATAL: --carve-hours {args.carve_hours:.1f}h >= "
+                  f"available train ({total_sec/3600:.1f}h). Aborting.",
+                  file=sys.stderr)
+            return 2
+        frac = target_sec / total_sec
+        carve_rng = random.Random(args.seed + 1)
+        carved_sigs: set = set()
+        for key, items in buckets.items():
+            carve_rng.shuffle(items)
+            want_sec = sum(_clip_sec(r, args.default_clip_sec)
+                           for r in items) * frac
+            acc = 0.0
+            for r in items:
+                if acc >= want_sec:
+                    break
+                carved.append(r)
+                carved_sigs.add(_sig(r))
+                acc += _clip_sec(r, args.default_clip_sec)
+        # Drop carved rows from train and re-tag them for Phase 2 rehearsal.
+        train = [r for r in train if _sig(r) not in carved_sigs]
+        for r in carved:
+            r["rehearsal"] = True
+            r["stage"] = 2
+        carved_sec = sum(_clip_sec(r, args.default_clip_sec) for r in carved)
+        args.carve_out.parent.mkdir(parents=True, exist_ok=True)
+        args.carve_out.write_text(
+            "\n".join(json.dumps(r, ensure_ascii=False) for r in carved) + "\n",
+            encoding="utf-8")
+        print(f"[split] carved {len(carved)} clips (~{carved_sec/3600:.1f}h, "
+              f"target {args.carve_hours:.1f}h) into Phase-2 rehearsal -> "
+              f"{args.carve_out}")
+
     args.out_prefix.parent.mkdir(parents=True, exist_ok=True)
     train_path = args.out_prefix.parent / f"{args.out_prefix.name}.train.jsonl"
     val_path = args.out_prefix.parent / f"{args.out_prefix.name}.val.jsonl"
@@ -145,8 +230,10 @@ def main() -> int:
         "\n".join(json.dumps(r, ensure_ascii=False) for r in val) + "\n",
         encoding="utf-8")
 
-    print(f"[split] train={len(train)}  val={len(val)}  "
-          f"(val_frac={len(val)/(len(train)+len(val)):.3f}, leakage=0)")
+    vf = len(val) / (len(train) + len(val)) if (train or val) else 0.0
+    carved_note = f"  carved={len(carved)}" if carved else ""
+    print(f"[split] train={len(train)}  val={len(val)}{carved_note}  "
+          f"(val_frac={vf:.3f} of train+val, leakage=0)")
     print(f"[split] -> {train_path}")
     print(f"[split] -> {val_path}")
     return 0
