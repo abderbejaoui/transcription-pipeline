@@ -72,6 +72,10 @@ class DatasetSpec:
     audio_key: str = "audio"
     config: Optional[str] = None    # HF dataset config name
     notes: str = ""
+    # If set, this dataset cannot be loaded by plain `load_dataset` and is
+    # skipped by --all / --stage (still attemptable via --dataset). The string
+    # explains why and what manual step is needed.
+    disabled: Optional[str] = None
 
 
 # Only datasets that are openly loadable via `datasets.load_dataset` are wired
@@ -88,8 +92,9 @@ REGISTRY: Dict[str, DatasetSpec] = {
     "scc22": DatasetSpec(
         slug="scc22", hf_id="MohamedRashad/SCC22", dialect="saudi", stage=2,
         weight=2.0, cs_weight=3.0,
+        splits=["test"],  # only a 'test' split is published
         text_keys=["ProcessedText", "Original_text", "text", "transcript"],
-        notes="Saudilang Code-Switch Corpus, ~5h. CC-BY-NC-SA, ungated.",
+        notes="Saudilang Code-Switch Corpus, ~5h. CC-BY-NC-SA, ungated. test split only.",
     ),
     # --- Stage 1: base Gulf / Arabic acoustic --------------------------------
     "sada22": DatasetSpec(
@@ -103,17 +108,25 @@ REGISTRY: Dict[str, DatasetSpec] = {
         dialect="emirati", stage=1, weight=1.5,
         text_keys=["text", "transcript", "transcription", "sentence"],
         notes="467 pure-Emirati clips. AFL-3.0, ungated.",
+        disabled=("audiofolder dataset: transcripts live in a SEPARATE .tsv, "
+                  "not auto-joined by load_dataset (audio column only). "
+                  "Needs a custom loader that pairs the audio zip with the tsv."),
     ),
     "sawtarabi": DatasetSpec(
         slug="sawtarabi", hf_id="ArabicSpeech/sawtarabi", dialect="arabic",
         stage=1, weight=1.0,
-        text_keys=["text", "transcript", "transcription", "sentence"],
-        notes="~3.3k Arabic clips, small base pool.",
+        # prefer non-diacritized text for ASR targets; fall back to diacritized
+        text_keys=["text_not_diacritized", "text_diacritized",
+                   "text", "transcript", "transcription", "sentence"],
+        notes="~3.3k Arabic clips, small base pool. Uses text_not_diacritized.",
     ),
     "masc": DatasetSpec(
         slug="masc", hf_id="pain/MASC", dialect="arabic", stage=1, weight=1.0,
         text_keys=["text", "transcript", "transcription", "sentence"],
         notes="~1000h multi-dialect Arabic. CC-BY-4.0. Largest open base pool.",
+        disabled=("uses a deprecated dataset loader script (MASC.py); modern "
+                  "`datasets` refuses script datasets. Needs manual parquet/raw "
+                  "download or `datasets<2.x` in a separate env."),
     ),
 }
 
@@ -355,8 +368,11 @@ def main() -> int:
     if args.list:
         print(f"{'slug':<16}{'stage':<7}{'dialect':<10}hf_id")
         for spec in REGISTRY.values():
-            print(f"{spec.slug:<16}{spec.stage:<7}{spec.dialect:<10}{spec.hf_id}")
-            if spec.notes:
+            mark = "  [DISABLED]" if spec.disabled else ""
+            print(f"{spec.slug:<16}{spec.stage:<7}{spec.dialect:<10}{spec.hf_id}{mark}")
+            if spec.disabled:
+                print(f"{'':<33}DISABLED: {spec.disabled}")
+            elif spec.notes:
                 print(f"{'':<33}{spec.notes}")
         return 0
 
@@ -372,6 +388,17 @@ def main() -> int:
     else:
         ap.error("Pass one of --dataset, --stage, --all, or --list.")
         return 2
+
+    # --all / --stage skip datasets that need manual handling. An explicit
+    # --dataset still attempts them (so you can debug a custom loader).
+    if not args.dataset:
+        kept = []
+        for spec in specs:
+            if spec.disabled:
+                print(f"[prep] SKIP {spec.slug}: {spec.disabled}")
+            else:
+                kept.append(spec)
+        specs = kept
 
     args.out_root.mkdir(parents=True, exist_ok=True)
     prepared: List[str] = []
