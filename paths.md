@@ -26,8 +26,21 @@ Both already exist and are fully preprocessed. **Do NOT re-download or re-prep t
 - **Train manifest:** `data/dgx_full/preprocessed_audios_full/manifest.jsonl`
   - 419.5 MB · **349,242 clips** · **804.3h** (804h 17m 29s; exact via `duration_s`)
   - Schema keys: `id, audio_path, text, duration_s, source_manifest, source_audio, raw_text, trim_start_s, trim_end_s, chars_per_s, source_segment`
+- **Audio root (WAVs):** `data/dgx_full/preprocessed_audios_full/audio/` — every
+  clip's `audio_path` is stored **relative to the manifest's own directory**,
+  e.g. `audio/sada2022_03547_0040.wav` → resolves to
+  `data/dgx_full/preprocessed_audios_full/audio/sada2022_03547_0040.wav`.
+  (There is also an older `data/dgx_full/preprocessed_audios/audio/` — the NON-`_full`
+  partial set; do NOT train on that one.)
 - **Rejected (filtered-out) clips:** `data/dgx_full/preprocessed_audios_full/rejected.jsonl`
   - 53.2 MB · 46,724 clips · 63.4h · keep rate **92.7%** (of 867.7h decoded)
+
+> **Relative-path gotcha (fixed):** because `audio_path` is relative to the
+> manifest dir, a split written to `data/splits/` used to break with
+> `FileNotFoundError: data/audio/...wav`. Fixed in `split_manifest.py` (commit
+> `f887031`): it now rewrites each `audio_path` to an **absolute** path anchored
+> at the source manifest's directory, so split rows resolve audio from anywhere.
+> If you rebuild a split, the new `data/splits/*.jsonl` rows carry absolute paths.
 
 ### Per-dataset breakdown of the 804.3h (from `source_manifest`)
 
