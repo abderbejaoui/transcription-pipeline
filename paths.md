@@ -75,17 +75,17 @@ Each slug folder has `manifest.jsonl` + `summary.json` (+ clips). Status as of 2
 |---|---|---|---|---|---|---|---|
 | `masc` | `MohamedRashad/MASC-Arabic` (parquet, `type='c'` clean only) | 358,367 | ~393 | msa/mixed | 1 | 0.7 | train |
 | `saudi_asrv1` | (saudi ASR v1) | 6,598 | ~86 | saudi | 1 | — | train |
-| `common_voice_ar` | `Geethuzzz/common_voice_17_0_arabic_cleaned` (parquet, split `validated`) | TBD | ~157 | msa | 1 | 0.3 | train (re-run pending) |
+| `common_voice_ar` | `Geethuzzz/common_voice_17_0_arabic_cleaned` (parquet, split `validated`) | 78,156 | 88.6 | msa | 1 | 0.3 | train |
 | `scc22` | `MohamedRashad/SCC22` | 3,296 | ~4.5 | saudi | 2 | — | **eval-only** |
 | `casablanca` | (Casablanca) | 1,626 | ~1.9 | mixed | 2 | — | **eval-only** |
 
 Paths: `data/preprocessed/masc/manifest.jsonl`, `.../saudi_asrv1/...`,
 `.../common_voice_ar/...`, `.../scc22/...`, `.../casablanca/...`.
 
-> `common_voice_ar` is the only one still pending a successful prep run (the
-> mozilla-foundation script-based repo failed on `datasets>=3.x`; fixed in commit
-> `7da44e8` by switching to the Geethuzzz parquet mirror). Re-run on DGX with
-> `bash scripts/prep_new_datasets.sh`.
+> `common_voice_ar` prepped OK on 2026-06-07: **78,156 clips / 88.6h** (the
+> cleaned mirror dedups/filters, so fewer than the raw ~157h estimate). The
+> mozilla-foundation script-based repo had failed on `datasets>=3.x`; fixed in
+> commit `7da44e8` by switching to the Geethuzzz parquet mirror.
 
 ### Dropped / skipped (do not chase)
 
