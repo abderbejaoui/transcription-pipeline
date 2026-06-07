@@ -38,6 +38,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import random
 import re
 import sys
@@ -143,10 +144,24 @@ def main() -> int:
         if not man.exists():
             print(f"[split] skip missing {man}", file=sys.stderr)
             continue
+        # Each source manifest stores audio_path RELATIVE to its own directory
+        # (e.g. "audio/foo.wav" lives next to the manifest). The written split
+        # lands in data/splits/, so a relative path would no longer resolve.
+        # Rewrite to an absolute path anchored at the source manifest's dir so
+        # every split row is self-contained regardless of where it is consumed.
+        man_dir = man.resolve().parent
         for line in man.read_text(encoding="utf-8").splitlines():
             line = line.strip()
-            if line:
-                rows.append(json.loads(line))
+            if not line:
+                continue
+            rec = json.loads(line)
+            ap_key = "audio_path" if "audio_path" in rec else (
+                "audio" if "audio" in rec else ("path" if "path" in rec else None))
+            if ap_key:
+                raw = str(rec.get(ap_key) or "")
+                if raw and not os.path.isabs(raw):
+                    rec[ap_key] = str(man_dir / raw)
+            rows.append(rec)
     if not rows:
         print("[split] no rows read.", file=sys.stderr)
         return 1
