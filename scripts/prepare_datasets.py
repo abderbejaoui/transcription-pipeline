@@ -210,12 +210,19 @@ REGISTRY: Dict[str, DatasetSpec] = {
     ),
     "common_voice_ar": DatasetSpec(
         slug="common_voice_ar",
-        hf_id="mozilla-foundation/common_voice_17_0", config="ar",
+        hf_id="Geethuzzz/common_voice_17_0_arabic_cleaned",
         dialect="msa", stage=1, weight=0.3,
         text_keys=["sentence", "text", "transcript"],
-        splits=["train"],
+        splits=["validated"],
         notes=("Common Voice 17 Arabic (~157h, mostly MSA). CC0. Low-weight "
-               "MSA robustness padding. May require HF login (accept terms)."),
+               "MSA robustness padding. PARQUET mirror (Geethuzzz) of "
+               "mozilla-foundation/common_voice_17_0 ar — ungated, no loading "
+               "script -> works on datasets>=3.x (the official repo ships a "
+               "loading script that modern datasets refuses, yielding "
+               "EmptyDatasetError). Same schema: audio (48kHz) + sentence. "
+               "Uses the 'validated' split (all human-approved clips, "
+               "superset of train/val/test/other) for max non-overlapping "
+               "hours; ~157h."),
     ),
     "ramsa": DatasetSpec(
         slug="ramsa", hf_id="RAMSA", dialect="emirati", stage=1, weight=1.5,
