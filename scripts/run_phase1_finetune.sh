@@ -102,7 +102,10 @@ smoke_test() {
 }
 
 # ---------------------------------------------------------------------------
-# A5 — Phase-1 real run (DoRA + rsLoRA, from BASE, encoder frozen)
+# A5 — Phase-1 real run (DoRA only, from BASE, encoder frozen)
+#   Teacher's Change 1: switch from rsLoRA to DoRA (use_dora, NOT use_rslora).
+#   DoRA decomposes the weight update into magnitude + direction for more
+#   stable adaptation; +2..5 WER/CER pts on dialect tasks vs rsLoRA.
 # ---------------------------------------------------------------------------
 phase1_run() {
   echo "--- A5: Phase-1 real run ---"
@@ -116,7 +119,7 @@ phase1_run() {
       --lr-scheduler-type cosine --warmup-ratio 0.02 --weight-decay 0.01 \
       --max-grad-norm 1.0 \
       --lora-r 32 --lora-alpha 64 --lora-dropout 0.05 \
-      --use-dora --use-rslora \
+      --use-dora \
       --per-device-train-batch-size 4 \
       --gradient-accumulation-steps 16 \
       --eval-every-steps 2000 \
