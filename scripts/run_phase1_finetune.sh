@@ -37,6 +37,12 @@ cd "$REPO"
 PY="${PY:-python}"   # inside the venv `python` is python3.12; override with PY=.venv/bin/python
 MODEL="Qwen/Qwen3-ASR-1.7B"
 
+# DataLoader workers. 0 = single-process loading (NO multiprocessing) — this
+# avoids the persistent-worker + WeightedRandomSampler + librosa deadlock that
+# froze the run at step 0/6 for 21h. If a >0 value trains fine on your box you
+# can bump it: WORKERS=4 bash scripts/run_phase1_finetune.sh full
+WORKERS="${WORKERS:-0}"
+
 # --- Phase-1 acoustic manifests (real, verified) ---------------------------
 M_804H="data/dgx_full/preprocessed_audios_full/manifest.jsonl"
 M_MASC="data/preprocessed/masc/manifest.jsonl"
@@ -90,6 +96,7 @@ smoke_test() {
       --eval-at-start \
       --eval-max-samples 8 \
       --early-stopping-patience 0 \
+      --num-workers "$WORKERS" \
       2>&1 | tee logs/smoke.log
   echo "--- A4 done. PASS = step-0 line 'WER=..%  CER=..%  n=8' (NOT nan/n=0) ---"
 }
@@ -117,6 +124,7 @@ phase1_run() {
       --early-stopping-patience 3 --early-stopping-metric wer \
       --gradient-checkpointing \
       --save-total-limit 5 \
+      --num-workers "$WORKERS" \
       2>&1 | tee logs/phase1.log
   echo "--- A5 done. Adapter + checkpoints in runs/phase1/ ---"
 }
