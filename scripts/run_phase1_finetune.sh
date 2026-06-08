@@ -69,13 +69,29 @@ MODEL="Qwen/Qwen3-ASR-1.7B"
 # can bump it: WORKERS=4 bash scripts/run_phase1_finetune.sh full
 WORKERS="${WORKERS:-0}"
 
+# --- Batch size (memory knob) ----------------------------------------------
+# Lower batch size = lower peak GPU memory. The effective batch stays large via
+# gradient accumulation, so lowering BSZ does NOT hurt the final model — it just
+# trades a little speed for headroom. Default 2 (was 4) after the OOM crash.
+# Effective batch = BSZ * GRAD_ACCUM. We bump GRAD_ACCUM to keep it ~constant.
+#   BSZ=2 GRAD_ACCUM=32  -> effective 64 (same as old 4*16)
+BSZ="${BSZ:-2}"
+GRAD_ACCUM="${GRAD_ACCUM:-32}"
+
 # --- Shared-GPU memory cap -------------------------------------------------
 # The DGX is shared. GPU_MEM_FRACTION caps how much of the card's memory THIS
 # process may allocate, leaving the rest free for other users. 0.65 = use up
 # to 65%, leave 35% free. Enforced at runtime via
 # torch.cuda.set_per_process_memory_fraction (see TORCH_MEM_HOOK below).
-# Override: GPU_MEM_FRACTION=0.5 bash scripts/run_phase1_finetune.sh full
-GPU_MEM_FRACTION="${GPU_MEM_FRACTION:-0.65}"
+# Override: GPU_MEM_FRACTION=0.6 bash scripts/run_phase1_finetune.sh full
+#
+# NOTE: the DGX Spark GB10 uses UNIFIED CPU+GPU memory, and `nvidia-smi` reports
+# "Memory-Usage: Not Supported" on it. The per-process fraction is a SOFT cap on
+# the CUDA caching allocator — it does NOT hard-stop the OS from handing out
+# unified memory. So we keep the default conservative (0.5 = half the card) and
+# ALSO refuse to start if other processes are already holding the GPU (see the
+# preflight guard below) — that double-allocation is what crashed earlier runs.
+GPU_MEM_FRACTION="${GPU_MEM_FRACTION:-0.5}"
 export GPU_MEM_FRACTION
 # Make the CUDA allocator return freed blocks to the driver promptly so the
 # 35% we leave free is actually usable by the other user.
@@ -139,6 +155,48 @@ for m in "$M_804H" "$M_MASC" "$M_SAUDI" "$M_CV"; do
 done
 
 # ---------------------------------------------------------------------------
+# PREFLIGHT GPU GUARD — refuse to start if the GPU is already busy.
+#
+# WHY: earlier runs crashed because ORPHANED python processes from killed
+# attempts kept holding GPU memory. Each new run then stacked on top until the
+# card was exhausted and the driver killed the newest process (and its tmux).
+# This guard makes that failure LOUD and EARLY instead of a silent OOM 15 min in.
+#
+# It sums the GPU memory used by COMPUTE (C) processes other than this one. If
+# that exceeds GPU_BUSY_MB_LIMIT (default 1000 MB), it aborts and prints the
+# offending PIDs so you can `kill -9` them. Override the threshold or skip:
+#   GPU_BUSY_MB_LIMIT=4000 bash ...   # allow up to 4 GB already in use
+#   SKIP_GPU_GUARD=1       bash ...   # bypass entirely (NOT recommended)
+# ---------------------------------------------------------------------------
+GPU_BUSY_MB_LIMIT="${GPU_BUSY_MB_LIMIT:-1000}"
+preflight_gpu_guard() {
+  [[ "${SKIP_GPU_GUARD:-0}" == "1" ]] && { echo "[preflight] GPU guard skipped"; return 0; }
+  command -v nvidia-smi >/dev/null 2>&1 || { echo "[preflight] no nvidia-smi; skipping guard"; return 0; }
+
+  local self_pid=$$
+  # List compute processes as "pid mem_mib"; sum memory for PIDs that are not us.
+  local busy_mb pids
+  busy_mb=$(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits 2>/dev/null \
+            | awk -v me="$self_pid" 'NF>=2 && $1+0 != me {s+=$2} END{print s+0}')
+  pids=$(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits 2>/dev/null \
+            | awk -v me="$self_pid" 'NF>=2 && $1+0 != me {printf "%s(%sMiB) ", $1, $2}')
+
+  if [[ "${busy_mb:-0}" -gt "$GPU_BUSY_MB_LIMIT" ]]; then
+    echo "FATAL: GPU already has ${busy_mb} MiB used by other compute processes:" >&2
+    echo "         $pids" >&2
+    echo "These are almost certainly ORPHANED processes from a previous killed run." >&2
+    echo "Kill them, then retry:" >&2
+    echo "    kill -9 $(echo "$pids" | grep -oE '^[0-9]+|[ ][0-9]+' | tr -d ' ' | tr '\n' ' ')" >&2
+    echo "    # or, to free ALL of your own python GPU procs:" >&2
+    echo "    nvidia-smi --query-compute-apps=pid --format=csv,noheader | xargs -r kill -9" >&2
+    echo "(Override threshold with GPU_BUSY_MB_LIMIT=NNNN, or bypass with SKIP_GPU_GUARD=1.)" >&2
+    exit 1
+  fi
+  echo "[preflight] GPU clear (${busy_mb:-0} MiB used by others; limit ${GPU_BUSY_MB_LIMIT} MiB). OK."
+}
+preflight_gpu_guard
+
+# ---------------------------------------------------------------------------
 # A3 — build disjoint Phase-1 split + carve ~100h Phase-2 rehearsal
 # ---------------------------------------------------------------------------
 build_split() {
@@ -167,6 +225,9 @@ smoke_test() {
       --max-steps 6 \
       --eval-at-start \
       --eval-max-samples 8 \
+      --per-device-train-batch-size "$BSZ" \
+      --gradient-accumulation-steps "$GRAD_ACCUM" \
+      --gradient-checkpointing \
       --early-stopping-patience 0 \
       --num-workers "$WORKERS" \
       2>&1 | tee logs/smoke.log
@@ -192,9 +253,10 @@ phase1_run() {
       --max-grad-norm 1.0 \
       --lora-r 32 --lora-alpha 64 --lora-dropout 0.05 \
       --use-dora --use-rslora \
-      --per-device-train-batch-size 4 \
-      --gradient-accumulation-steps 16 \
+      --per-device-train-batch-size "$BSZ" \
+      --gradient-accumulation-steps "$GRAD_ACCUM" \
       --eval-every-steps 2000 \
+      --eval-max-samples 500 \
       --eval-at-start \
       --early-stopping-patience 3 --early-stopping-metric wer \
       --gradient-checkpointing \
@@ -260,9 +322,10 @@ phase2_run() {
       --max-grad-norm 1.0 \
       --lora-r 32 --lora-alpha 64 --lora-dropout 0.05 \
       --use-dora --use-rslora \
-      --per-device-train-batch-size 4 \
-      --gradient-accumulation-steps 16 \
+      --per-device-train-batch-size "$BSZ" \
+      --gradient-accumulation-steps "$GRAD_ACCUM" \
       --eval-every-steps 1000 \
+      --eval-max-samples 500 \
       --eval-at-start \
       --early-stopping-patience 3 --early-stopping-metric wer \
       --gradient-checkpointing \
