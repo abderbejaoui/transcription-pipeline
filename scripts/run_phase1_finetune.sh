@@ -24,8 +24,15 @@
 #   bash scripts/run_phase1_finetune.sh smoke    # A3 + A4 only (fast check)
 #   bash scripts/run_phase1_finetune.sh full      # A3 + A4 + A5 (the real run)
 #   bash scripts/run_phase1_finetune.sh split     # just rebuild the A3 split
+#   bash scripts/run_phase1_finetune.sh resume    # continue from latest ckpt
 #
 # Default (no arg) = full.
+#
+# Shared-GPU controls (env vars):
+#   GPU_MEM_FRACTION=0.65   cap this process to 65% of GPU memory (default)
+#   WORKERS=0               DataLoader workers (0 = safe single-process)
+# Stop anytime with Ctrl-c to free the card; later run `... resume` to pick up
+# EXACTLY where you left off (weights + optimizer + scheduler + step count).
 # =============================================================================
 set -euo pipefail
 
@@ -42,6 +49,40 @@ MODEL="Qwen/Qwen3-ASR-1.7B"
 # froze the run at step 0/6 for 21h. If a >0 value trains fine on your box you
 # can bump it: WORKERS=4 bash scripts/run_phase1_finetune.sh full
 WORKERS="${WORKERS:-0}"
+
+# --- Shared-GPU memory cap -------------------------------------------------
+# The DGX is shared. GPU_MEM_FRACTION caps how much of the card's memory THIS
+# process may allocate, leaving the rest free for other users. 0.65 = use up
+# to 65%, leave 35% free. Enforced at runtime via
+# torch.cuda.set_per_process_memory_fraction (see TORCH_MEM_HOOK below).
+# Override: GPU_MEM_FRACTION=0.5 bash scripts/run_phase1_finetune.sh full
+GPU_MEM_FRACTION="${GPU_MEM_FRACTION:-0.65}"
+export GPU_MEM_FRACTION
+# Make the CUDA allocator return freed blocks to the driver promptly so the
+# 35% we leave free is actually usable by the other user.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+
+# A tiny -X importtime-free shim that applies the memory fraction the instant
+# torch is imported, BEFORE the model loads. Injected via PYTHONSTARTUP-style
+# usercustomize is fragile, so we instead pass it through a sitecustomize hook
+# created on the fly under runs/ and prepended to PYTHONPATH.
+HOOK_DIR="$REPO/runs/_mem_hook"
+mkdir -p "$HOOK_DIR"
+cat > "$HOOK_DIR/sitecustomize.py" <<'PYHOOK'
+import os
+_frac = os.environ.get("GPU_MEM_FRACTION")
+if _frac:
+    try:
+        import torch
+        if torch.cuda.is_available():
+            torch.cuda.set_per_process_memory_fraction(float(_frac), 0)
+            print(f"[mem-hook] capped GPU 0 to {float(_frac)*100:.0f}% "
+                  f"({torch.cuda.get_device_properties(0).total_memory/1e9:.0f} GB total)",
+                  flush=True)
+    except Exception as _e:  # never block training on the cap
+        print(f"[mem-hook] could not set memory fraction: {_e!r}", flush=True)
+PYHOOK
+export PYTHONPATH="$HOOK_DIR:${PYTHONPATH:-}"
 
 # --- Phase-1 acoustic manifests (real, verified) ---------------------------
 M_804H="data/dgx_full/preprocessed_audios_full/manifest.jsonl"
@@ -128,15 +169,34 @@ phase1_run() {
       --gradient-checkpointing \
       --save-total-limit 5 \
       --num-workers "$WORKERS" \
-      2>&1 | tee logs/phase1.log
+      ${RESUME_CKPT:+--resume-from-checkpoint "$RESUME_CKPT"} \
+      2>&1 | tee -a logs/phase1.log
   echo "--- A5 done. Adapter + checkpoints in runs/phase1/ ---"
 }
 
+# ---------------------------------------------------------------------------
+# resume — continue Phase-1 from the latest saved checkpoint (no re-split,
+# no smoke). Use this after you stopped the run to free the GPU for someone.
+# ---------------------------------------------------------------------------
+resume_run() {
+  local latest
+  latest=$(ls -d runs/phase1/checkpoint-* 2>/dev/null \
+           | sort -t- -k2 -n | tail -1 || true)
+  if [[ -z "$latest" ]]; then
+    echo "[resume] no runs/phase1/checkpoint-* found — nothing to resume." >&2
+    echo "[resume] start a fresh run with: bash $0 full" >&2
+    exit 1
+  fi
+  echo "--- resume: continuing from $latest ---"
+  RESUME_CKPT="$latest" phase1_run
+}
+
 case "$MODE" in
-  split) build_split ;;
-  smoke) build_split; smoke_test ;;
-  full)  build_split; smoke_test; phase1_run ;;
-  *) echo "usage: $0 [split|smoke|full]" >&2; exit 2 ;;
+  split)  build_split ;;
+  smoke)  build_split; smoke_test ;;
+  full)   build_split; smoke_test; phase1_run ;;
+  resume) resume_run ;;
+  *) echo "usage: $0 [split|smoke|full|resume]" >&2; exit 2 ;;
 esac
 
 echo "=== run_phase1_finetune ($MODE) complete: $(date) ==="
