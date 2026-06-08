@@ -96,24 +96,32 @@ good frozen Phase 1: `--unfreeze-encoder-layers 4 --encoder-lora-lr 1e-5`.
 
 ## 3. Does `scripts/run_phase1_finetune.sh` match this plan?
 
-**Partly.** It runs a Phase 1 and carves the rehearsal pool, but it is NOT the
-full agreed plan. Gaps:
+**Yes — now it does** (implemented 2026-06-08). The driver runs the full two
+phases:
 
 | Item | Agreed plan | Current driver | Status |
 |---|---|---|---|
-| Phase-1 sources | 804h + WorldSpeech bh/kw/sa/un + MASC | 804h + MASC + `saudi_asrv1` + `common_voice_ar` (NO WorldSpeech) | ⚠️ different |
+| Phase-1 sources | 804h (contains WorldSpeech + mixat + SADA) + MASC + MSA anchors | 804h + MASC + `saudi_asrv1` + `common_voice_ar` | ✅ |
 | Carve 100h for Phase 2 | yes | yes (`--carve-hours 100`) | ✅ |
 | DoRA | on | on | ✅ |
-| rsLoRA | on | **dropped** (`--use-dora` only) | ⚠️ |
-| **Phase 2 run** | synthetic medical CS + mixat + 100h rehearsal | **not implemented** | ❌ missing |
-| Code-switch data trained | yes (Phase 2) | nowhere | ❌ missing |
-| Synthetic medical data trained | yes (Phase 2) | nowhere | ❌ missing |
-| Resume / pause | needed | added (`resume` mode) | ✅ |
-| Shared-GPU cap | needed | added (`GPU_MEM_FRACTION=0.65`) | ✅ |
+| rsLoRA | on | **on** (`--use-dora --use-rslora`) | ✅ |
+| **Phase 2 run** | synthetic medical + CS + 100h rehearsal | `phase2` mode | ✅ |
+| Code-switch data trained | yes (Phase 2) | via the carved rehearsal (contains real mixat CS) | ✅ |
+| Synthetic medical data trained | yes (Phase 2) | `data/training/medical_gulf_v2/manifest.jsonl` | ✅ |
+| Phase-2 warm start | resume from Phase 1 | `--init-adapter runs/phase1/best_adapter` | ✅ |
+| Resume / pause | needed | `resume` mode | ✅ |
+| Shared-GPU cap | needed | `GPU_MEM_FRACTION=0.65` | ✅ |
 
-**Bottom line:** the current driver = a Phase-1-only run with a slightly different
-source list and rsLoRA dropped. It does **not** train code-switch or synthetic
-data, because that is Phase 2, and Phase 2 is not in the driver yet.
+> **Note on WorldSpeech / mixat:** per `paths.md`, the 804h manifest already
+> bakes in WorldSpeech (bh/kw/sa) and mixat (14h Emirati-English code-switch).
+> So WorldSpeech is in Phase 1, and the 100h carve pulls real code-switch
+> acoustic into Phase 2. There are no standalone WorldSpeech/mixat slugs to add
+> — doing so would double-count.
+>
+> **Note on warm start:** `best_adapter/` is a bare PEFT adapter dir (no
+> optimizer/scheduler state), so Phase 2 uses the new `--init-adapter` flag
+> (load Phase-1 LoRA weights, fresh optimizer at lr 5e-5) rather than
+> `--resume-from-checkpoint` (which needs a full Trainer checkpoint).
 
 ---
 
@@ -153,30 +161,13 @@ git pull --no-rebase --no-edit origin feat/v2-max-data
 # Phase 1 (caps to 65% GPU mem, leaves 35% free):
 bash scripts/run_phase1_finetune.sh full      # split -> smoke -> phase1
 
-# pause anytime: Ctrl-c   ;   resume later from latest checkpoint:
+# pause anytime: Ctrl-c   ;   resume Phase 1 later from latest checkpoint:
 bash scripts/run_phase1_finetune.sh resume
 
-# Phase 2: NOT wired into the driver yet — see §4.4. Manual form (runbook A6):
-mkdir -p data/splits runs/phase2
-cat data/preprocessed/synthetic_medical_cs/manifest.jsonl \
-    data/preprocessed/mixat/manifest.jsonl \
-    data/splits/phase2_rehearsal.jsonl \
-    > data/splits/phase2_mixed.train.jsonl
-python -m scripts.finetune_qwen3_lora \
-    --model-path Qwen/Qwen3-ASR-1.7B \
-    --resume-from-checkpoint runs/phase1/best_adapter \
-    --train-manifest data/splits/phase2_mixed.train.jsonl \
-    --eval-manifests data/splits/phase1.val.jsonl data/preprocessed/scc22/manifest.jsonl \
-    --output-dir runs/phase2 \
-    --num-epochs 2 --learning-rate 5e-5 \
-    --lr-scheduler-type cosine --warmup-ratio 0.03 --weight-decay 0.01 \
-    --max-grad-norm 1.0 \
-    --lora-r 32 --lora-alpha 64 --lora-dropout 0.05 --use-dora --use-rslora \
-    --per-device-train-batch-size 4 --gradient-accumulation-steps 16 \
-    --eval-every-steps 1000 --eval-at-start \
-    --early-stopping-patience 3 --early-stopping-metric wer \
-    --gradient-checkpointing \
-    2>&1 | tee logs/phase2.log
+# Phase 2 (run AFTER Phase 1 finishes and runs/phase1/best_adapter exists):
+#   builds data/splits/phase2_mixed.train.jsonl = synthetic + rehearsal,
+#   warm-starts from runs/phase1/best_adapter at lr 5e-5, writes runs/phase2/.
+bash scripts/run_phase1_finetune.sh phase2
 ```
 
 ---

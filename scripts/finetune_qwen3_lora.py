@@ -956,10 +956,26 @@ def main() -> int:
         "--resume-from-checkpoint",
         type=Path,
         default=None,
-        help=("Resume training from a saved checkpoint directory (e.g. "
-              "runs/qwen3_lora_r6/checkpoint-8000). Restores model weights, "
+        help=("Resume training from a saved HF Trainer checkpoint directory "
+              "(e.g. runs/phase1/checkpoint-8000). Restores model weights, "
               "optimizer, scheduler, RNG state, and step count, so training "
-              "picks up exactly where it left off."),
+              "picks up exactly where it left off. NOTE: this needs a FULL "
+              "Trainer checkpoint (optimizer.pt/scheduler.pt/trainer_state.json), "
+              "not a bare adapter dir. To START a NEW run (fresh optimizer) "
+              "from a previously trained adapter, use --init-adapter instead."),
+    )
+    ap.add_argument(
+        "--init-adapter",
+        type=Path,
+        default=None,
+        help=("Initialise the LoRA weights from a previously trained adapter "
+              "directory (e.g. runs/phase1/best_adapter) and start a FRESH "
+              "training run (new optimizer/scheduler/step count). This is how "
+              "Phase 2 continues from Phase 1: the Phase-1 adapter is loaded as "
+              "the starting point, then trained further on the Phase-2 mix at a "
+              "lower LR. The adapter's LoRA shape (r/alpha/targets) must match "
+              "this run's --lora-* flags. Mutually exclusive with "
+              "--resume-from-checkpoint."),
     )
     ap.add_argument("--save-total-limit", type=int, default=5)
     ap.add_argument("--num-workers", type=int, default=4)
@@ -1015,6 +1031,44 @@ def main() -> int:
         use_dora=args.use_dora,
         unfreeze_encoder_layers=args.unfreeze_encoder_layers,
     )
+
+    # 3b. Phase-2 warm start: load a previously trained adapter as the LoRA
+    # initialisation (FRESH optimizer/scheduler — NOT a Trainer resume). The
+    # fresh LoRA layers from apply_lora() are overwritten with the saved
+    # Phase-1 weights, then training continues on the Phase-2 mix.
+    if getattr(args, "init_adapter", None):
+        if getattr(args, "resume_from_checkpoint", None):
+            raise SystemExit(
+                "[init-adapter] --init-adapter and --resume-from-checkpoint are "
+                "mutually exclusive. Use --init-adapter to start a fresh run "
+                "from a prior adapter; use --resume-from-checkpoint only with a "
+                "full HF Trainer checkpoint dir."
+            )
+        from safetensors.torch import load_file as _load_safetensors
+        from peft import set_peft_model_state_dict
+        adapter_dir = Path(args.init_adapter)
+        weights_file = adapter_dir / "adapter_model.safetensors"
+        bin_file = adapter_dir / "adapter_model.bin"
+        if weights_file.exists():
+            sd = _load_safetensors(str(weights_file))
+        elif bin_file.exists():
+            sd = torch.load(str(bin_file), map_location="cpu")
+        else:
+            raise SystemExit(
+                f"[init-adapter] no adapter weights found in {adapter_dir} "
+                f"(looked for adapter_model.safetensors / .bin)."
+            )
+        load_res = set_peft_model_state_dict(model, sd)
+        missing = getattr(load_res, "missing_keys", []) or []
+        unexpected = getattr(load_res, "unexpected_keys", []) or []
+        print(f"[init-adapter] loaded {len(sd)} tensors from {adapter_dir} "
+              f"(missing={len(missing)} unexpected={len(unexpected)})")
+        if unexpected:
+            raise SystemExit(
+                f"[init-adapter] {len(unexpected)} unexpected keys — the saved "
+                f"adapter's LoRA shape does not match this run's --lora-* flags. "
+                f"First few: {unexpected[:5]}"
+            )
 
     # 4. Dataset via upstream preprocess.
     raw_ds = load_dataset("json", data_files={"train": str(upstream_jsonl)})
