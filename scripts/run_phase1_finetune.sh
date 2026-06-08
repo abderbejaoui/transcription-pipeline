@@ -48,7 +48,9 @@
 # Default (no arg) = full. Run `full` first, then `phase2`.
 #
 # Shared-GPU controls (env vars):
-#   GPU_MEM_FRACTION=0.65   cap this process to 65% of GPU memory (default)
+#   GPU_MEM_BUDGET_GB=45    HARD cap on GPU memory this run may use (default 45)
+#   GPU_MIN_FREE_GB=45      refuse to start unless this many GB are free (default 45)
+#   BSZ=2 GRAD_ACCUM=32     batch knobs; effective batch = BSZ*GRAD_ACCUM
 #   WORKERS=0               DataLoader workers (0 = safe single-process)
 # Stop anytime with Ctrl-c to free the card; later run `... resume` to pick up
 # EXACTLY where you left off (weights + optimizer + scheduler + step count).
@@ -78,42 +80,57 @@ WORKERS="${WORKERS:-0}"
 BSZ="${BSZ:-2}"
 GRAD_ACCUM="${GRAD_ACCUM:-32}"
 
-# --- Shared-GPU memory cap -------------------------------------------------
-# The DGX is shared. GPU_MEM_FRACTION caps how much of the card's memory THIS
-# process may allocate, leaving the rest free for other users. 0.65 = use up
-# to 65%, leave 35% free. Enforced at runtime via
-# torch.cuda.set_per_process_memory_fraction (see TORCH_MEM_HOOK below).
-# Override: GPU_MEM_FRACTION=0.6 bash scripts/run_phase1_finetune.sh full
+# --- Shared-GPU memory cap (ABSOLUTE BUDGET) -------------------------------
+# The DGX has 120 GB unified memory and OTHER tasks are already using ~66 GB
+# that we CANNOT stop. This finetuning job must NEVER exceed a hard budget of
+# 45 GB at any point, or the card OOMs and (a) this script dies, and worse
+# (b) the other tasks can die too.
 #
-# NOTE: the DGX Spark GB10 uses UNIFIED CPU+GPU memory, and `nvidia-smi` reports
-# "Memory-Usage: Not Supported" on it. The per-process fraction is a SOFT cap on
-# the CUDA caching allocator — it does NOT hard-stop the OS from handing out
-# unified memory. So we keep the default conservative (0.5 = half the card) and
-# ALSO refuse to start if other processes are already holding the GPU (see the
-# preflight guard below) — that double-allocation is what crashed earlier runs.
-GPU_MEM_FRACTION="${GPU_MEM_FRACTION:-0.5}"
-export GPU_MEM_FRACTION
-# Make the CUDA allocator return freed blocks to the driver promptly so the
-# 35% we leave free is actually usable by the other user.
-export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True}"
+# We express the cap as an ABSOLUTE number of GB (GPU_MEM_BUDGET_GB), NOT a
+# fraction of the whole card. A fraction is dangerous here: 0.5 * 120 GB = 60 GB
+# would blow straight past our 45 GB ceiling. The hook below converts the GB
+# budget into the exact per-process fraction `budget / total_memory` so the cap
+# is anchored to 45 GB no matter what the card reports as total.
+# We set the hard cap to 42 GB (3 GB below the 45 GB ceiling) so that transient
+# allocator overshoot, fragmentation, and eval-time `generate()` spikes still
+# land UNDER 45 GB. This is the number torch will never let us exceed.
+#   GPU_MEM_BUDGET_GB=42 bash scripts/run_phase1_finetune.sh full   # default
+GPU_MEM_BUDGET_GB="${GPU_MEM_BUDGET_GB:-42}"
+export GPU_MEM_BUDGET_GB
+# How much memory must be ACTUALLY FREE before we even start (preflight guard).
+# Require the full 45 GB free so there is headroom above our 42 GB cap.
+GPU_MIN_FREE_GB="${GPU_MIN_FREE_GB:-45}"
 
-# A tiny -X importtime-free shim that applies the memory fraction the instant
-# torch is imported, BEFORE the model loads. Injected via PYTHONSTARTUP-style
-# usercustomize is fragile, so we instead pass it through a sitecustomize hook
-# created on the fly under runs/ and prepended to PYTHONPATH.
+# Keep the allocator from grabbing oversized contiguous blocks and from holding
+# freed memory hostage, so we stay well under the budget and release promptly.
+export PYTORCH_CUDA_ALLOC_CONF="${PYTORCH_CUDA_ALLOC_CONF:-expandable_segments:True,max_split_size_mb:256}"
+
+# A tiny shim that applies the memory cap the instant torch is imported, BEFORE
+# the model loads, via a sitecustomize hook prepended to PYTHONPATH. It converts
+# the GB budget into a per-process fraction AND uses the lower of (budget, any
+# explicit GPU_MEM_FRACTION) so an absolute ceiling always wins.
 HOOK_DIR="$REPO/runs/_mem_hook"
 mkdir -p "$HOOK_DIR"
 cat > "$HOOK_DIR/sitecustomize.py" <<'PYHOOK'
 import os
-_frac = os.environ.get("GPU_MEM_FRACTION")
-if _frac:
+_budget_gb = os.environ.get("GPU_MEM_BUDGET_GB")
+_frac_env  = os.environ.get("GPU_MEM_FRACTION")
+if _budget_gb or _frac_env:
     try:
         import torch
         if torch.cuda.is_available():
-            torch.cuda.set_per_process_memory_fraction(float(_frac), 0)
-            print(f"[mem-hook] capped GPU 0 to {float(_frac)*100:.0f}% "
-                  f"({torch.cuda.get_device_properties(0).total_memory/1e9:.0f} GB total)",
-                  flush=True)
+            total = torch.cuda.get_device_properties(0).total_memory  # bytes
+            fracs = []
+            if _budget_gb:
+                budget_bytes = float(_budget_gb) * (1024 ** 3)
+                fracs.append(min(0.99, budget_bytes / total))
+            if _frac_env:
+                fracs.append(float(_frac_env))
+            frac = min(fracs)  # absolute budget always wins
+            torch.cuda.set_per_process_memory_fraction(frac, 0)
+            print(f"[mem-hook] capped GPU 0 to {frac*100:.1f}% "
+                  f"= {frac*total/1e9:.1f} GB (of {total/1e9:.0f} GB total; "
+                  f"budget={_budget_gb or 'n/a'} GB)", flush=True)
     except Exception as _e:  # never block training on the cap
         print(f"[mem-hook] could not set memory fraction: {_e!r}", flush=True)
 PYHOOK
@@ -155,44 +172,59 @@ for m in "$M_804H" "$M_MASC" "$M_SAUDI" "$M_CV"; do
 done
 
 # ---------------------------------------------------------------------------
-# PREFLIGHT GPU GUARD — refuse to start if the GPU is already busy.
+# PREFLIGHT GPU GUARD — refuse to start unless our full budget is FREE.
 #
-# WHY: earlier runs crashed because ORPHANED python processes from killed
-# attempts kept holding GPU memory. Each new run then stacked on top until the
-# card was exhausted and the driver killed the newest process (and its tmux).
-# This guard makes that failure LOUD and EARLY instead of a silent OOM 15 min in.
+# WHY: the DGX is shared. Other tasks already use ~66 GB of the 120 GB unified
+# memory and CANNOT be stopped. If we launch when less than our 45 GB budget is
+# actually free, we (and possibly the other tasks) will OOM mid-run.
 #
-# It sums the GPU memory used by COMPUTE (C) processes other than this one. If
-# that exceeds GPU_BUSY_MB_LIMIT (default 1000 MB), it aborts and prints the
-# offending PIDs so you can `kill -9` them. Override the threshold or skip:
-#   GPU_BUSY_MB_LIMIT=4000 bash ...   # allow up to 4 GB already in use
-#   SKIP_GPU_GUARD=1       bash ...   # bypass entirely (NOT recommended)
+# On the GB10, `nvidia-smi --query-compute-apps=used_memory` reports
+# "[Not Supported]", so counting other processes' bytes is unreliable. Instead
+# we ask the CUDA driver directly for ACTUAL FREE memory via
+# torch.cuda.mem_get_info() and refuse to start unless free >= GPU_MIN_FREE_GB.
+# This is the only number that matters: it already accounts for everything else
+# running on the card.
+#   GPU_MIN_FREE_GB=45 bash ...     # require 45 GB free before launch (default)
+#   SKIP_GPU_GUARD=1   bash ...     # bypass entirely (NOT recommended)
 # ---------------------------------------------------------------------------
-GPU_BUSY_MB_LIMIT="${GPU_BUSY_MB_LIMIT:-1000}"
 preflight_gpu_guard() {
   [[ "${SKIP_GPU_GUARD:-0}" == "1" ]] && { echo "[preflight] GPU guard skipped"; return 0; }
-  command -v nvidia-smi >/dev/null 2>&1 || { echo "[preflight] no nvidia-smi; skipping guard"; return 0; }
 
-  local self_pid=$$
-  # List compute processes as "pid mem_mib"; sum memory for PIDs that are not us.
-  local busy_mb pids
-  busy_mb=$(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits 2>/dev/null \
-            | awk -v me="$self_pid" 'NF>=2 && $1+0 != me {s+=$2} END{print s+0}')
-  pids=$(nvidia-smi --query-compute-apps=pid,used_memory --format=csv,noheader,nounits 2>/dev/null \
-            | awk -v me="$self_pid" 'NF>=2 && $1+0 != me {printf "%s(%sMiB) ", $1, $2}')
+  local info
+  info=$($PY - "$GPU_MIN_FREE_GB" <<'PYGUARD'
+import sys
+need_gb = float(sys.argv[1])
+try:
+    import torch
+    if not torch.cuda.is_available():
+        print("SKIP no-cuda"); sys.exit(0)
+    free, total = torch.cuda.mem_get_info(0)   # bytes, accounts for ALL procs
+    free_gb, total_gb = free / 1e9, total / 1e9
+    ok = free_gb >= need_gb
+    print(f"{'OK' if ok else 'FAIL'} {free_gb:.1f} {total_gb:.1f}")
+except Exception as e:
+    print(f"SKIP {e!r}")
+PYGUARD
+)
+  local verdict free_gb total_gb
+  verdict=$(echo "$info" | awk '{print $1}')
+  free_gb=$(echo "$info"  | awk '{print $2}')
+  total_gb=$(echo "$info" | awk '{print $3}')
 
-  if [[ "${busy_mb:-0}" -gt "$GPU_BUSY_MB_LIMIT" ]]; then
-    echo "FATAL: GPU already has ${busy_mb} MiB used by other compute processes:" >&2
-    echo "         $pids" >&2
-    echo "These are almost certainly ORPHANED processes from a previous killed run." >&2
-    echo "Kill them, then retry:" >&2
-    echo "    kill -9 $(echo "$pids" | grep -oE '^[0-9]+|[ ][0-9]+' | tr -d ' ' | tr '\n' ' ')" >&2
-    echo "    # or, to free ALL of your own python GPU procs:" >&2
-    echo "    nvidia-smi --query-compute-apps=pid --format=csv,noheader | xargs -r kill -9" >&2
-    echo "(Override threshold with GPU_BUSY_MB_LIMIT=NNNN, or bypass with SKIP_GPU_GUARD=1.)" >&2
-    exit 1
-  fi
-  echo "[preflight] GPU clear (${busy_mb:-0} MiB used by others; limit ${GPU_BUSY_MB_LIMIT} MiB). OK."
+  case "$verdict" in
+    OK)
+      echo "[preflight] GPU has ${free_gb} GB free of ${total_gb} GB (need ${GPU_MIN_FREE_GB} GB). OK." ;;
+    FAIL)
+      echo "FATAL: only ${free_gb} GB free of ${total_gb} GB on the GPU, but this run needs" >&2
+      echo "       ${GPU_MIN_FREE_GB} GB free to stay within its ${GPU_MEM_BUDGET_GB} GB budget safely." >&2
+      echo "Other tasks are using the card. Wait for memory to free up, OR if there are" >&2
+      echo "ORPHANED python processes from a killed run, kill them:" >&2
+      echo "    nvidia-smi --query-compute-apps=pid --format=csv,noheader | xargs -r kill -9" >&2
+      echo "Then retry. (You may also lower the budget: GPU_MEM_BUDGET_GB=NN GPU_MIN_FREE_GB=NN ...)" >&2
+      exit 1 ;;
+    *)
+      echo "[preflight] could not read GPU free memory ($info); proceeding without guard." ;;
+  esac
 }
 preflight_gpu_guard
 
