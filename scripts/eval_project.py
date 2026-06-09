@@ -124,11 +124,14 @@ def call_remote_asr(audio_path: Path, language: str, remote_url: str, timeout: i
 # ---------------------------------------------------------------------------
 
 
-def call_pipeline(endpoint: str, transcript: str, case_id: str, timeout: int = 120) -> dict:
+def call_pipeline(endpoint: str, transcript: str, case_id: str, timeout: int = 120, use_llm: bool = False) -> dict:
     try:
+        body = {"transcript": transcript, "case_id": case_id}
+        if use_llm:
+            body["use_llm"] = True
         resp = requests.post(
             f"{endpoint}/api/test-pipeline",
-            json={"transcript": transcript, "case_id": case_id},
+            json=body,
             timeout=timeout,
         )
         resp.raise_for_status()
@@ -185,14 +188,19 @@ def score_clip(
             corrections = pipeline_response.get("corrections", [])
 
     # Term recall: did the pipeline flag or correct each expected term?
+    # A term is also considered "found" if it was already correctly spelled in
+    # the input transcript — in that case the pipeline correctly left it alone.
     recall_hits = 0
+    normalized_gt = normalize(gt)
     flagged_spans_raw = pipeline_response.get("flagged_spans", []) if pipeline_response else []
     for term in expected:
-        found = any(
-            term in (c.get("chosen") or "").lower() or
-            term in (c.get("span_text") or "").lower()
-            for c in corrections
-        )
+        found = term in normalized_gt
+        if not found:
+            found = any(
+                term in (c.get("chosen") or "").lower() or
+                term in (c.get("span_text") or "").lower()
+                for c in corrections
+            )
         if not found:
             found = any(term in (c.get("text") or "").lower() for c in flagged_spans_raw)
         if found:
@@ -304,6 +312,7 @@ def main() -> None:
     parser.add_argument("--limit",         type=int, default=None,     help="Process only first N clips")
     parser.add_argument("--asr-only",      action="store_true",        help="Only run ASR, skip pipeline")
     parser.add_argument("--pipeline-only", action="store_true",        help="Skip ASR, feed ground-truth text to pipeline")
+    parser.add_argument("--use-llm",       action="store_true",        help="Enable the LLM pass in the correction pipeline (non-deterministic)")
     parser.add_argument("--delay",         type=float, default=0.2,    help="Delay between requests (s)")
     parser.add_argument("--timeout",       type=int,   default=90,     help="Per-request timeout (s)")
     parser.add_argument("--output",        default=None,               help="JSON output path")
@@ -371,7 +380,7 @@ def main() -> None:
         # Step 2: Pipeline
         pipeline_response: dict | None = None
         if not args.asr_only and asr_transcript:
-            pipeline_response = call_pipeline(args.endpoint, asr_transcript, clip_id, timeout=args.timeout)
+            pipeline_response = call_pipeline(args.endpoint, asr_transcript, clip_id, timeout=args.timeout, use_llm=args.use_llm)
             if "error" in (pipeline_response or {}):
                 errors += 1
 

@@ -57,6 +57,12 @@ _AR2LAT = {
     "ؤ": "w", "ئ": "y",
 }
 _TASHKEEL_RE = re.compile(r"[\u064b-\u0652\u0670\u0640]")
+# Punctuation that ASR/transcripts glue onto word edges. Natural dictation
+# is full of commas/periods (Arabic \u060c \u061b \u061f and Latin), and a trailing \u060c
+# makes a real Arabic word fail morphological analysis \u2014 so it slips past
+# the filler check and gets phonetically matched as a fake drug. Strip it
+# from word EDGES before analysis (interior punctuation is left untouched).
+_EDGE_PUNCT = "\u060c\u061b\u061f.,;:!\u061f?\"'`()[]{}\u00ab\u00bb\u2026\u201c\u201d\u2018\u2019-\u2014_ "
 
 
 # ---------------------------------------------------------------------------
@@ -681,6 +687,7 @@ def _is_known_medical(word: str, lexicon: List[str]) -> bool:
     a direct lexicon match. The set grows at runtime via
     register_known_arabic_form() when clinicians register Arabic aliases.
     """
+    word = word.strip(_EDGE_PUNCT)
     if word in _KNOWN_ARABIC_MEDICAL_FORMS:
         return True
     w = word.lower()
@@ -929,6 +936,10 @@ _ARABIC_SHORT_PARTICLES = {
     "بس",   # Gulf Arabic "just / only"
     "كم",   # "how much / how many"
     "عم",   # Gulf Arabic continuous marker ("doing")
+    "قبل",  # "before" — preposition; collides with flagyl skeleton at sim 0.60
+    "بعد",  # "after" — preposition; similar collision risk
+    "آمن",  # "safe/secure" — adjective; skeleton mntn ≈ augmentin kmntn at 0.80
+    "كل",   # "every/all" — adjective/determiner; too short to be a drug fragment
 }
 
 # Fallback for when morphology DBs are unavailable: a compact set covering
@@ -956,6 +967,7 @@ def _is_arabic_filler(word: str) -> bool:
     5. Fallback if morphology DBs unavailable: compact hardcoded set.
     """
     w = _TASHKEEL_RE.sub("", unicodedata.normalize("NFKC", word))
+    w = w.strip(_EDGE_PUNCT)
     if not w:
         return True
     if w in _ARABIC_SHORT_PARTICLES:
@@ -1299,6 +1311,11 @@ def flag_suspicious(
                 cands = _phonetic_candidates(word, load_medical_lexicon())
                 if not cands and likely:
                     cands = [{"term": likely, "phonetic_similarity": round(llm_conf, 3)}]
+                # Guard C: no phonetic candidates and no concrete LLM term →
+                # unactionable flag, almost certainly a hallucination on an
+                # innocent Arabic context word. Drop it.
+                if not cands and not likely:
+                    continue
                 entry_data = {
                     "index": idx,
                     "word": word,
@@ -1410,7 +1427,13 @@ def apply_high_confidence_corrections(
             continue
 
         # Preserve the Arabic conjunction if the span started with 'و<drug>'.
-        if waw_prefix and not chosen.startswith(_AR_WAW):
+        # But NOT when the drug itself begins with a 'و'/w-sound — e.g.
+        # 'وار فارين' is warfarin (و is part of the name), not 'و'+'arfarin'.
+        # In that case the leading 'و' is consonant, so prepending it would
+        # produce 'وwarfarin'. Latin drugs starting w/o/u correspond to a
+        # leading Arabic و, so treat 'و' as a conjunction only otherwise.
+        drug_starts_with_waw_sound = chosen[:1].lower() in ("w", "o", "u")
+        if waw_prefix and not chosen.startswith(_AR_WAW) and not drug_starts_with_waw_sound:
             chosen = _AR_WAW + chosen
 
         # span_indices is set for bigram/trigram flags. Replace the FIRST

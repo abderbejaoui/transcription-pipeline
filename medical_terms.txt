@@ -219,3 +219,9 @@ hba1c
 echocardiogram
 risedronic acid
 voltaren
+troponin
+digoxin
+glimepiride
+valsartan
+apixaban
+nitrofurantoin

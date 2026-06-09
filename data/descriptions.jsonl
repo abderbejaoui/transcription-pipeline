@@ -204,3 +204,6 @@
 {"term": "testadrug", "description": "Testadrug is a medication classified as an experimental drug. It is primarily studied for the treatment of various conditions but has not yet established common therapeutic uses."}
 {"term": "Gastritis", "description": "Gastritis is an inflammation of the stomach lining that can be acute or chronic, commonly presenting with symptoms such as abdominal pain, nausea, and vomiting. Treatment may include dietary changes, antacids, and medications to reduce stomach acid."}
 {"term": "amlodipine", "description": "Amlodipine is a calcium channel blocker used primarily to treat hypertension and angina. It works by relaxing blood vessels so that blood can flow more easily."}
+{"term": "مرضي", "description": "مرضي is an Arabic term that translates to 'sick' or 'ill'; it is not recognized as a specific drug name or drug class. Please provide a specific drug name or condition for accurate information."}
+{"term": "المريض", "description": "المريض هو مصطلح عام يشير إلى الأفراد الذين يتلقون العلاج الطبي أو الرعاية الصحية، ولا ينتمي إلى فئة محددة من الأدوية أو الأمراض."}
+{"term": "panadol", "description": "Panadol is a non-opioid analgesic and antipyretic, classified as an acetaminophen (paracetamol). It is primarily used to treat mild to moderate pain and reduce fever."}
