@@ -22,11 +22,9 @@ from .llm_config import (
 
 
 DEFAULT_OLLAMA_URL = os.environ.get(
-    "OLLAMA_URL", "http://100.68.87.28:11434/api/chat"
+    "OLLAMA_URL", "http://localhost:11434/api/chat"
 )
-DEFAULT_OLLAMA_MODEL = os.environ.get(
-    "OLLAMA_MODEL", "hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS"
-)
+DEFAULT_OLLAMA_MODEL = os.environ.get("OLLAMA_MODEL", "gemma4:31b")
 NO_CHANGE = "NO_CHANGE"
 
 
