@@ -115,6 +115,43 @@ DEFAULT_WHISPER_SIZE = os.environ.get("WHISPER_MODEL_SIZE", "large-v3")
 DEFAULT_LANGUAGE = os.environ.get("ASR_LANGUAGE", "")  # "" = auto-detect (Arabic+English)
 def _get_remote_asr_url() -> str:
     return os.environ.get("REMOTE_ASR_URL", "").rstrip("/")
+
+
+def _remote_asr_transcribe(
+    audio_path: Path, language: Optional[str], remote_url: str
+) -> Dict[str, Any]:
+    """Call the hosted ASR endpoint and adapt its response to the same shape
+    `asr.transcribe` returns, so the rest of the pipeline is unchanged.
+
+    The remote `/asr` returns {text, raw_text, language, duration} but no
+    word-level timestamps, so `words` comes back empty. The pipeline handles
+    an empty word list (voice-first scan and alignment are guarded on it).
+    """
+    import requests as _requests
+
+    audio_bytes = audio_path.read_bytes()
+    resp = _requests.post(
+        f"{remote_url}/asr",
+        files={"audio": (audio_path.name, audio_bytes, "audio/wav")},
+        data={"language": language or DEFAULT_LANGUAGE or "ar"},
+        headers={"ngrok-skip-browser-warning": "true"},
+        timeout=120,
+    )
+    resp.raise_for_status()
+    data = resp.json()
+    text = data.get("text") or data.get("raw_text") or ""
+    return {
+        "text": text,
+        "raw_text": data.get("raw_text", text),
+        "drug_corrections": [],
+        "language": data.get("language", language or "ar"),
+        "language_probability": 1.0,
+        "duration": float(data.get("duration", 0.0) or 0.0),
+        "words": [],
+        "extra": {"source": "remote", "remote_url": remote_url},
+    }
+
+
 USE_LLM = os.environ.get("USE_LLM", "1") == "1"
 # When 1, skip word-level forced alignment in /api/transcribe_debug. Alignment
 # only produces per-word TIMESTAMPS (it does not change the transcript text),
@@ -209,13 +246,20 @@ def _prewarm() -> None:
 
 @app.get("/", include_in_schema=False)
 def root() -> FileResponse:
-    return FileResponse(STATIC_DIR / "index.html")
+    """Main UI — the pipeline page is now the primary entry point."""
+    return FileResponse(STATIC_DIR / "pipeline.html")
 
 
 @app.get("/pipeline", include_in_schema=False)
 def pipeline_tester() -> FileResponse:
-    """Standalone page to test the correction pipeline on text, without ASR."""
+    """Alias for the main UI (kept for backward-compatible links)."""
     return FileResponse(STATIC_DIR / "pipeline.html")
+
+
+@app.get("/classic", include_in_schema=False)
+def classic_ui() -> FileResponse:
+    """Previous main UI (index.html), kept for reference."""
+    return FileResponse(STATIC_DIR / "index.html")
 
 
 @app.get("/pipeline-overview", include_in_schema=False)
@@ -433,7 +477,14 @@ def _run_transcribe_pipeline(
         "language": language or "auto",
         "size_bytes": session_path.stat().st_size,
     })
-    if USE_DUAL_ASR:
+    remote_url = _get_remote_asr_url()
+    if remote_url:
+        try:
+            asr_result = _remote_asr_transcribe(session_path, language, remote_url)
+        except Exception as exc:
+            print(f"[transcribe/remote] error: {exc!r} — falling back to local ASR")
+            asr_result = asr.transcribe(session_path, model_size=model_size, language=language)
+    elif USE_DUAL_ASR:
         asr_result = asr_dual.transcribe_and_merge(
             session_path, language=language
         )
@@ -813,13 +864,13 @@ async def asr_only(
     language: Optional[str] = Form(None),
     model_size: str = Form(DEFAULT_WHISPER_SIZE),
 ) -> Any:
-    """ASR-only: transcribe audio without the correction pipeline.
+    """ASR-only: transcribe audio with the local fine-tuned Qwen3-ASR Gulf LoRA.
 
-    Routes to the remote ASR service when REMOTE_ASR_URL is configured;
-    falls back to the local Whisper model otherwise.
+    No fallbacks: this uses ONLY the local fine-tuned Qwen3 model
+    (app.services.asr -> Qwen3-ASR-1.7B + Gulf LoRA adapter). There is no
+    remote-ASR routing and no Whisper fallback — if the model fails, the
+    request errors instead of silently using a different model.
     """
-    import requests as _requests
-
     audio_bytes = await audio.read()
     size = len(audio_bytes)
     if size < 200:
@@ -828,24 +879,7 @@ async def asr_only(
         )
 
     effective_lang = language or DEFAULT_LANGUAGE or "ar"
-    remote_url = _get_remote_asr_url()
 
-    if remote_url:
-        try:
-            resp = _requests.post(
-                f"{remote_url}/asr",
-                files={"audio": (audio.filename or "audio.wav", audio_bytes, audio.content_type or "audio/wav")},
-                data={"language": effective_lang},
-                timeout=90,
-            )
-            resp.raise_for_status()
-            data = resp.json() if resp.headers.get("content-type", "").startswith("application/json") else {}
-            text = data.get("text") or data.get("transcript") or resp.text.strip()
-            return {"text": text, "raw_text": text, "language": effective_lang, "source": "remote"}
-        except Exception as exc:
-            print(f"[asr/remote] error: {exc!r} — falling back to local")
-
-    # Local Whisper fallback
     session_id = str(uuid.uuid4())
     session_path = SESSIONS_DIR / session_id
     session_path.mkdir(parents=True, exist_ok=True)
@@ -859,13 +893,14 @@ async def asr_only(
             "language": result["language"],
             "duration": result["duration"],
             "session_id": session_id,
-            "source": "local",
+            "source": "local-qwen3-lora",
         }
     except Exception as exc:
         print(f"[asr/local] error: {exc!r}")
         hint = (
-            "Set REMOTE_ASR_URL in your .env file to use the remote ASR, "
-            "or configure the local Whisper model."
+            "The fine-tuned Qwen3-ASR Gulf LoRA model failed to load or run. "
+            "Check QWEN3_GULF_ADAPTER points to the adapter dir "
+            "(adapter_config.json + adapter_model.safetensors) and that the GPU is available."
         )
         return JSONResponse(status_code=500, content={"error": str(exc), "hint": hint})
 
