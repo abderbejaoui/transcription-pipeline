@@ -99,15 +99,30 @@ def _morph_is_real_arabic(word: str) -> bool:
     colloquial Gulf forms, and MSA medical vocabulary. Drug mangles
     (e.g. \u0644\u0627\u064a\u0632\u064a\u0646\u0648 for lisinopril) produce zero analyses; genuine Arabic
     words always produce at least one.
+
+    Falls back to trying common prefix-stripped forms (\u0627\u0644, \u0648\u0627\u0644, \u2026) because
+    some lexicalised adjectives and verbal nouns (e.g. '\u0627\u0644\u062a\u0631\u0627\u0643\u0645\u064a') appear in
+    the MSA DB only under their stem, not the definite-article form.
     """
-    for analyzer in (_GLF_ANALYZER, _MSA_ANALYZER):
-        if analyzer is None:
-            continue
-        try:
-            if any(a.get("pos") not in ("PUNC", None) for a in analyzer.analyze(word)):
+    def _has_analysis(w: str) -> bool:
+        for analyzer in (_GLF_ANALYZER, _MSA_ANALYZER):
+            if analyzer is None:
+                continue
+            try:
+                if any(a.get("pos") not in ("PUNC", None) for a in analyzer.analyze(w)):
+                    return True
+            except Exception:
+                continue
+        return False
+
+    if _has_analysis(word):
+        return True
+    # Try prefix-stripped variants before giving up \u2014 handles forms like
+    # '\u0627\u0644\u062a\u0631\u0627\u0643\u0645\u064a' where only '\u062a\u0631\u0627\u0643\u0645\u064a' is in the MSA DB.
+    for pre in ("\u0627\u0644", "\u0648\u0627\u0644", "\u0628\u0627\u0644", "\u0643\u0627\u0644", "\u0641\u0627\u0644", "\u0644\u0644", "\u0648", "\u0628", "\u0644", "\u0641"):
+        if word.startswith(pre) and len(word) - len(pre) >= 3:
+            if _has_analysis(word[len(pre):]):
                 return True
-        except Exception:
-            continue
     return False
 
 
@@ -771,17 +786,44 @@ def _phonetic_candidates(
 # The skeleton approach can't distinguish a correct Arabic form from a misspelling
 # with the same consonants (e.g. نيكسيوم and a correct nexium spelling share the
 # same skeleton). This set grows at runtime via register_known_arabic_form().
-_KNOWN_ARABIC_MEDICAL_FORMS: set = {
-    # cholesterol (كوليسترول) — common clitic variants
-    "كوليسترول", "الكوليسترول", "للكوليسترول", "وكوليسترول", "بالكوليسترول",
-    "والكوليسترول",
-    # insulin (أنسولين)
-    "أنسولين", "الأنسولين", "للأنسولين", "وأنسولين", "بالأنسولين",
-    # creatinine (كرياتينين)
-    "كرياتينين", "الكرياتينين", "للكرياتينين", "وكرياتينين",
-    # ibuprofen (إيبوبروفين)
-    "إيبوبروفين", "الإيبوبروفين", "للإيبوبروفين", "بالإيبوبروفين",
-}
+# Base Arabic forms of medical terms that may be spelled correctly in a
+# transcript and should NOT be re-flagged as suspicious.  Add the *stem*
+# only (no definite article, no clitics) — all common Arabic prefix
+# combinations are generated programmatically at module load time below.
+_ARABIC_MEDICAL_BASE_FORMS: frozenset = frozenset({
+    "كوليسترول",   # cholesterol
+    "أنسولين",     # insulin
+    "كرياتينين",   # creatinine
+    "إيبوبروفين",  # ibuprofen
+    "تروبونين",    # troponin
+    "أسبرين",      # aspirin
+})
+
+_ARABIC_CLITIC_PREFIXES = (
+    "", "ال", "وال", "بال", "كال", "فال", "لل",
+    "و", "ب", "ل", "ف", "ك",
+)
+
+
+def _generate_arabic_medical_forms(bases: frozenset) -> set:
+    """Expand each base Arabic medical term into all common clitic variants.
+
+    Generates forms like كوليسترول, الكوليسترول, والكوليسترول, بالكوليسترول
+    etc. for every base form.  Only keeps variants whose total length ≥ 4 so
+    single-char prefix artifacts are never produced.
+    """
+    result: set = set()
+    for base in bases:
+        for pre in _ARABIC_CLITIC_PREFIXES:
+            form = pre + base
+            if len(form) >= 4:
+                result.add(form)
+    return result
+
+
+_KNOWN_ARABIC_MEDICAL_FORMS: set = _generate_arabic_medical_forms(
+    _ARABIC_MEDICAL_BASE_FORMS
+)
 
 
 def register_known_arabic_form(arabic_alias: str) -> None:
@@ -899,8 +941,25 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
             filler_count = sum(1 for w in window if _is_arabic_filler(w))
             # Reject if more than half the window is filler (or for n=2,
             # if BOTH are filler — protects 'مع الاكل' false positive).
+            # Exception: when all-filler bigrams join to a very high-confidence
+            # drug match (≥0.85), they are almost certainly a split drug name
+            # whose fragments happen to look like real Arabic words to the
+            # morphological analyzer (e.g. 'وار'+'فارين' → warfarin 0.875,
+            # 'لان'+'توس' → lantus 1.0).  Pre-check before rejecting so these
+            # survive — plain Arabic word pairs never score this high.
             if n == 2 and filler_count >= 2:
-                continue
+                # Only rescue all-filler bigrams when at least one fragment
+                # is ≤3 chars — genuine split-drug pieces like وار/لان/فال
+                # are always short, while pairs of full Arabic words (خليه
+                # يأخذ) are longer and their joined skeleton can accidentally
+                # hit a drug at high similarity (klacid, etc.).
+                if not any(len(w) <= 3 for w in window):
+                    continue
+                _pre = _phonetic_candidates(
+                    "".join(window), lexicon, k=1, threshold=0.85,
+                )
+                if not (_pre and _pre[0]["phonetic_similarity"] >= 0.85):
+                    continue
             if n == 3 and filler_count >= 2:
                 continue
             has_filler = filler_count > 0
@@ -1061,19 +1120,17 @@ _ARABIC_SHORT_PARTICLES = {
     "بعد",  # "after" — preposition; similar collision risk
     "آمن",  # "safe/secure" — adjective; skeleton mntn ≈ augmentin kmntn at 0.80
     "كل",   # "every/all" — adjective/determiner; too short to be a drug fragment
-    "كان",  # "was" — common verb; bridges into spurious 2/3-gram flags ('كمان كان')
-    "فيه",  # "there is/in it" — common particle; same n-gram bridging risk
-    "ألم",  # "pain" — symptom word reported as-is, never a drug mangle fragment
-    "أما",  # "as for" — discourse particle ('أما الدهون' = 'as for the fats')
 }
 
-# Longer (4+ char) real Arabic words that the CAMeL Tools morphology DBs
-# don't recognise (rare colloquial/medical-adjacent terms), so they'd
-# otherwise fall through to the phonetic check and collide with a drug
-# skeleton. Checked unconditionally, independent of morph DB availability.
-_ARABIC_FILLER_EXTRA = {
-    "التراكمي",  # "cumulative" (e.g. 'السكر التراكمي' = colloquial HbA1c) — collides with cataract/carcinoma
-}
+# POS tags that unambiguously mark a word as a grammatical function word,
+# not a content noun that might coincidentally look like a drug fragment.
+# Used by _is_arabic_filler for ≤3-char words.
+_FUNCTION_POS: frozenset = frozenset({
+    "verb", "verb_pseudo",
+    "prep", "conj", "conj_sub",
+    "part", "part_focus", "part_neg", "part_verb",
+    "pron", "interj",
+})
 
 # Fallback for when morphology DBs are unavailable: a compact set covering
 # the most common Arabic words that phonetically collide with drug skeletons.
@@ -1092,11 +1149,13 @@ def _is_arabic_filler(word: str) -> bool:
 
     Strategy (in order):
     1. Empty string → skip.
-    2. Explicit particle set: confirmed short structural words → always skip.
-    3. Short words (≤3 chars) NOT in the particle set → NOT filler. Drug
-       name mangles often produce short fragments (e.g. 'با' in كارباmazepine,
-       'كار' in كاربامازيبين) that must NOT be blocked from n-gram joining.
-    4. Longer words (4+ chars): morphological check via Gulf + MSA analyzers.
+    2. Explicit particle set: 1-2 char and confirmed exception words → always skip.
+    3. Short words (≤3 chars) not in the particle set: run morphological
+       analysis but only trust it for *function* POS tags (verb, prep,
+       particle, conjunction…).  Pure content nouns stay NOT filler so they
+       can participate in drug-mangle n-gram matching.
+    4. Longer words (4+ chars): full morphological check (including
+       prefix-stripped fallback — see _morph_is_real_arabic).
     5. Fallback if morphology DBs unavailable: compact hardcoded set.
     """
     w = _TASHKEEL_RE.sub("", unicodedata.normalize("NFKC", word))
@@ -1105,12 +1164,28 @@ def _is_arabic_filler(word: str) -> bool:
         return True
     if w in _ARABIC_SHORT_PARTICLES:
         return True
-    # Short words not in the particle list may be drug mangle fragments —
-    # don't classify them as filler or they get excluded from n-gram joining.
     if len(w) <= 3:
+        # Short words are ambiguous: drug-mangle fragments (e.g. 'اوغ' from
+        # augmentin) are ≤3 chars too, so we can't label every short word as
+        # filler.  Run the morphological check but only trust a function-word
+        # verdict when ALL available analyzers agree — this avoids false
+        # positives caused by Gulf-specific dialect verb forms that happen to
+        # look like common nouns (e.g. 'تين' = figs is mistakenly tagged
+        # 'verb' by the GLF DB but correctly 'noun' by MSA).
+        # Use MSA as the primary authority for short-word function-POS
+        # classification.  MSA is more conservative: for ambiguous 3-char
+        # words that happen to look like Gulf dialect verb forms (e.g.
+        # 'تين' = figs tagged 'verb' by GLF but 'noun' by MSA), MSA gives
+        # the more reliable answer.  Fall back to GLF only when MSA is absent.
+        primary = _MSA_ANALYZER if _MSA_ANALYZER is not None else _GLF_ANALYZER
+        if primary is not None:
+            try:
+                if any(a.get("pos") in _FUNCTION_POS
+                       for a in primary.analyze(w)):
+                    return True
+            except Exception:
+                pass
         return False
-    if w in _ARABIC_FILLER_EXTRA:
-        return True
     if _GLF_ANALYZER is not None or _MSA_ANALYZER is not None:
         return _morph_is_real_arabic(w)
     # Fallback: compact hardcoded set
