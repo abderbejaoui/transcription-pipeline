@@ -524,6 +524,121 @@ def _phonetic_alias_lookup(needle_translits: List[str]) -> Optional[str]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Spelled-out alphanumeric lab codes (e.g. 'HbA1c' dictated letter-by-letter
+# as "اتش بي ايه وان سي"). Gulf clinicians commonly spell abbreviation-style
+# lab tests one letter/digit at a time since there's no natural Arabic
+# pronunciation for them. These spans are typically 4-6 tokens long, longer
+# than the generic n-gram pass below (capped at 3 tokens) can ever join, so
+# they need a dedicated pass that runs before it.
+# ---------------------------------------------------------------------------
+
+_ARABIC_SPELLED_LETTERS: Dict[str, str] = {
+    "اتش": "h", "إتش": "h", "ايتش": "h", "إيتش": "h",
+    "بي": "b",
+    "سي": "c",
+    "دي": "d",
+    "ايه": "a", "إيه": "a",
+    "اف": "f", "إف": "f",
+    "جي": "g",
+    "كيو": "q",
+    "تي": "t",
+    "في": "v",
+    "دبليو": "w",
+    "اكس": "x", "إكس": "x",
+    "واي": "y",
+    "زد": "z",
+}
+
+_ARABIC_SPELLED_DIGITS: Dict[str, str] = {
+    "زيرو": "0",
+    "وان": "1",
+    "تو": "2",
+    "ثري": "3",
+    "فور": "4",
+    "فايف": "5",
+    "سيكس": "6",
+    "سفن": "7",
+    "ايت": "8", "إيت": "8",
+    "ناين": "9",
+}
+
+
+def _match_spelled_code(code: str, lexicon: List[str]) -> List[Dict[str, Any]]:
+    """Match an already-Latin reconstructed code (e.g. 'hba1c') against the
+    lexicon directly. No transliteration step is needed — the candidate
+    string is built from spelled-out Latin letter/digit names, so it's
+    compared straight against each lexicon term (digits kept, since they're
+    often the only thing distinguishing one lab code from another)."""
+    scored: List[Dict[str, Any]] = []
+    code_sk = _consonant_skeleton_latin(code)
+    for term in lexicon:
+        term_lat = re.sub(r"[^a-z0-9]", "", term.lower())
+        if not term_lat:
+            continue
+        if code == term_lat:
+            scored.append({"term": term, "phonetic_similarity": 1.0})
+            continue
+        sim = 0.0
+        if _length_ratio_ok(code, term_lat):
+            sim = max(sim, _lev_sim(code, term_lat))
+        term_sk = _consonant_skeleton_latin(term_lat)
+        if code_sk and term_sk and _length_ratio_ok(code_sk, term_sk):
+            sim = max(sim, _lev_sim(code_sk, term_sk))
+        if sim < 0.6:
+            continue
+        scored.append({"term": term, "phonetic_similarity": round(sim, 3)})
+    scored.sort(key=lambda d: -d["phonetic_similarity"])
+    return scored[:3]
+
+
+def _try_spelled_alphanumeric(
+    words: List[str], lexicon: List[str], consumed: set,
+) -> List[Dict[str, Any]]:
+    """Scan for runs of spelled-out letter/digit names and match the
+    reconstructed code against the lexicon. Requires at least 3 consecutive
+    recognized tokens with at least 2 letters, so isolated short Arabic
+    words that happen to collide with a letter name (e.g. 'بي') don't fire
+    on their own — only a genuine spelled-out sequence does."""
+    flags: List[Dict[str, Any]] = []
+    n = len(words)
+    i = 0
+    while i < n:
+        if i in consumed:
+            i += 1
+            continue
+        run_codes: List[str] = []
+        run_indices: List[int] = []
+        letter_count = 0
+        j = i
+        while j < n and j not in consumed:
+            tok = words[j]
+            code = _ARABIC_SPELLED_LETTERS.get(tok) or _ARABIC_SPELLED_DIGITS.get(tok)
+            if code is None:
+                break
+            run_codes.append(code)
+            run_indices.append(j)
+            if tok in _ARABIC_SPELLED_LETTERS:
+                letter_count += 1
+            j += 1
+        if len(run_codes) >= 3 and letter_count >= 2:
+            joined_code = "".join(run_codes)
+            candidates = _match_spelled_code(joined_code, lexicon)
+            if candidates and candidates[0]["phonetic_similarity"] >= 0.7:
+                flags.append({
+                    "index": run_indices[0],
+                    "word": " ".join(words[run_indices[0]:run_indices[-1] + 1]),
+                    "reason": "phonetic_spelled_code",
+                    "candidates": candidates,
+                    "span_indices": run_indices,
+                })
+                consumed.update(run_indices)
+            i = j if j > i else i + 1
+        else:
+            i = j if j > i else i + 1
+    return flags
+
+
 def _is_likely_drug(term: str) -> bool:
     term = term.lower().strip()
     if term in _DRUG_HINT_TERMS:
@@ -715,6 +830,11 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     words = [w for w in re.split(r"\s+", transcript.strip()) if w]
     flags: List[Dict[str, Any]] = []
     consumed: set = set()
+
+    # --- Spelled-out alphanumeric lab codes ('HbA1c' dictated letter by
+    # letter). Runs before the n-gram passes since these spans are often
+    # longer than the 3-token n-gram cap below can reach.
+    flags.extend(_try_spelled_alphanumeric(words, lexicon, consumed))
 
     # Compute single-word candidates once (used by both single + n-gram passes).
     single_results: List[Optional[List[Dict[str, Any]]]] = []
