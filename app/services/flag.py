@@ -774,6 +774,7 @@ def _phonetic_candidates(
 _KNOWN_ARABIC_MEDICAL_FORMS: set = {
     # cholesterol (كوليسترول) — common clitic variants
     "كوليسترول", "الكوليسترول", "للكوليسترول", "وكوليسترول", "بالكوليسترول",
+    "والكوليسترول",
     # insulin (أنسولين)
     "أنسولين", "الأنسولين", "للأنسولين", "وأنسولين", "بالأنسولين",
     # creatinine (كرياتينين)
@@ -1060,6 +1061,18 @@ _ARABIC_SHORT_PARTICLES = {
     "بعد",  # "after" — preposition; similar collision risk
     "آمن",  # "safe/secure" — adjective; skeleton mntn ≈ augmentin kmntn at 0.80
     "كل",   # "every/all" — adjective/determiner; too short to be a drug fragment
+    "كان",  # "was" — common verb; bridges into spurious 2/3-gram flags ('كمان كان')
+    "فيه",  # "there is/in it" — common particle; same n-gram bridging risk
+    "ألم",  # "pain" — symptom word reported as-is, never a drug mangle fragment
+    "أما",  # "as for" — discourse particle ('أما الدهون' = 'as for the fats')
+}
+
+# Longer (4+ char) real Arabic words that the CAMeL Tools morphology DBs
+# don't recognise (rare colloquial/medical-adjacent terms), so they'd
+# otherwise fall through to the phonetic check and collide with a drug
+# skeleton. Checked unconditionally, independent of morph DB availability.
+_ARABIC_FILLER_EXTRA = {
+    "التراكمي",  # "cumulative" (e.g. 'السكر التراكمي' = colloquial HbA1c) — collides with cataract/carcinoma
 }
 
 # Fallback for when morphology DBs are unavailable: a compact set covering
@@ -1096,6 +1109,8 @@ def _is_arabic_filler(word: str) -> bool:
     # don't classify them as filler or they get excluded from n-gram joining.
     if len(w) <= 3:
         return False
+    if w in _ARABIC_FILLER_EXTRA:
+        return True
     if _GLF_ANALYZER is not None or _MSA_ANALYZER is not None:
         return _morph_is_real_arabic(w)
     # Fallback: compact hardcoded set
