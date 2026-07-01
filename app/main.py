@@ -38,6 +38,16 @@ import difflib
 import os
 import re
 import shutil
+import sys
+
+# On Windows the default console codec is cp1252 which can't encode Arabic.
+# Reconfigure stdout/stderr to UTF-8 so print() doesn't crash mid-pipeline.
+if hasattr(sys.stdout, "reconfigure"):
+    try:
+        sys.stdout.reconfigure(encoding="utf-8", errors="replace")
+        sys.stderr.reconfigure(encoding="utf-8", errors="replace")
+    except Exception:
+        pass
 import threading
 import uuid
 from pathlib import Path
@@ -131,7 +141,7 @@ def _remote_asr_transcribe(
 
     audio_bytes = audio_path.read_bytes()
     resp = _requests.post(
-        f"{remote_url}/asr",
+        f"{remote_url}/api/asr",
         files={"audio": (audio_path.name, audio_bytes, "audio/wav")},
         data={"language": language or DEFAULT_LANGUAGE or "ar"},
         headers={"ngrok-skip-browser-warning": "true"},
@@ -885,6 +895,23 @@ async def asr_only(
     session_path.mkdir(parents=True, exist_ok=True)
     audio_path = session_path / (audio.filename or "audio.wav")
     audio_path.write_bytes(audio_bytes)
+
+    remote_url = _get_remote_asr_url()
+    if remote_url:
+        try:
+            result = _remote_asr_transcribe(audio_path, language=effective_lang, remote_url=remote_url)
+            return {
+                "text": result["text"],
+                "raw_text": result["text"],
+                "language": result["language"],
+                "duration": result["duration"],
+                "session_id": session_id,
+                "source": "remote",
+            }
+        except Exception as exc:
+            print(f"[asr/remote] error: {exc!r}")
+            return JSONResponse(status_code=500, content={"error": f"[asr/remote] {exc}"})
+
     try:
         result = asr.transcribe(audio_path, model_size=model_size, language=effective_lang)
         return {
