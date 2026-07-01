@@ -1045,9 +1045,16 @@ async def test_pipeline(req: dict) -> Dict[str, Any]:
             return 0, 1
 
         covered = {fs["text"].strip() for fs in flagged_spans}
+        _lex = flag.load_medical_lexicon()
         for fx in list(taught_fixes) + list(drug_fixes):
             frm = (fx.get("from") or "").strip()
             if not frm or any(frm in c or c in frm for c in covered if c):
+                continue
+            # Do not surface correctly-spelled Arabic medical forms as
+            # suspicious spans.  drug_normalize canonicalises e.g.
+            # الإيبوبروفين → ibuprofen, but the source was already correct
+            # Arabic — it was never an ASR mishearing.
+            if flag._is_known_medical(frm, _lex):
                 continue
             i0, i1 = _locate(frm)
             flagged_spans.append({

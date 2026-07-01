@@ -1,0 +1,4307 @@
+{
+  "meta": {
+    "endpoint": "http://localhost:8000",
+    "pipeline": "flag",
+    "test_set_path": "eval\\pipeline_testset.jsonl",
+    "cases_run": 52,
+    "errors": 0,
+    "timestamp": "2026-06-30T21:20:30.680757",
+    "elapsed_seconds": 136.47
+  },
+  "stage_reports": [
+    {
+      "stage_name": "scoring_and_flagging",
+      "precision": 0.7885,
+      "recall": 1.0,
+      "f1": 0.8817,
+      "accuracy": 0.0,
+      "notes": "gold_spans=41 tp=41 fp=11",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "gold_spans": [
+            "أوق منتين"
+          ],
+          "pred_spans": [
+            "أوق منتين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-002",
+          "gold_spans": [
+            "بالقلوكوميتر"
+          ],
+          "pred_spans": [
+            "بالقلوكوميتر"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-003",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-004",
+          "gold_spans": [
+            "ميت فورمين"
+          ],
+          "pred_spans": [
+            "ميت فورمين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-005",
+          "gold_spans": [
+            "إيكو كارديو غرام"
+          ],
+          "pred_spans": [
+            "إيكو كارديو غرام"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-006",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-007",
+          "gold_spans": [
+            "فولتران"
+          ],
+          "pred_spans": [
+            "فولتران"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-008",
+          "gold_spans": [
+            "لايزينو بريل",
+            "أمل وديبين"
+          ],
+          "pred_spans": [
+            "لايزينو بريل",
+            "أمل وديبين"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-009",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-010",
+          "gold_spans": [
+            "أتورفاستاتن"
+          ],
+          "pred_spans": [
+            "أتورفاستاتن"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-011",
+          "gold_spans": [
+            "إيتش بي إيه وان سي"
+          ],
+          "pred_spans": [
+            "إيتش بي إيه وان سي"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-012",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-013",
+          "gold_spans": [
+            "نيكسيوم"
+          ],
+          "pred_spans": [
+            "نيكسيوم"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-014",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-015",
+          "gold_spans": [
+            "كار با مازيبين"
+          ],
+          "pred_spans": [
+            "كار با مازيبين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-016",
+          "gold_spans": [
+            "كولون وسكوبي"
+          ],
+          "pred_spans": [
+            "كولون وسكوبي"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-017",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-018",
+          "gold_spans": [
+            "كريستور"
+          ],
+          "pred_spans": [
+            "كريستور"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-019",
+          "gold_spans": [
+            "ريزيدرونيك اسيد"
+          ],
+          "pred_spans": [
+            "ريزيدرونيك"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-020",
+          "gold_spans": [
+            "أوميبرازول"
+          ],
+          "pred_spans": [
+            "أوميبرازول"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-021",
+          "gold_spans": [
+            "بالسفيجموميتر",
+            "أملوديبين"
+          ],
+          "pred_spans": [
+            "بالسفيجموميتر",
+            "أملوديبين"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-022",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-023",
+          "gold_spans": [
+            "لان توس"
+          ],
+          "pred_spans": [
+            "لان توس"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-024",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-025",
+          "gold_spans": [
+            "كلوبيدوجريل"
+          ],
+          "pred_spans": [
+            "كلوبيدوجريل"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-026",
+          "gold_spans": [
+            "برولوسيك"
+          ],
+          "pred_spans": [
+            "برولوسيك",
+            "الإيبوبروفين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-027",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-028",
+          "gold_spans": [
+            "فوروسيمايد"
+          ],
+          "pred_spans": [
+            "فوروسيمايد"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-029",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-030",
+          "gold_spans": [
+            "ريزيبريل",
+            "سيمفاستاتن",
+            "ميتوبرولول"
+          ],
+          "pred_spans": [
+            "ريزيبريل",
+            "وسيمفاستاتن",
+            "وميتوبرولول"
+          ],
+          "tp": 3,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-031",
+          "gold_spans": [
+            "كلوبيدوقرل"
+          ],
+          "pred_spans": [
+            "سنة وصل",
+            "كلوبيدوقرل",
+            "التروبونين",
+            "أسبرين"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 3
+        },
+        {
+          "case_id": "TC-032",
+          "gold_spans": [
+            "وار فارين",
+            "ديقوكسين"
+          ],
+          "pred_spans": [
+            "وار فارين",
+            "ديقوكسين"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-033",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-034",
+          "gold_spans": [
+            "ميت فورمين",
+            "قلايم بيرايد"
+          ],
+          "pred_spans": [
+            "ميت فورمين",
+            "قلايم بيرايد"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-035",
+          "gold_spans": [
+            "إيكو كارديو غرام"
+          ],
+          "pred_spans": [
+            "إيكو كارديو غرام",
+            "الدرقية لأن"
+          ],
+          "tp": 1,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-036",
+          "gold_spans": [
+            "أملو ديبين",
+            "فال سارتان"
+          ],
+          "pred_spans": [
+            "فال سارتان",
+            "أملو ديبين"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-037",
+          "gold_spans": [],
+          "pred_spans": [
+            "كمان كان"
+          ],
+          "tp": 0,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-038",
+          "gold_spans": [
+            "أوميبرازول",
+            "روزوفاستاتين"
+          ],
+          "pred_spans": [
+            "كتب",
+            "روزوفاستاتين",
+            "أوميبرازول"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-039",
+          "gold_spans": [
+            "ليفو فلوكساسين",
+            "نيترو فيورانتوين"
+          ],
+          "pred_spans": [
+            "يعطيها ليفو فلوكساسين",
+            "لـ نيترو فيورانتوين،"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-040",
+          "gold_spans": [
+            "التروبينين",
+            "أبكسا بان"
+          ],
+          "pred_spans": [
+            "التروبينين",
+            "أبكسا بان"
+          ],
+          "tp": 2,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-041",
+          "gold_spans": [
+            "أوندان سيترون",
+            "ديكسا ميثازون",
+            "أوميبرازول"
+          ],
+          "pred_spans": [
+            "أوندان سيترون",
+            "ديكسا ميثازون",
+            "أوميبرازول،"
+          ],
+          "tp": 3,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-042",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-043",
+          "gold_spans": [],
+          "pred_spans": [
+            "التراكمي",
+            "والكوليسترول",
+            "أما الدهون"
+          ],
+          "tp": 0,
+          "fn": 0,
+          "fp": 3
+        },
+        {
+          "case_id": "TC-044",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-045",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-046",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-047",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-048",
+          "gold_spans": [],
+          "pred_spans": [
+            "كان فيه ألم"
+          ],
+          "tp": 0,
+          "fn": 0,
+          "fp": 1
+        },
+        {
+          "case_id": "TC-049",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-050",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-051",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        },
+        {
+          "case_id": "TC-052",
+          "gold_spans": [],
+          "pred_spans": [],
+          "tp": 0,
+          "fn": 0,
+          "fp": 0
+        }
+      ]
+    },
+    {
+      "stage_name": "phonetic_retrieval",
+      "precision": 0.9697,
+      "recall": 0.9697,
+      "f1": 0.9697,
+      "accuracy": 0.9697,
+      "notes": "retrieval_cases=33 top1_correct=32 topk_correct=32 hitl_cases_excluded=1",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "span": "أوق منتين",
+          "gold_term": "augmentin",
+          "top_1_candidate": "augmentin",
+          "all_candidates": [
+            "augmentin",
+            "augmentin",
+            "neurontin",
+            "gabapentin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-002",
+          "span": "بالقلوكوميتر",
+          "gold_term": "glucometer",
+          "top_1_candidate": "glucometer",
+          "all_candidates": [
+            "glucometer",
+            "fluoxetine",
+            "poliomyelitis",
+            "oseltamivir",
+            "glaucoma"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-004",
+          "span": "ميت فورمين",
+          "gold_term": "metformin",
+          "top_1_candidate": "metformin",
+          "all_candidates": [
+            "metformin",
+            "azithromycin",
+            "mupirocin",
+            "migraine",
+            "cetirizine"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-005",
+          "span": "إيكو كارديو غرام",
+          "gold_term": "echocardiogram",
+          "top_1_candidate": "echocardiogram",
+          "all_candidates": [
+            "echocardiogram"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-007",
+          "span": "فولتران",
+          "gold_term": "voltaren",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        },
+        {
+          "case_id": "TC-008",
+          "span": "لايزينو بريل",
+          "gold_term": "lisinopril",
+          "top_1_candidate": "lisinopril",
+          "all_candidates": [
+            "lisinopril",
+            "enalapril",
+            "ramipril",
+            "pantoprazole",
+            "haloperidol"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-008",
+          "span": "أمل وديبين",
+          "gold_term": "amlodipine",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        },
+        {
+          "case_id": "TC-010",
+          "span": "أتورفاستاتن",
+          "gold_term": "atorvastatin",
+          "top_1_candidate": "atorvastatin",
+          "all_candidates": [
+            "atorvastatin",
+            "simvastatin",
+            "nitrofurantoin",
+            "nystatin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-011",
+          "span": "إيتش بي إيه وان سي",
+          "gold_term": "hba1c",
+          "top_1_candidate": "hba1c",
+          "all_candidates": [
+            "hba1c"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-013",
+          "span": "نيكسيوم",
+          "gold_term": "nexium",
+          "top_1_candidate": "nexium",
+          "all_candidates": [
+            "nexium",
+            "aneurysm",
+            "naloxone",
+            "leukemia",
+            "eczema"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-015",
+          "span": "كار با مازيبين",
+          "gold_term": "carbamazepine",
+          "top_1_candidate": "carbamazepine",
+          "all_candidates": [
+            "carbamazepine"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-016",
+          "span": "كولون وسكوبي",
+          "gold_term": "colonoscopy",
+          "top_1_candidate": "colonoscopy",
+          "all_candidates": [
+            "colonoscopy",
+            "clonidine",
+            "colistin",
+            "glaucoma",
+            "gaviscon"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-018",
+          "span": "كريستور",
+          "gold_term": "crestor",
+          "top_1_candidate": "crestor",
+          "all_candidates": [
+            "crestor",
+            "colistin",
+            "bursitis",
+            "risperidone",
+            "gastritis"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-019",
+          "span": "ريزيدرونيك اسيد",
+          "note": "hitl_escalation — scored separately",
+          "gold_term": "risedronic acid"
+        },
+        {
+          "case_id": "TC-020",
+          "span": "أوميبرازول",
+          "gold_term": "omeprazole",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        },
+        {
+          "case_id": "TC-021",
+          "span": "بالسفيجموميتر",
+          "gold_term": "sphygmomanometer",
+          "top_1_candidate": "sphygmomanometer",
+          "all_candidates": [
+            "sphygmomanometer"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-021",
+          "span": "أملوديبين",
+          "gold_term": "amlodipine",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        },
+        {
+          "case_id": "TC-023",
+          "span": "لان توس",
+          "gold_term": "lantus",
+          "top_1_candidate": "lantus",
+          "all_candidates": [
+            "lantus",
+            "laryngitis",
+            "rhinitis",
+            "sinusitis",
+            "nexium"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-025",
+          "span": "كلوبيدوجريل",
+          "gold_term": "clopidogrel",
+          "top_1_candidate": "clopidogrel",
+          "all_candidates": [
+            "clopidogrel",
+            "enalapril",
+            "lisinopril"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-026",
+          "span": "برولوسيك",
+          "gold_term": "prilosec",
+          "top_1_candidate": "prilosec",
+          "all_candidates": [
+            "prilosec",
+            "tuberculosis",
+            "lyrica",
+            "colonoscopy",
+            "fibromyalgia"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-028",
+          "span": "فوروسيمايد",
+          "gold_term": "furosemide",
+          "top_1_candidate": "furosemide",
+          "all_candidates": [
+            "furosemide",
+            "furosemide",
+            "verapamil",
+            "aneurysm",
+            "otitis media"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-030",
+          "span": "ريزيبريل",
+          "gold_term": "ramipril",
+          "top_1_candidate": "ramipril",
+          "all_candidates": [
+            "ramipril",
+            "enalapril",
+            "rubella",
+            "bisoprolol",
+            "lisinopril"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-030",
+          "span": "سيمفاستاتن",
+          "gold_term": "simvastatin",
+          "top_1_candidate": "simvastatin",
+          "all_candidates": [
+            "simvastatin",
+            "atorvastatin",
+            "nystatin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-030",
+          "span": "ميتوبرولول",
+          "gold_term": "metoprolol",
+          "top_1_candidate": "metoprolol",
+          "all_candidates": [
+            "metoprolol",
+            "omeprazole",
+            "bisoprolol",
+            "pantoprazole",
+            "haloperidol"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-031",
+          "span": "كلوبيدوقرل",
+          "gold_term": "clopidogrel",
+          "top_1_candidate": "clopidogrel",
+          "all_candidates": [
+            "clopidogrel",
+            "enalapril",
+            "lisinopril"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-032",
+          "span": "وار فارين",
+          "gold_term": "warfarin",
+          "top_1_candidate": "warfarin",
+          "all_candidates": [
+            "warfarin",
+            "amaryl",
+            "heparin",
+            "aspirin",
+            "migraine"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-032",
+          "span": "ديقوكسين",
+          "gold_term": "digoxin",
+          "top_1_candidate": "digoxin",
+          "all_candidates": [
+            "digoxin",
+            "naloxone",
+            "fluoxetine",
+            "tamoxifen"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-034",
+          "span": "ميت فورمين",
+          "gold_term": "metformin",
+          "top_1_candidate": "metformin",
+          "all_candidates": [
+            "metformin",
+            "azithromycin",
+            "mupirocin",
+            "migraine",
+            "cetirizine"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-034",
+          "span": "قلايم بيرايد",
+          "gold_term": "glimepiride",
+          "top_1_candidate": "glimepiride",
+          "all_candidates": [
+            "glimepiride",
+            "haloperidol",
+            "domperidone",
+            "doliprane",
+            "enalapril"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-035",
+          "span": "إيكو كارديو غرام",
+          "gold_term": "echocardiogram",
+          "top_1_candidate": "echocardiogram",
+          "all_candidates": [
+            "echocardiogram"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-036",
+          "span": "أملو ديبين",
+          "gold_term": "amlodipine",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        },
+        {
+          "case_id": "TC-036",
+          "span": "فال سارتان",
+          "gold_term": "valsartan",
+          "top_1_candidate": "valsartan",
+          "all_candidates": [
+            "valsartan",
+            "losartan",
+            "sertraline",
+            "voltaren",
+            "voltaren"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-038",
+          "span": "أوميبرازول",
+          "gold_term": "omeprazole",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        },
+        {
+          "case_id": "TC-038",
+          "span": "روزوفاستاتين",
+          "gold_term": "rosuvastatin",
+          "top_1_candidate": "atorvastatin",
+          "all_candidates": [
+            "atorvastatin",
+            "simvastatin",
+            "nystatin"
+          ],
+          "top_1_correct": false,
+          "top_k_correct": false
+        },
+        {
+          "case_id": "TC-039",
+          "span": "ليفو فلوكساسين",
+          "gold_term": "levofloxacin",
+          "top_1_candidate": "levofloxacin",
+          "all_candidates": [
+            "levofloxacin",
+            "ciprofloxacin",
+            "fluoxetine"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-039",
+          "span": "نيترو فيورانتوين",
+          "gold_term": "nitrofurantoin",
+          "top_1_candidate": "nitrofurantoin",
+          "all_candidates": [
+            "nitrofurantoin",
+            "atorvastatin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-040",
+          "span": "التروبينين",
+          "gold_term": "troponin",
+          "top_1_candidate": "troponin",
+          "all_candidates": [
+            "troponin",
+            "morphine",
+            "losartan",
+            "voltaren",
+            "voltaren"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-040",
+          "span": "أبكسا بان",
+          "gold_term": "apixaban",
+          "top_1_candidate": "apixaban",
+          "all_candidates": [
+            "apixaban",
+            "bactroban",
+            "quetiapine",
+            "cisplatin",
+            "pregabalin"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-041",
+          "span": "أوندان سيترون",
+          "gold_term": "ondansetron",
+          "top_1_candidate": "ondansetron",
+          "all_candidates": [
+            "ondansetron",
+            "neurontin",
+            "nystatin",
+            "angina pectoris"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-041",
+          "span": "ديكسا ميثازون",
+          "gold_term": "dexamethasone",
+          "top_1_candidate": "dexamethasone",
+          "all_candidates": [
+            "dexamethasone",
+            "doxycycline"
+          ],
+          "top_1_correct": true,
+          "top_k_correct": true
+        },
+        {
+          "case_id": "TC-041",
+          "span": "أوميبرازول",
+          "gold_term": "omeprazole",
+          "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator"
+        }
+      ]
+    },
+    {
+      "stage_name": "correction_decision",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.7812,
+      "accuracy": 0.7812,
+      "notes": "total_decisions=64 correct=50",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "gold_span": "أوق منتين",
+          "gold_chosen": "augmentin",
+          "gold_path": "llm",
+          "pred_chosen": "augmentin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-002",
+          "gold_span": "بالقلوكوميتر",
+          "gold_chosen": "glucometer",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-003",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-004",
+          "gold_span": "ميت فورمين",
+          "gold_chosen": "metformin",
+          "gold_path": "llm",
+          "pred_chosen": "metformin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-005",
+          "gold_span": "إيكو كارديو غرام",
+          "gold_chosen": "echocardiogram",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-006",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-007",
+          "gold_span": "فولتران",
+          "gold_chosen": "voltaren",
+          "gold_path": "llm",
+          "pred_chosen": "voltaren",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-008",
+          "gold_span": "لايزينو بريل",
+          "gold_chosen": "lisinopril",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-008",
+          "gold_span": "أمل وديبين",
+          "gold_chosen": "amlodipine",
+          "gold_path": "llm",
+          "pred_chosen": "amlodipine",
+          "pred_path": "hitl_applied",
+          "correct": true
+        },
+        {
+          "case_id": "TC-009",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-010",
+          "gold_span": "أتورفاستاتن",
+          "gold_chosen": "atorvastatin",
+          "gold_path": "llm",
+          "pred_chosen": "atorvastatin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-011",
+          "gold_span": "إيتش بي إيه وان سي",
+          "gold_chosen": "hba1c",
+          "gold_path": "llm",
+          "pred_chosen": "hba1c",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-012",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-013",
+          "gold_span": "نيكسيوم",
+          "gold_chosen": "nexium",
+          "gold_path": "llm",
+          "pred_chosen": "nexium",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-014",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-015",
+          "gold_span": "كار با مازيبين",
+          "gold_chosen": "carbamazepine",
+          "gold_path": "llm",
+          "pred_chosen": "carbamazepine",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-016",
+          "gold_span": "كولون وسكوبي",
+          "gold_chosen": "colonoscopy",
+          "gold_path": "llm",
+          "pred_chosen": "colonoscopy",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-017",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-018",
+          "gold_span": "كريستور",
+          "gold_chosen": "crestor",
+          "gold_path": "llm",
+          "pred_chosen": "crestor",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-019",
+          "gold_span": "ريزيدرونيك اسيد",
+          "gold_chosen": "",
+          "gold_path": "hitl_escalate",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": true
+        },
+        {
+          "case_id": "TC-020",
+          "gold_span": "أوميبرازول",
+          "gold_chosen": "omeprazole",
+          "gold_path": "llm",
+          "pred_chosen": "omeprazole",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-021",
+          "gold_span": "بالسفيجموميتر",
+          "gold_chosen": "sphygmomanometer",
+          "gold_path": "llm",
+          "pred_chosen": "sphygmomanometer",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-021",
+          "gold_span": "أملوديبين",
+          "gold_chosen": "amlodipine",
+          "gold_path": "llm",
+          "pred_chosen": "amlodipine",
+          "pred_path": "hitl_applied",
+          "correct": true
+        },
+        {
+          "case_id": "TC-022",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-023",
+          "gold_span": "لان توس",
+          "gold_chosen": "lantus",
+          "gold_path": "llm",
+          "pred_chosen": "lantus",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-024",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-025",
+          "gold_span": "كلوبيدوجريل",
+          "gold_chosen": "clopidogrel",
+          "gold_path": "llm",
+          "pred_chosen": "clopidogrel",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-026",
+          "gold_span": "برولوسيك",
+          "gold_chosen": "prilosec",
+          "gold_path": "llm",
+          "pred_chosen": "prilosec",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-027",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-028",
+          "gold_span": "فوروسيمايد",
+          "gold_chosen": "furosemide",
+          "gold_path": "llm",
+          "pred_chosen": "furosemide",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-029",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-030",
+          "gold_span": "ريزيبريل",
+          "gold_chosen": "ramipril",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-030",
+          "gold_span": "سيمفاستاتن",
+          "gold_chosen": "simvastatin",
+          "gold_path": "llm",
+          "pred_chosen": "وsimvastatin",
+          "pred_path": "auto_fix",
+          "correct": false
+        },
+        {
+          "case_id": "TC-030",
+          "gold_span": "ميتوبرولول",
+          "gold_chosen": "metoprolol",
+          "gold_path": "llm",
+          "pred_chosen": "وmetoprolol",
+          "pred_path": "auto_fix",
+          "correct": false
+        },
+        {
+          "case_id": "TC-031",
+          "gold_span": "كلوبيدوقرل",
+          "gold_chosen": "clopidogrel",
+          "gold_path": "llm",
+          "pred_chosen": "clopidogrel",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-032",
+          "gold_span": "وار فارين",
+          "gold_chosen": "warfarin",
+          "gold_path": "llm",
+          "pred_chosen": "warfarin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-032",
+          "gold_span": "ديقوكسين",
+          "gold_chosen": "digoxin",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-033",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-034",
+          "gold_span": "ميت فورمين",
+          "gold_chosen": "metformin",
+          "gold_path": "llm",
+          "pred_chosen": "metformin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-034",
+          "gold_span": "قلايم بيرايد",
+          "gold_chosen": "glimepiride",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-035",
+          "gold_span": "إيكو كارديو غرام",
+          "gold_chosen": "echocardiogram",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-036",
+          "gold_span": "أملو ديبين",
+          "gold_chosen": "amlodipine",
+          "gold_path": "llm",
+          "pred_chosen": "amlodipine",
+          "pred_path": "hitl_applied",
+          "correct": true
+        },
+        {
+          "case_id": "TC-036",
+          "gold_span": "فال سارتان",
+          "gold_chosen": "valsartan",
+          "gold_path": "llm",
+          "pred_chosen": "valsartan",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-037",
+          "note": "clean_case_but_corrections_applied",
+          "pred_corrections": [
+            "كمان كان"
+          ],
+          "correct": false
+        },
+        {
+          "case_id": "TC-038",
+          "gold_span": "أوميبرازول",
+          "gold_chosen": "omeprazole",
+          "gold_path": "llm",
+          "pred_chosen": "omeprazole",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-038",
+          "gold_span": "روزوفاستاتين",
+          "gold_chosen": "",
+          "gold_path": "hitl_escalate",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": true
+        },
+        {
+          "case_id": "TC-039",
+          "gold_span": "ليفو فلوكساسين",
+          "gold_chosen": "levofloxacin",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-039",
+          "gold_span": "نيترو فيورانتوين",
+          "gold_chosen": "nitrofurantoin",
+          "gold_path": "llm",
+          "pred_chosen": "nitrofurantoin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-040",
+          "gold_span": "التروبينين",
+          "gold_chosen": "troponin",
+          "gold_path": "llm",
+          "pred_chosen": "troponin",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-040",
+          "gold_span": "أبكسا بان",
+          "gold_chosen": "apixaban",
+          "gold_path": "llm",
+          "pred_chosen": "apixaban",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-041",
+          "gold_span": "أوندان سيترون",
+          "gold_chosen": "ondansetron",
+          "gold_path": "llm",
+          "pred_chosen": "ondansetron",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-041",
+          "gold_span": "ديكسا ميثازون",
+          "gold_chosen": "dexamethasone",
+          "gold_path": "llm",
+          "pred_chosen": "",
+          "pred_path": "hitl_escalate",
+          "correct": false
+        },
+        {
+          "case_id": "TC-041",
+          "gold_span": "أوميبرازول",
+          "gold_chosen": "omeprazole",
+          "gold_path": "llm",
+          "pred_chosen": "omeprazole",
+          "pred_path": "auto_fix",
+          "correct": true
+        },
+        {
+          "case_id": "TC-042",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-043",
+          "note": "clean_case_but_corrections_applied",
+          "pred_corrections": [
+            "التراكمي",
+            "والكوليسترول",
+            "أما الدهون"
+          ],
+          "correct": false
+        },
+        {
+          "case_id": "TC-044",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-045",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-046",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-047",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-048",
+          "note": "clean_case_but_corrections_applied",
+          "pred_corrections": [
+            "كان فيه ألم"
+          ],
+          "correct": false
+        },
+        {
+          "case_id": "TC-049",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-050",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-051",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        },
+        {
+          "case_id": "TC-052",
+          "note": "clean_case_correctly_untouched",
+          "correct": true
+        }
+      ]
+    },
+    {
+      "stage_name": "false_positive_guard",
+      "precision": 1.0,
+      "recall": 1.0,
+      "f1": 1.0,
+      "accuracy": 1.0,
+      "notes": "clean_cases=24 correct_clean=24",
+      "raw": [
+        {
+          "case_id": "TC-003",
+          "input": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-006",
+          "input": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-009",
+          "input": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-012",
+          "input": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-014",
+          "input": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-017",
+          "input": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-019",
+          "input": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-022",
+          "input": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-024",
+          "input": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-027",
+          "input": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-029",
+          "input": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-033",
+          "input": "المريضة خرجت من المستشفى بحالة مستقرة بعد علاج التهاب المسالك البولية، الحرارة رجعت طبيعية والتحاليل تحسنت بشكل واضح، نصحناها تكمل المضاد الحيوي لمدة خمسة أيام وتشرب سوائل كثيرة وتراجع العيادة بعد أسبوعين للاطمئنان",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-037",
+          "input": "المريضة عندها history من ال diabetes وال hypertension من سنوات، جت العيادة اليوم تشتكي من dizziness خفيف بس ال blood pressure كان طبيعي وال blood sugar كمان كان كويس، قلنا لها تكمل على نفس العلاج وتراجع بعد شهر",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-042",
+          "input": "المريض عنده قصور في القلب مع ارتفاع في الضغط وسكري من النوع الثاني، نصحناه يقلل الملح في الأكل ويمارس رياضة خفيفة بانتظام، ويتابع الوزن والضغط ومستوى السكر في البيت، ويراجع العيادة كل شهر للاطمئنان على حالته",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-043",
+          "input": "يا أبو خالد، نتائج التحاليل بينت إن السكر التراكمي مرتفع والكوليسترول بعد فوق المعدل الطبيعي. بنستمر على Metformin مرتين باليوم، وبنضيف Jardiance حبة يوميًا. أما الدهون فابدأ على Atorvastatin قبل النوم. إذا حسيت بعطش شديد أو كثرة التبول أو دوخة، راجعنا فورًا. وأبغاك تلتزم بالحمية وتتابع قياس السكر بشكل يومي.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-044",
+          "input": "يا أم محمد، الأشعة أوضحت وجود التهاب بسيط في الرئة. بصرف لك Augmentin لمدة سبعة أيام، ومعاه Paracetamol للحرارة إذا احتجتي. إذا استمر الكحة أو صار عندك ضيق نفس، استخدمي البخاخ Ventolin وتعالي للمراجعة مباشرة.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-045",
+          "input": "يا أبو راشد، الضغط عندك ما زال مرتفع رغم العلاج الحالي. بنرفع جرعة Amlodipine ونضيف Losartan مرة يوميًا. إذا حسيت بصداع شديد أو زغللة في النظر أو ألم بالصدر، توجه للطوارئ فورًا. حاول تقلل الملح وتمارس المشي يوميًا.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-046",
+          "input": "يا أختي، الأعراض اللي تشتكين منها تتوافق مع ارتجاع بالمريء. خذي Omeprazole قبل الفطور يوميًا لمدة شهر، واستخدمي Gaviscon بعد الوجبات عند الحاجة. تجنبي الأكل الدسم والقهوة قبل النوم، وإذا استمرت الأعراض بنسوي منظار للمعدة.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-047",
+          "input": "يا أبو عبدالله، واضح إن عندك نوبة ربو تحسسي. استخدم بخاخ Symbicort بشكل منتظم صباحًا ومساءً، وخلك محتفظ ببخاخ Ventolin للطوارئ. إذا زادت الأعراض أو صار عندك صفير شديد بالتنفس، راجع المستشفى مباشرة.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-048",
+          "input": "يا أم فهد، تحليل البول أكد وجود التهاب بالمسالك البولية. باعطيك Ciprofloxacin لمدة خمسة أيام، ومعاه Paracetamol إذا كان فيه ألم أو حرارة. أكثري من شرب الماء، وإذا صار فيه ألم بالخاصرة أو ارتفاع شديد بالحرارة لازم تراجعين بسرعة.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-049",
+          "input": "يا أختي، نتائج الغدة تبين إن عندك قصور بالغدة الدرقية. بنبدأ علاج Levothyroxine كل صباح على معدة فاضية. بعد ستة أسابيع بنعيد تحليل TSH ونشوف إذا الجرعة مناسبة أو تحتاج تعديل.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-050",
+          "input": "يا أبو ناصر، بعد مراجعة الفحوصات بنستمر على Aspirin وClopidogrel لتقليل خطر الجلطات، ومعهم Bisoprolol لتنظيم نبضات القلب وRosuvastatin للكوليسترول. مهم جدًا الالتزام بالأدوية وعدم إيقاف أي دواء بدون استشارة.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-051",
+          "input": "يا أم خالد، عندك التهاب بالجيوب الأنفية مصحوب باحتقان شديد. باصرف لك Augmentin لمدة أسبوع وCetirizine للحساسية وFluticasone Nasal Spray للاحتقان. إذا استمرت الأعراض أكثر من عشرة أيام لازم نعيد التقييم.",
+          "corrections_applied": 0,
+          "passed": true
+        },
+        {
+          "case_id": "TC-052",
+          "input": "يا أبو سالم، الأعراض والتحاليل تشير إلى التهاب بالمفاصل. بنبدأ على Methotrexate أسبوعيًا مع Folic Acid، وخذ Ibuprofen عند اللزوم للألم. ضروري تسوي تحاليل وظائف الكبد بشكل دوري أثناء العلاج، وإذا حسيت بأي أعراض غير معتادة تواصل معنا فورًا.",
+          "corrections_applied": 0,
+          "passed": true
+        }
+      ]
+    },
+    {
+      "stage_name": "end_to_end",
+      "precision": 0.0,
+      "recall": 0.0,
+      "f1": 0.7692,
+      "accuracy": 0.7692,
+      "notes": "total=52 exact_matches=40 count_matches=41 correction_count_acc=0.7885",
+      "raw": [
+        {
+          "case_id": "TC-001",
+          "gold_corrected": "المريض عنده حساسية بس الدكتور وصف له Augmentin مرتين في اليوم للعدوى البكتيرية",
+          "pred_corrected": "المريض عنده حساسية بس الدكتور وصف له augmentin مرتين في اليوم للعدوى البكتيرية",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-002",
+          "gold_corrected": "قياس السكر الحين بالـglucometerطلع عالي، لازم نعدّل الجرعة",
+          "pred_corrected": "قياس السكر الحين بالقلوكوميتر طلع عالي، لازم نعدّل الجرعة",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-003",
+          "gold_corrected": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+          "pred_corrected": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-004",
+          "gold_corrected": "وصفنا للمريض metformin للسكري من النوع الثاني مع الحمية",
+          "pred_corrected": "وصفنا للمريض metformin للسكري من النوع الثاني مع الحمية",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-005",
+          "gold_corrected": "المريض يحتاج echocardiogram عشان نشوف وظيفة القلب قبل العملية",
+          "pred_corrected": "المريض يحتاج إيكو كارديو غرام عشان نشوف وظيفة القلب قبل العملية",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-006",
+          "gold_corrected": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+          "pred_corrected": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-007",
+          "gold_corrected": "ارسل له Voltaren للألم وقل له يحط على المنطقة المتألمة بس",
+          "pred_corrected": "ارسل له voltaren للألم وقل له يحط على المنطقة المتألمة بس",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-008",
+          "gold_corrected": "وصف الدكتور lisinopril مع amlodipine لضغط الدم المرتفع",
+          "pred_corrected": "وصف الدكتور لايزينو بريل مع amlodipine لضغط الدم المرتفع",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-009",
+          "gold_corrected": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+          "pred_corrected": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-010",
+          "gold_corrected": "خليه يأخذ atorvastatin للكوليسترول مع الفطور",
+          "pred_corrected": "خليه يأخذ atorvastatin للكوليسترول مع الفطور",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-011",
+          "gold_corrected": "طلبنا تحليل HbA1c عشان نشوف متوسط السكر",
+          "pred_corrected": "طلبنا تحليل hba1c عشان نشوف متوسط السكر",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-012",
+          "gold_corrected": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+          "pred_corrected": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-013",
+          "gold_corrected": "حطيت له Nexium للحموضة قبل الوجبة بساعة",
+          "pred_corrected": "حطيت له nexium للحموضة قبل الوجبة بساعة",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-014",
+          "gold_corrected": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+          "pred_corrected": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-015",
+          "gold_corrected": "المريض يأخذ carbamazepine للصرع من سنتين",
+          "pred_corrected": "المريض يأخذ carbamazepine للصرع من سنتين",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-016",
+          "gold_corrected": "المريض محتاج colonoscopy بعد النتائج هذي",
+          "pred_corrected": "المريض محتاج colonoscopy بعد النتائج هذي",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-017",
+          "gold_corrected": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+          "pred_corrected": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-018",
+          "gold_corrected": "أضف Crestor 10 ملغ للروشتة للتحكم في الدهون",
+          "pred_corrected": "أضف crestor 10 ملغ للروشتة للتحكم في الدهون",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-019",
+          "gold_corrected": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+          "pred_corrected": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-020",
+          "gold_corrected": "الحين أكتب له omeprazole للحموضة قبل الفطور",
+          "pred_corrected": "الحين أكتب له omeprazole للحموضة قبل الفطور",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-021",
+          "gold_corrected": "قاسنا الضغط بالـsphygmomanometerوطلع مرتفع فوصفنا amlodipine",
+          "pred_corrected": "قاسنا الضغط sphygmomanometer وطلع مرتفع فوصفنا amlodipine",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 2,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-022",
+          "gold_corrected": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+          "pred_corrected": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-023",
+          "gold_corrected": "غيّر الأنسولين من NPH إلى Lantus طويل المفعول",
+          "pred_corrected": "غيّر الأنسولين من NPH إلى lantus طويل المفعول",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-024",
+          "gold_corrected": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+          "pred_corrected": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-025",
+          "gold_corrected": "استمر على clopidogrel لمنع تجلط الدم بعد الدعامة",
+          "pred_corrected": "استمر على clopidogrel لمنع تجلط الدم بعد الدعامة",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-026",
+          "gold_corrected": "وصفت له Prilosec بدل الإيبوبروفين لأنه ما يناسبه",
+          "pred_corrected": "وصفت له prilosec بدل ibuprofen لأنه ما يناسبه",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 2,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-027",
+          "gold_corrected": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+          "pred_corrected": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-028",
+          "gold_corrected": "أعطيه furosemide وريدي لتفريغ الماء من الرئتين",
+          "pred_corrected": "أعطيه furosemide وريدي لتفريغ الماء من الرئتين",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-029",
+          "gold_corrected": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+          "pred_corrected": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-030",
+          "gold_corrected": "الروشتة تشمل ramipril للضغط وsimvastatin للكوليسترول وmetoprolol لتنظيم النبض",
+          "pred_corrected": "الروشتة تشمل ريزيبريل للضغط وsimvastatin للكوليسترول وmetoprolol لتنظيم النبض",
+          "exact_match": false,
+          "gold_count": 3,
+          "pred_count": 2,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-031",
+          "gold_corrected": "المريض عمره ستين سنة وصل الطوارئ يشتكي من ألم في الصدر وضيق في التنفس من ساعتين، سوينا له تخطيط القلب وطلعت فيه تغيرات بسيطة، أعطيناه أسبرين على طول وقررنا نضيف له clopidogrel ونراقب التروبونين كل ست ساعات",
+          "pred_corrected": "المريض عمره ستين سنة وصل الطوارئ يشتكي من ألم في الصدر وضيق في التنفس من ساعتين، سوينا له تخطيط القلب وطلعت فيه تغيرات بسيطة، أعطيناه aspirin على طول وقررنا نضيف له clopidogrel ونراقب troponin كل ست ساعات",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 3,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-032",
+          "gold_corrected": "المريض عنده رجفان أذيني مزمن، الدكتور وقف له الدواء القديم وكتب له warfarin عشان يمنع الجلطات، وأضاف digoxin عشان يتحكم بسرعة ضربات القلب، وقال لازم نراقب نسبة التخثر بشكل منتظم",
+          "pred_corrected": "المريض عنده رجفان أذيني مزمن، الدكتور وقف له الدواء القديم وكتب له warfarin عشان يمنع الجلطات، وأضاف ديقوكسين عشان يتحكم بسرعة ضربات القلب، وقال لازم نراقب نسبة التخثر بشكل منتظم",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-033",
+          "gold_corrected": "المريضة خرجت من المستشفى بحالة مستقرة بعد علاج التهاب المسالك البولية، الحرارة رجعت طبيعية والتحاليل تحسنت بشكل واضح، نصحناها تكمل المضاد الحيوي لمدة خمسة أيام وتشرب سوائل كثيرة وتراجع العيادة بعد أسبوعين للاطمئنان",
+          "pred_corrected": "المريضة خرجت من المستشفى بحالة مستقرة بعد علاج التهاب المسالك البولية، الحرارة رجعت طبيعية والتحاليل تحسنت بشكل واضح، نصحناها تكمل المضاد الحيوي لمدة خمسة أيام وتشرب سوائل كثيرة وتراجع العيادة بعد أسبوعين للاطمئنان",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-034",
+          "gold_corrected": "المريض مصاب بالسكري من النوع الثاني وما ينتظم على الحمية، قست له السكر بالجهاز وطلع مرتفع، فقررت أبدأ له metformin مرتين في اليوم وأضيف glimepiride قبل الفطور، وقلت له يقيس السكر يومياً ويسجل النتائج",
+          "pred_corrected": "المريض مصاب بالسكري من النوع الثاني وما ينتظم على الحمية، قست له السكر بالجهاز وطلع مرتفع، فقررت أبدأ له metformin مرتين في اليوم وأضيف قلايم بيرايد قبل الفطور، وقلت له يقيس السكر يومياً ويسجل النتائج",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-035",
+          "gold_corrected": "المريض يشتكي من خفقان وتعب عند المجهود، حولناه لقسم القلب وطلبنا له echocardiogram عشان نتأكد من وظيفة الصمامات، وطلبنا كمان تحليل وظائف الغدة الدرقية لأن الأعراض ممكن تكون من الغدة",
+          "pred_corrected": "المريض يشتكي من خفقان وتعب عند المجهود، حولناه لقسم القلب وطلبنا له إيكو كارديو غرام عشان نتأكد من وظيفة الصمامات، وطلبنا كمان تحليل وظائف الغدة الدرقية لأن الأعراض ممكن تكون من الغدة",
+          "exact_match": false,
+          "gold_count": 1,
+          "pred_count": 0,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-036",
+          "gold_corrected": "المريض ضغطه مرتفع من فترة وما استجاب للحمية وحدها، الدكتور وصف له amlodipine حبة وحدة في اليوم وأضاف valsartan عشان يتحكم بالضغط بشكل أفضل، وطلب منه يقيس الضغط في البيت صباحاً ومساءً ويرجع بعد شهر",
+          "pred_corrected": "المريض ضغطه مرتفع من فترة وما استجاب للحمية وحدها، الدكتور وصف له amlodipine حبة وحدة في اليوم وأضاف valsartan عشان يتحكم بالضغط بشكل أفضل، وطلب منه يقيس الضغط في البيت صباحاً ومساءً ويرجع بعد شهر",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 2,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-037",
+          "gold_corrected": "المريضة عندها history من ال diabetes وال hypertension من سنوات، جت العيادة اليوم تشتكي من dizziness خفيف بس ال blood pressure كان طبيعي وال blood sugar كمان كان كويس، قلنا لها تكمل على نفس العلاج وتراجع بعد شهر",
+          "pred_corrected": "المريضة عندها history من ال diabetes وال hypertension من سنوات، جت العيادة اليوم تشتكي من dizziness خفيف بس ال blood pressure كان طبيعي وال blood sugar كمان كان كويس، قلنا لها تكمل على نفس العلاج وتراجع بعد شهر",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-038",
+          "gold_corrected": "المريض يحتاج نبدأ له omeprazole للحموضة قبل الفطور، وكمان الدكتور كتب له دواء اسمه روزوفاستاتين ما عندنا عنه أي معلومة في القائمة، لازم نتأكد منه قبل ما نصرفه للمريض",
+          "pred_corrected": "المريض يحتاج نبدأ له omeprazole للحموضة قبل الفطور، وكمان الدكتور كتب له دواء اسمه روزوفاستاتين ما عندنا عنه أي معلومة في القائمة، لازم نتأكد منه قبل ما نصرفه للمريض",
+          "exact_match": true,
+          "gold_count": 1,
+          "pred_count": 1,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-039",
+          "gold_corrected": "المريضة عندها التهاب في المسالك البولية متكرر، التحليل بيّن وجود بكتيريا، الدكتور قرر يعطيها levofloxacin لمدة أسبوع وإذا ما تحسنت نحولها لـ nitrofurantoin، ونصحها تشرب ماء كثير وتراجع لو استمرت الأعراض",
+          "pred_corrected": "المريضة عندها التهاب في المسالك البولية متكرر، التحليل بيّن وجود بكتيريا، الدكتور قرر يعطيها ليفو فلوكساسين لمدة أسبوع وإذا ما تحسنت نحولها nitrofurantoin ونصحها تشرب ماء كثير وتراجع لو استمرت الأعراض",
+          "exact_match": false,
+          "gold_count": 2,
+          "pred_count": 1,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-040",
+          "gold_corrected": "المريض وصل بألم في الصدر يمتد لليد اليسرى، طلبنا له تحليل troponin وطلع مرتفع شوي فأعدناه بعد ساعتين، وعشان عنده رجفان أذيني بدينا له apixaban كمضاد للتخثر وراقبنا الضغط والنبض طوال الفترة",
+          "pred_corrected": "المريض وصل بألم في الصدر يمتد لليد اليسرى، طلبنا له تحليل troponin وطلع مرتفع شوي فأعدناه بعد ساعتين، وعشان عنده رجفان أذيني بدينا له apixaban كمضاد للتخثر وراقبنا الضغط والنبض طوال الفترة",
+          "exact_match": true,
+          "gold_count": 2,
+          "pred_count": 2,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-041",
+          "gold_corrected": "بعد العملية المريض عنده غثيان وقيء شديد، أعطيناه ondansetron للغثيان وأضفنا dexamethasone لتقليل الالتهاب والورم، وللحموضة كتبنا له omeprazole، وراقبنا العلامات الحيوية كل ساعة في غرفة الإفاقة",
+          "pred_corrected": "بعد العملية المريض عنده غثيان وقيء شديد، أعطيناه ondansetron للغثيان وأضفنا ديكسا ميثازون لتقليل الالتهاب والورم، وللحموضة كتبنا له omeprazole وراقبنا العلامات الحيوية كل ساعة في غرفة الإفاقة",
+          "exact_match": false,
+          "gold_count": 3,
+          "pred_count": 2,
+          "count_match": false
+        },
+        {
+          "case_id": "TC-042",
+          "gold_corrected": "المريض عنده قصور في القلب مع ارتفاع في الضغط وسكري من النوع الثاني، نصحناه يقلل الملح في الأكل ويمارس رياضة خفيفة بانتظام، ويتابع الوزن والضغط ومستوى السكر في البيت، ويراجع العيادة كل شهر للاطمئنان على حالته",
+          "pred_corrected": "المريض عنده قصور في القلب مع ارتفاع في الضغط وسكري من النوع الثاني، نصحناه يقلل الملح في الأكل ويمارس رياضة خفيفة بانتظام، ويتابع الوزن والضغط ومستوى السكر في البيت، ويراجع العيادة كل شهر للاطمئنان على حالته",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-043",
+          "gold_corrected": "يا أبو خالد، نتائج التحاليل بينت إن السكر التراكمي مرتفع والكوليسترول بعد فوق المعدل الطبيعي. بنستمر على Metformin مرتين باليوم، وبنضيف Jardiance حبة يوميًا. أما الدهون فابدأ على Atorvastatin قبل النوم. إذا حسيت بعطش شديد أو كثرة التبول أو دوخة، راجعنا فورًا. وأبغاك تلتزم بالحمية وتتابع قياس السكر بشكل يومي.",
+          "pred_corrected": "يا أبو خالد، نتائج التحاليل بينت إن السكر التراكمي مرتفع والكوليسترول بعد فوق المعدل الطبيعي. بنستمر على Metformin مرتين باليوم، وبنضيف Jardiance حبة يوميًا. أما الدهون فابدأ على Atorvastatin قبل النوم. إذا حسيت بعطش شديد أو كثرة التبول أو دوخة، راجعنا فورًا. وأبغاك تلتزم بالحمية وتتابع قياس السكر بشكل يومي.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-044",
+          "gold_corrected": "يا أم محمد، الأشعة أوضحت وجود التهاب بسيط في الرئة. بصرف لك Augmentin لمدة سبعة أيام، ومعاه Paracetamol للحرارة إذا احتجتي. إذا استمر الكحة أو صار عندك ضيق نفس، استخدمي البخاخ Ventolin وتعالي للمراجعة مباشرة.",
+          "pred_corrected": "يا أم محمد، الأشعة أوضحت وجود التهاب بسيط في الرئة. بصرف لك Augmentin لمدة سبعة أيام، ومعاه Paracetamol للحرارة إذا احتجتي. إذا استمر الكحة أو صار عندك ضيق نفس، استخدمي البخاخ Ventolin وتعالي للمراجعة مباشرة.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-045",
+          "gold_corrected": "يا أبو راشد، الضغط عندك ما زال مرتفع رغم العلاج الحالي. بنرفع جرعة Amlodipine ونضيف Losartan مرة يوميًا. إذا حسيت بصداع شديد أو زغللة في النظر أو ألم بالصدر، توجه للطوارئ فورًا. حاول تقلل الملح وتمارس المشي يوميًا.",
+          "pred_corrected": "يا أبو راشد، الضغط عندك ما زال مرتفع رغم العلاج الحالي. بنرفع جرعة Amlodipine ونضيف Losartan مرة يوميًا. إذا حسيت بصداع شديد أو زغللة في النظر أو ألم بالصدر، توجه للطوارئ فورًا. حاول تقلل الملح وتمارس المشي يوميًا.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-046",
+          "gold_corrected": "يا أختي، الأعراض اللي تشتكين منها تتوافق مع ارتجاع بالمريء. خذي Omeprazole قبل الفطور يوميًا لمدة شهر، واستخدمي Gaviscon بعد الوجبات عند الحاجة. تجنبي الأكل الدسم والقهوة قبل النوم، وإذا استمرت الأعراض بنسوي منظار للمعدة.",
+          "pred_corrected": "يا أختي، الأعراض اللي تشتكين منها تتوافق مع ارتجاع بالمريء. خذي Omeprazole قبل الفطور يوميًا لمدة شهر، واستخدمي Gaviscon بعد الوجبات عند الحاجة. تجنبي الأكل الدسم والقهوة قبل النوم، وإذا استمرت الأعراض بنسوي منظار للمعدة.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-047",
+          "gold_corrected": "يا أبو عبدالله، واضح إن عندك نوبة ربو تحسسي. استخدم بخاخ Symbicort بشكل منتظم صباحًا ومساءً، وخلك محتفظ ببخاخ Ventolin للطوارئ. إذا زادت الأعراض أو صار عندك صفير شديد بالتنفس، راجع المستشفى مباشرة.",
+          "pred_corrected": "يا أبو عبدالله، واضح إن عندك نوبة ربو تحسسي. استخدم بخاخ Symbicort بشكل منتظم صباحًا ومساءً، وخلك محتفظ ببخاخ Ventolin للطوارئ. إذا زادت الأعراض أو صار عندك صفير شديد بالتنفس، راجع المستشفى مباشرة.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-048",
+          "gold_corrected": "يا أم فهد، تحليل البول أكد وجود التهاب بالمسالك البولية. باعطيك Ciprofloxacin لمدة خمسة أيام، ومعاه Paracetamol إذا كان فيه ألم أو حرارة. أكثري من شرب الماء، وإذا صار فيه ألم بالخاصرة أو ارتفاع شديد بالحرارة لازم تراجعين بسرعة.",
+          "pred_corrected": "يا أم فهد، تحليل البول أكد وجود التهاب بالمسالك البولية. باعطيك Ciprofloxacin لمدة خمسة أيام، ومعاه Paracetamol إذا كان فيه ألم أو حرارة. أكثري من شرب الماء، وإذا صار فيه ألم بالخاصرة أو ارتفاع شديد بالحرارة لازم تراجعين بسرعة.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-049",
+          "gold_corrected": "يا أختي، نتائج الغدة تبين إن عندك قصور بالغدة الدرقية. بنبدأ علاج Levothyroxine كل صباح على معدة فاضية. بعد ستة أسابيع بنعيد تحليل TSH ونشوف إذا الجرعة مناسبة أو تحتاج تعديل.",
+          "pred_corrected": "يا أختي، نتائج الغدة تبين إن عندك قصور بالغدة الدرقية. بنبدأ علاج Levothyroxine كل صباح على معدة فاضية. بعد ستة أسابيع بنعيد تحليل TSH ونشوف إذا الجرعة مناسبة أو تحتاج تعديل.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-050",
+          "gold_corrected": "يا أبو ناصر، بعد مراجعة الفحوصات بنستمر على Aspirin وClopidogrel لتقليل خطر الجلطات، ومعهم Bisoprolol لتنظيم نبضات القلب وRosuvastatin للكوليسترول. مهم جدًا الالتزام بالأدوية وعدم إيقاف أي دواء بدون استشارة.",
+          "pred_corrected": "يا أبو ناصر، بعد مراجعة الفحوصات بنستمر على Aspirin وClopidogrel لتقليل خطر الجلطات، ومعهم Bisoprolol لتنظيم نبضات القلب وRosuvastatin للكوليسترول. مهم جدًا الالتزام بالأدوية وعدم إيقاف أي دواء بدون استشارة.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-051",
+          "gold_corrected": "يا أم خالد، عندك التهاب بالجيوب الأنفية مصحوب باحتقان شديد. باصرف لك Augmentin لمدة أسبوع وCetirizine للحساسية وFluticasone Nasal Spray للاحتقان. إذا استمرت الأعراض أكثر من عشرة أيام لازم نعيد التقييم.",
+          "pred_corrected": "يا أم خالد، عندك التهاب بالجيوب الأنفية مصحوب باحتقان شديد. باصرف لك Augmentin لمدة أسبوع وCetirizine للحساسية وFluticasone Nasal Spray للاحتقان. إذا استمرت الأعراض أكثر من عشرة أيام لازم نعيد التقييم.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        },
+        {
+          "case_id": "TC-052",
+          "gold_corrected": "يا أبو سالم، الأعراض والتحاليل تشير إلى التهاب بالمفاصل. بنبدأ على Methotrexate أسبوعيًا مع Folic Acid، وخذ Ibuprofen عند اللزوم للألم. ضروري تسوي تحاليل وظائف الكبد بشكل دوري أثناء العلاج، وإذا حسيت بأي أعراض غير معتادة تواصل معنا فورًا.",
+          "pred_corrected": "يا أبو سالم، الأعراض والتحاليل تشير إلى التهاب بالمفاصل. بنبدأ على Methotrexate أسبوعيًا مع Folic Acid، وخذ Ibuprofen عند اللزوم للألم. ضروري تسوي تحاليل وظائف الكبد بشكل دوري أثناء العلاج، وإذا حسيت بأي أعراض غير معتادة تواصل معنا فورًا.",
+          "exact_match": true,
+          "gold_count": 0,
+          "pred_count": 0,
+          "count_match": true
+        }
+      ]
+    }
+  ],
+  "overall_mean_f1": 0.8804,
+  "raw_responses": {
+    "TC-001": {
+      "case_id": "TC-001",
+      "original": "المريض عنده حساسية بس الدكتور وصف له أوق منتين مرتين في اليوم للعدوى البكتيرية",
+      "corrected": "المريض عنده حساسية بس الدكتور وصف له augmentin مرتين في اليوم للعدوى البكتيرية",
+      "corrections": [
+        {
+          "span_text": "أوق منتين",
+          "chosen": "augmentin",
+          "path": "auto_fix",
+          "confidence": 0.95
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "أوق منتين",
+          "start_index": 7,
+          "end_index": 9,
+          "max_suspicion": 0.95,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "أوق منتين",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.95
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "neurontin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "gabapentin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-002": {
+      "case_id": "TC-002",
+      "original": "قياس السكر الحين بالقلوكوميتر طلع عالي، لازم نعدّل الجرعة",
+      "corrected": "قياس السكر الحين بالقلوكوميتر طلع عالي، لازم نعدّل الجرعة",
+      "corrections": [
+        {
+          "span_text": "بالقلوكوميتر",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "بالقلوكوميتر",
+          "start_index": 3,
+          "end_index": 4,
+          "max_suspicion": 0.833,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "بالقلوكوميتر",
+          "candidates": [
+            {
+              "term": "glucometer",
+              "phonetic_score": 0.833
+            },
+            {
+              "term": "fluoxetine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "poliomyelitis",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "oseltamivir",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "glaucoma",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-003": {
+      "case_id": "TC-003",
+      "original": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+      "corrected": "المريضة تشكو من صداع وارتفاع الضغط وتأخذ الدواء بانتظام",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-004": {
+      "case_id": "TC-004",
+      "original": "وصفنا للمريض ميت فورمين للسكري من النوع الثاني مع الحمية",
+      "corrected": "وصفنا للمريض metformin للسكري من النوع الثاني مع الحمية",
+      "corrections": [
+        {
+          "span_text": "ميت فورمين",
+          "chosen": "metformin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ميت فورمين",
+          "start_index": 2,
+          "end_index": 4,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ميت فورمين",
+          "candidates": [
+            {
+              "term": "metformin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "azithromycin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "mupirocin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "migraine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "cetirizine",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-005": {
+      "case_id": "TC-005",
+      "original": "المريض يحتاج إيكو كارديو غرام عشان نشوف وظيفة القلب قبل العملية",
+      "corrected": "المريض يحتاج إيكو كارديو غرام عشان نشوف وظيفة القلب قبل العملية",
+      "corrections": [
+        {
+          "span_text": "إيكو كارديو غرام",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "إيكو كارديو غرام",
+          "start_index": 2,
+          "end_index": 5,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "إيكو كارديو غرام",
+          "candidates": [
+            {
+              "term": "echocardiogram",
+              "phonetic_score": 0.75
+            }
+          ]
+        }
+      ]
+    },
+    "TC-006": {
+      "case_id": "TC-006",
+      "original": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+      "corrected": "الجرعة 500 ملغ مرتين يومياً وما في حاجة لتعديل البروتوكول الحالي",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-007": {
+      "case_id": "TC-007",
+      "original": "ارسل له فولتران للألم وقل له يحط على المنطقة المتألمة بس",
+      "corrected": "ارسل له voltaren للألم وقل له يحط على المنطقة المتألمة بس",
+      "corrections": [
+        {
+          "span_text": "فولتران",
+          "chosen": "voltaren",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "فولتران",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": []
+    },
+    "TC-008": {
+      "case_id": "TC-008",
+      "original": "وصف الدكتور لايزينو بريل مع أمل وديبين لضغط الدم المرتفع",
+      "corrected": "وصف الدكتور لايزينو بريل مع amlodipine لضغط الدم المرتفع",
+      "corrections": [
+        {
+          "span_text": "لايزينو بريل",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "أمل وديبين",
+          "chosen": "amlodipine",
+          "path": "hitl_applied",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "لايزينو بريل",
+          "start_index": 2,
+          "end_index": 4,
+          "max_suspicion": 0.833,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "أمل وديبين",
+          "start_index": 5,
+          "end_index": 7,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "لايزينو بريل",
+          "candidates": [
+            {
+              "term": "lisinopril",
+              "phonetic_score": 0.833
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "ramipril",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "pantoprazole",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "haloperidol",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-009": {
+      "case_id": "TC-009",
+      "original": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+      "corrected": "المريض عنده قصور كلوي مزمن ونحتاج نراقب مستوى الكرياتينين كل أسبوع",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-010": {
+      "case_id": "TC-010",
+      "original": "خليه يأخذ أتورفاستاتن للكوليسترول مع الفطور",
+      "corrected": "خليه يأخذ atorvastatin للكوليسترول مع الفطور",
+      "corrections": [
+        {
+          "span_text": "أتورفاستاتن",
+          "chosen": "atorvastatin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "أتورفاستاتن",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "أتورفاستاتن",
+          "candidates": [
+            {
+              "term": "atorvastatin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "simvastatin",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "nitrofurantoin",
+              "phonetic_score": 0.625
+            },
+            {
+              "term": "nystatin",
+              "phonetic_score": 0.571
+            }
+          ]
+        }
+      ]
+    },
+    "TC-011": {
+      "case_id": "TC-011",
+      "original": "طلبنا تحليل إيتش بي إيه وان سي عشان نشوف متوسط السكر",
+      "corrected": "طلبنا تحليل hba1c عشان نشوف متوسط السكر",
+      "corrections": [
+        {
+          "span_text": "إيتش بي إيه وان سي",
+          "chosen": "hba1c",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "إيتش بي إيه وان سي",
+          "start_index": 2,
+          "end_index": 7,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_spelled_code"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "إيتش بي إيه وان سي",
+          "candidates": [
+            {
+              "term": "hba1c",
+              "phonetic_score": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    "TC-012": {
+      "case_id": "TC-012",
+      "original": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+      "corrected": "المريض عنده asthma وجبنا له inhaler للطوارئ",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-013": {
+      "case_id": "TC-013",
+      "original": "حطيت له نيكسيوم للحموضة قبل الوجبة بساعة",
+      "corrected": "حطيت له nexium للحموضة قبل الوجبة بساعة",
+      "corrections": [
+        {
+          "span_text": "نيكسيوم",
+          "chosen": "nexium",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "نيكسيوم",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "نيكسيوم",
+          "candidates": [
+            {
+              "term": "nexium",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "aneurysm",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "naloxone",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "leukemia",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "eczema",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-014": {
+      "case_id": "TC-014",
+      "original": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+      "corrected": "فيه التهاب في الأوتار المحيطة بالركبة اليمنى",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-015": {
+      "case_id": "TC-015",
+      "original": "المريض يأخذ كار با مازيبين للصرع من سنتين",
+      "corrected": "المريض يأخذ carbamazepine للصرع من سنتين",
+      "corrections": [
+        {
+          "span_text": "كار با مازيبين",
+          "chosen": "carbamazepine",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كار با مازيبين",
+          "start_index": 2,
+          "end_index": 5,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كار با مازيبين",
+          "candidates": [
+            {
+              "term": "carbamazepine",
+              "phonetic_score": 1.0
+            }
+          ]
+        }
+      ]
+    },
+    "TC-016": {
+      "case_id": "TC-016",
+      "original": "المريض محتاج كولون وسكوبي بعد النتائج هذي",
+      "corrected": "المريض محتاج colonoscopy بعد النتائج هذي",
+      "corrections": [
+        {
+          "span_text": "كولون وسكوبي",
+          "chosen": "colonoscopy",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كولون وسكوبي",
+          "start_index": 2,
+          "end_index": 4,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كولون وسكوبي",
+          "candidates": [
+            {
+              "term": "colonoscopy",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "clonidine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "colistin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "glaucoma",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "gaviscon",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-017": {
+      "case_id": "TC-017",
+      "original": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+      "corrected": "الضغط 120 على 80 والنبض 72 في الدقيقة والحرارة طبيعية",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-018": {
+      "case_id": "TC-018",
+      "original": "أضف كريستور 10 ملغ للروشتة للتحكم في الدهون",
+      "corrected": "أضف crestor 10 ملغ للروشتة للتحكم في الدهون",
+      "corrections": [
+        {
+          "span_text": "كريستور",
+          "chosen": "crestor",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كريستور",
+          "start_index": 1,
+          "end_index": 2,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كريستور",
+          "candidates": [
+            {
+              "term": "crestor",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "colistin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "bursitis",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "risperidone",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "gastritis",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-019": {
+      "case_id": "TC-019",
+      "original": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+      "corrected": "المريض يحتاج دواء ريزيدرونيك اسيد للعظام اللي ما عندنا معلومات عنه",
+      "corrections": [
+        {
+          "span_text": "ريزيدرونيك",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ريزيدرونيك",
+          "start_index": 3,
+          "end_index": 4,
+          "max_suspicion": 0.625,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ريزيدرونيك",
+          "candidates": [
+            {
+              "term": "risedronic acid",
+              "phonetic_score": 0.625
+            }
+          ]
+        }
+      ]
+    },
+    "TC-020": {
+      "case_id": "TC-020",
+      "original": "الحين أكتب له أوميبرازول للحموضة قبل الفطور",
+      "corrected": "الحين أكتب له omeprazole للحموضة قبل الفطور",
+      "corrections": [
+        {
+          "span_text": "أوميبرازول",
+          "chosen": "omeprazole",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "أوميبرازول",
+          "start_index": 3,
+          "end_index": 4,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": []
+    },
+    "TC-021": {
+      "case_id": "TC-021",
+      "original": "قاسنا الضغط بالسفيجموميتر وطلع مرتفع فوصفنا أملوديبين",
+      "corrected": "قاسنا الضغط sphygmomanometer وطلع مرتفع فوصفنا amlodipine",
+      "corrections": [
+        {
+          "span_text": "بالسفيجموميتر",
+          "chosen": "sphygmomanometer",
+          "path": "auto_fix",
+          "confidence": 0.95
+        },
+        {
+          "span_text": "أملوديبين",
+          "chosen": "amlodipine",
+          "path": "hitl_applied",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "بالسفيجموميتر",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 0.95,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "أملوديبين",
+          "start_index": 6,
+          "end_index": 7,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "بالسفيجموميتر",
+          "candidates": [
+            {
+              "term": "sphygmomanometer",
+              "phonetic_score": 0.95
+            }
+          ]
+        }
+      ]
+    },
+    "TC-022": {
+      "case_id": "TC-022",
+      "original": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+      "corrected": "خرج المريض بحالة مستقرة بعد علاج الالتهاب الرئوي الحاد",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-023": {
+      "case_id": "TC-023",
+      "original": "غيّر الأنسولين من NPH إلى لان توس طويل المفعول",
+      "corrected": "غيّر الأنسولين من NPH إلى lantus طويل المفعول",
+      "corrections": [
+        {
+          "span_text": "لان توس",
+          "chosen": "lantus",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "لان توس",
+          "start_index": 5,
+          "end_index": 7,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "لان توس",
+          "candidates": [
+            {
+              "term": "lantus",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "laryngitis",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "rhinitis",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "sinusitis",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "nexium",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-024": {
+      "case_id": "TC-024",
+      "original": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+      "corrected": "مستوى الهيموغلوبين 11.5 والصفائح الدموية 180 ألف",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-025": {
+      "case_id": "TC-025",
+      "original": "استمر على كلوبيدوجريل لمنع تجلط الدم بعد الدعامة",
+      "corrected": "استمر على clopidogrel لمنع تجلط الدم بعد الدعامة",
+      "corrections": [
+        {
+          "span_text": "كلوبيدوجريل",
+          "chosen": "clopidogrel",
+          "path": "auto_fix",
+          "confidence": 0.857
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كلوبيدوجريل",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 0.857,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كلوبيدوجريل",
+          "candidates": [
+            {
+              "term": "clopidogrel",
+              "phonetic_score": 0.857
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "lisinopril",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-026": {
+      "case_id": "TC-026",
+      "original": "وصفت له برولوسيك بدل الإيبوبروفين لأنه ما يناسبه",
+      "corrected": "وصفت له prilosec بدل ibuprofen لأنه ما يناسبه",
+      "corrections": [
+        {
+          "span_text": "برولوسيك",
+          "chosen": "prilosec",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "الإيبوبروفين",
+          "chosen": "ibuprofen",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "برولوسيك",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "الإيبوبروفين",
+          "start_index": 4,
+          "end_index": 5,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "برولوسيك",
+          "candidates": [
+            {
+              "term": "prilosec",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "tuberculosis",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "lyrica",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "colonoscopy",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "fibromyalgia",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-027": {
+      "case_id": "TC-027",
+      "original": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+      "corrected": "طلبنا له MRI للرأس و ECG قبل عملية التخدير العام",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-028": {
+      "case_id": "TC-028",
+      "original": "أعطيه فوروسيمايد وريدي لتفريغ الماء من الرئتين",
+      "corrected": "أعطيه furosemide وريدي لتفريغ الماء من الرئتين",
+      "corrections": [
+        {
+          "span_text": "فوروسيمايد",
+          "chosen": "furosemide",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "فوروسيمايد",
+          "start_index": 1,
+          "end_index": 2,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "فوروسيمايد",
+          "candidates": [
+            {
+              "term": "furosemide",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "furosemide",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "verapamil",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "aneurysm",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "otitis media",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-029": {
+      "case_id": "TC-029",
+      "original": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+      "corrected": "المريض حساس من البنسلين وكل مشتقاته سجّل هذا في الملف",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-030": {
+      "case_id": "TC-030",
+      "original": "الروشتة تشمل ريزيبريل للضغط وسيمفاستاتن للكوليسترول وميتوبرولول لتنظيم النبض",
+      "corrected": "الروشتة تشمل ريزيبريل للضغط وsimvastatin للكوليسترول وmetoprolol لتنظيم النبض",
+      "corrections": [
+        {
+          "span_text": "وسيمفاستاتن",
+          "chosen": "وsimvastatin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "وميتوبرولول",
+          "chosen": "وmetoprolol",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "ريزيبريل",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ريزيبريل",
+          "start_index": 2,
+          "end_index": 3,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "وسيمفاستاتن",
+          "start_index": 4,
+          "end_index": 5,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "وميتوبرولول",
+          "start_index": 6,
+          "end_index": 7,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ريزيبريل",
+          "candidates": [
+            {
+              "term": "ramipril",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "rubella",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "bisoprolol",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "lisinopril",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "وسيمفاستاتن",
+          "candidates": [
+            {
+              "term": "simvastatin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "atorvastatin",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "nystatin",
+              "phonetic_score": 0.571
+            }
+          ]
+        },
+        {
+          "span_text": "وميتوبرولول",
+          "candidates": [
+            {
+              "term": "metoprolol",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "omeprazole",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "bisoprolol",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "pantoprazole",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "haloperidol",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-031": {
+      "case_id": "TC-031",
+      "original": "المريض عمره ستين سنة وصل الطوارئ يشتكي من ألم في الصدر وضيق في التنفس من ساعتين، سوينا له تخطيط القلب وطلعت فيه تغيرات بسيطة، أعطيناه أسبرين على طول وقررنا نضيف له كلوبيدوقرل ونراقب التروبونين كل ست ساعات",
+      "corrected": "المريض عمره ستين سنة وصل الطوارئ يشتكي من ألم في الصدر وضيق في التنفس من ساعتين، سوينا له تخطيط القلب وطلعت فيه تغيرات بسيطة، أعطيناه aspirin على طول وقررنا نضيف له clopidogrel ونراقب troponin كل ست ساعات",
+      "corrections": [
+        {
+          "span_text": "كلوبيدوقرل",
+          "chosen": "clopidogrel",
+          "path": "auto_fix",
+          "confidence": 0.857
+        },
+        {
+          "span_text": "التروبونين",
+          "chosen": "troponin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "سنة وصل",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "أسبرين",
+          "chosen": "aspirin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "سنة وصل",
+          "start_index": 3,
+          "end_index": 5,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "كلوبيدوقرل",
+          "start_index": 31,
+          "end_index": 32,
+          "max_suspicion": 0.857,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "التروبونين",
+          "start_index": 33,
+          "end_index": 34,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "أسبرين",
+          "start_index": 25,
+          "end_index": 26,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "سنة وصل",
+          "candidates": [
+            {
+              "term": "insulin",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "sinusitis",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "nexium",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "panadol",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "novadol",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "كلوبيدوقرل",
+          "candidates": [
+            {
+              "term": "clopidogrel",
+              "phonetic_score": 0.857
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "lisinopril",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "التروبونين",
+          "candidates": [
+            {
+              "term": "troponin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "morphine",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "losartan",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-032": {
+      "case_id": "TC-032",
+      "original": "المريض عنده رجفان أذيني مزمن، الدكتور وقف له الدواء القديم وكتب له وار فارين عشان يمنع الجلطات، وأضاف ديقوكسين عشان يتحكم بسرعة ضربات القلب، وقال لازم نراقب نسبة التخثر بشكل منتظم",
+      "corrected": "المريض عنده رجفان أذيني مزمن، الدكتور وقف له الدواء القديم وكتب له warfarin عشان يمنع الجلطات، وأضاف ديقوكسين عشان يتحكم بسرعة ضربات القلب، وقال لازم نراقب نسبة التخثر بشكل منتظم",
+      "corrections": [
+        {
+          "span_text": "وار فارين",
+          "chosen": "warfarin",
+          "path": "auto_fix",
+          "confidence": 0.875
+        },
+        {
+          "span_text": "ديقوكسين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "وار فارين",
+          "start_index": 12,
+          "end_index": 14,
+          "max_suspicion": 0.875,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "ديقوكسين",
+          "start_index": 18,
+          "end_index": 19,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "وار فارين",
+          "candidates": [
+            {
+              "term": "warfarin",
+              "phonetic_score": 0.875
+            },
+            {
+              "term": "amaryl",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "heparin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "aspirin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "migraine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "ديقوكسين",
+          "candidates": [
+            {
+              "term": "digoxin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "naloxone",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "fluoxetine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "tamoxifen",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-033": {
+      "case_id": "TC-033",
+      "original": "المريضة خرجت من المستشفى بحالة مستقرة بعد علاج التهاب المسالك البولية، الحرارة رجعت طبيعية والتحاليل تحسنت بشكل واضح، نصحناها تكمل المضاد الحيوي لمدة خمسة أيام وتشرب سوائل كثيرة وتراجع العيادة بعد أسبوعين للاطمئنان",
+      "corrected": "المريضة خرجت من المستشفى بحالة مستقرة بعد علاج التهاب المسالك البولية، الحرارة رجعت طبيعية والتحاليل تحسنت بشكل واضح، نصحناها تكمل المضاد الحيوي لمدة خمسة أيام وتشرب سوائل كثيرة وتراجع العيادة بعد أسبوعين للاطمئنان",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-034": {
+      "case_id": "TC-034",
+      "original": "المريض مصاب بالسكري من النوع الثاني وما ينتظم على الحمية، قست له السكر بالجهاز وطلع مرتفع، فقررت أبدأ له ميت فورمين مرتين في اليوم وأضيف قلايم بيرايد قبل الفطور، وقلت له يقيس السكر يومياً ويسجل النتائج",
+      "corrected": "المريض مصاب بالسكري من النوع الثاني وما ينتظم على الحمية، قست له السكر بالجهاز وطلع مرتفع، فقررت أبدأ له metformin مرتين في اليوم وأضيف قلايم بيرايد قبل الفطور، وقلت له يقيس السكر يومياً ويسجل النتائج",
+      "corrections": [
+        {
+          "span_text": "ميت فورمين",
+          "chosen": "metformin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "قلايم بيرايد",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "ميت فورمين",
+          "start_index": 19,
+          "end_index": 21,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "قلايم بيرايد",
+          "start_index": 25,
+          "end_index": 27,
+          "max_suspicion": 0.833,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "ميت فورمين",
+          "candidates": [
+            {
+              "term": "metformin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "azithromycin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "mupirocin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "migraine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "cetirizine",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "قلايم بيرايد",
+          "candidates": [
+            {
+              "term": "glimepiride",
+              "phonetic_score": 0.833
+            },
+            {
+              "term": "haloperidol",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "domperidone",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "doliprane",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-035": {
+      "case_id": "TC-035",
+      "original": "المريض يشتكي من خفقان وتعب عند المجهود، حولناه لقسم القلب وطلبنا له إيكو كارديو غرام عشان نتأكد من وظيفة الصمامات، وطلبنا كمان تحليل وظائف الغدة الدرقية لأن الأعراض ممكن تكون من الغدة",
+      "corrected": "المريض يشتكي من خفقان وتعب عند المجهود، حولناه لقسم القلب وطلبنا له إيكو كارديو غرام عشان نتأكد من وظيفة الصمامات، وطلبنا كمان تحليل وظائف الغدة الدرقية لأن الأعراض ممكن تكون من الغدة",
+      "corrections": [
+        {
+          "span_text": "إيكو كارديو غرام",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "الدرقية لأن",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "إيكو كارديو غرام",
+          "start_index": 12,
+          "end_index": 15,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "الدرقية لأن",
+          "start_index": 25,
+          "end_index": 27,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "إيكو كارديو غرام",
+          "candidates": [
+            {
+              "term": "echocardiogram",
+              "phonetic_score": 0.75
+            }
+          ]
+        },
+        {
+          "span_text": "الدرقية لأن",
+          "candidates": [
+            {
+              "term": "adrenaline",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "losartan",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "loratadine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "sertraline",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "pregabalin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-036": {
+      "case_id": "TC-036",
+      "original": "المريض ضغطه مرتفع من فترة وما استجاب للحمية وحدها، الدكتور وصف له أملو ديبين حبة وحدة في اليوم وأضاف فال سارتان عشان يتحكم بالضغط بشكل أفضل، وطلب منه يقيس الضغط في البيت صباحاً ومساءً ويرجع بعد شهر",
+      "corrected": "المريض ضغطه مرتفع من فترة وما استجاب للحمية وحدها، الدكتور وصف له amlodipine حبة وحدة في اليوم وأضاف valsartan عشان يتحكم بالضغط بشكل أفضل، وطلب منه يقيس الضغط في البيت صباحاً ومساءً ويرجع بعد شهر",
+      "corrections": [
+        {
+          "span_text": "فال سارتان",
+          "chosen": "valsartan",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "أملو ديبين",
+          "chosen": "amlodipine",
+          "path": "hitl_applied",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "فال سارتان",
+          "start_index": 18,
+          "end_index": 20,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "أملو ديبين",
+          "start_index": 12,
+          "end_index": 14,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "فال سارتان",
+          "candidates": [
+            {
+              "term": "valsartan",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "losartan",
+              "phonetic_score": 0.833
+            },
+            {
+              "term": "sertraline",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.667
+            }
+          ]
+        }
+      ]
+    },
+    "TC-037": {
+      "case_id": "TC-037",
+      "original": "المريضة عندها history من ال diabetes وال hypertension من سنوات، جت العيادة اليوم تشتكي من dizziness خفيف بس ال blood pressure كان طبيعي وال blood sugar كمان كان كويس، قلنا لها تكمل على نفس العلاج وتراجع بعد شهر",
+      "corrected": "المريضة عندها history من ال diabetes وال hypertension من سنوات، جت العيادة اليوم تشتكي من dizziness خفيف بس ال blood pressure كان طبيعي وال blood sugar كمان كان كويس، قلنا لها تكمل على نفس العلاج وتراجع بعد شهر",
+      "corrections": [
+        {
+          "span_text": "كمان كان",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كمان كان",
+          "start_index": 26,
+          "end_index": 28,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كمان كان",
+          "candidates": [
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "augmentin",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "clonidine",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "mupirocin",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "concor",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-038": {
+      "case_id": "TC-038",
+      "original": "المريض يحتاج نبدأ له أوميبرازول للحموضة قبل الفطور، وكمان الدكتور كتب له دواء اسمه روزوفاستاتين ما عندنا عنه أي معلومة في القائمة، لازم نتأكد منه قبل ما نصرفه للمريض",
+      "corrected": "المريض يحتاج نبدأ له omeprazole للحموضة قبل الفطور، وكمان الدكتور كتب له دواء اسمه روزوفاستاتين ما عندنا عنه أي معلومة في القائمة، لازم نتأكد منه قبل ما نصرفه للمريض",
+      "corrections": [
+        {
+          "span_text": "كتب",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "روزوفاستاتين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "أوميبرازول",
+          "chosen": "omeprazole",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كتب",
+          "start_index": 10,
+          "end_index": 11,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "روزوفاستاتين",
+          "start_index": 14,
+          "end_index": 15,
+          "max_suspicion": 0.714,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "أوميبرازول",
+          "start_index": 4,
+          "end_index": 5,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كتب",
+          "candidates": [
+            {
+              "term": "quetiapine",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "ketamine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "sciatica",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "روزوفاستاتين",
+          "candidates": [
+            {
+              "term": "atorvastatin",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "simvastatin",
+              "phonetic_score": 0.714
+            },
+            {
+              "term": "nystatin",
+              "phonetic_score": 0.571
+            }
+          ]
+        }
+      ]
+    },
+    "TC-039": {
+      "case_id": "TC-039",
+      "original": "المريضة عندها التهاب في المسالك البولية متكرر، التحليل بيّن وجود بكتيريا، الدكتور قرر يعطيها ليفو فلوكساسين لمدة أسبوع وإذا ما تحسنت نحولها لـ نيترو فيورانتوين، ونصحها تشرب ماء كثير وتراجع لو استمرت الأعراض",
+      "corrected": "المريضة عندها التهاب في المسالك البولية متكرر، التحليل بيّن وجود بكتيريا، الدكتور قرر يعطيها ليفو فلوكساسين لمدة أسبوع وإذا ما تحسنت نحولها nitrofurantoin ونصحها تشرب ماء كثير وتراجع لو استمرت الأعراض",
+      "corrections": [
+        {
+          "span_text": "لـ نيترو فيورانتوين،",
+          "chosen": "nitrofurantoin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "يعطيها ليفو فلوكساسين",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "يعطيها ليفو فلوكساسين",
+          "start_index": 13,
+          "end_index": 16,
+          "max_suspicion": 0.778,
+          "reason": "phonetic_near_medical_3gram"
+        },
+        {
+          "text": "لـ نيترو فيورانتوين،",
+          "start_index": 22,
+          "end_index": 25,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "يعطيها ليفو فلوكساسين",
+          "candidates": [
+            {
+              "term": "levofloxacin",
+              "phonetic_score": 0.778
+            },
+            {
+              "term": "ciprofloxacin",
+              "phonetic_score": 0.556
+            },
+            {
+              "term": "fluoxetine",
+              "phonetic_score": 0.556
+            }
+          ]
+        },
+        {
+          "span_text": "لـ نيترو فيورانتوين،",
+          "candidates": [
+            {
+              "term": "nitrofurantoin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "atorvastatin",
+              "phonetic_score": 0.625
+            }
+          ]
+        }
+      ]
+    },
+    "TC-040": {
+      "case_id": "TC-040",
+      "original": "المريض وصل بألم في الصدر يمتد لليد اليسرى، طلبنا له تحليل التروبينين وطلع مرتفع شوي فأعدناه بعد ساعتين، وعشان عنده رجفان أذيني بدينا له أبكسا بان كمضاد للتخثر وراقبنا الضغط والنبض طوال الفترة",
+      "corrected": "المريض وصل بألم في الصدر يمتد لليد اليسرى، طلبنا له تحليل troponin وطلع مرتفع شوي فأعدناه بعد ساعتين، وعشان عنده رجفان أذيني بدينا له apixaban كمضاد للتخثر وراقبنا الضغط والنبض طوال الفترة",
+      "corrections": [
+        {
+          "span_text": "التروبينين",
+          "chosen": "troponin",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "أبكسا بان",
+          "chosen": "apixaban",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "التروبينين",
+          "start_index": 11,
+          "end_index": 12,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "أبكسا بان",
+          "start_index": 24,
+          "end_index": 26,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "التروبينين",
+          "candidates": [
+            {
+              "term": "troponin",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "morphine",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "losartan",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "voltaren",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "أبكسا بان",
+          "candidates": [
+            {
+              "term": "apixaban",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "bactroban",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "quetiapine",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "cisplatin",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "pregabalin",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-041": {
+      "case_id": "TC-041",
+      "original": "بعد العملية المريض عنده غثيان وقيء شديد، أعطيناه أوندان سيترون للغثيان وأضفنا ديكسا ميثازون لتقليل الالتهاب والورم، وللحموضة كتبنا له أوميبرازول، وراقبنا العلامات الحيوية كل ساعة في غرفة الإفاقة",
+      "corrected": "بعد العملية المريض عنده غثيان وقيء شديد، أعطيناه ondansetron للغثيان وأضفنا ديكسا ميثازون لتقليل الالتهاب والورم، وللحموضة كتبنا له omeprazole وراقبنا العلامات الحيوية كل ساعة في غرفة الإفاقة",
+      "corrections": [
+        {
+          "span_text": "أوندان سيترون",
+          "chosen": "ondansetron",
+          "path": "auto_fix",
+          "confidence": 1.0
+        },
+        {
+          "span_text": "ديكسا ميثازون",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "أوميبرازول،",
+          "chosen": "omeprazole",
+          "path": "auto_fix",
+          "confidence": 1.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "أوندان سيترون",
+          "start_index": 8,
+          "end_index": 10,
+          "max_suspicion": 1.0,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "ديكسا ميثازون",
+          "start_index": 12,
+          "end_index": 14,
+          "max_suspicion": 0.75,
+          "reason": "phonetic_near_medical_2gram"
+        },
+        {
+          "text": "أوميبرازول،",
+          "start_index": 20,
+          "end_index": 21,
+          "max_suspicion": 1.0,
+          "reason": "normalized"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "أوندان سيترون",
+          "candidates": [
+            {
+              "term": "ondansetron",
+              "phonetic_score": 1.0
+            },
+            {
+              "term": "neurontin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "nystatin",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "angina pectoris",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "ديكسا ميثازون",
+          "candidates": [
+            {
+              "term": "dexamethasone",
+              "phonetic_score": 0.75
+            },
+            {
+              "term": "doxycycline",
+              "phonetic_score": 0.571
+            }
+          ]
+        }
+      ]
+    },
+    "TC-042": {
+      "case_id": "TC-042",
+      "original": "المريض عنده قصور في القلب مع ارتفاع في الضغط وسكري من النوع الثاني، نصحناه يقلل الملح في الأكل ويمارس رياضة خفيفة بانتظام، ويتابع الوزن والضغط ومستوى السكر في البيت، ويراجع العيادة كل شهر للاطمئنان على حالته",
+      "corrected": "المريض عنده قصور في القلب مع ارتفاع في الضغط وسكري من النوع الثاني، نصحناه يقلل الملح في الأكل ويمارس رياضة خفيفة بانتظام، ويتابع الوزن والضغط ومستوى السكر في البيت، ويراجع العيادة كل شهر للاطمئنان على حالته",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-043": {
+      "case_id": "TC-043",
+      "original": "يا أبو خالد، نتائج التحاليل بينت إن السكر التراكمي مرتفع والكوليسترول بعد فوق المعدل الطبيعي. بنستمر على Metformin مرتين باليوم، وبنضيف Jardiance حبة يوميًا. أما الدهون فابدأ على Atorvastatin قبل النوم. إذا حسيت بعطش شديد أو كثرة التبول أو دوخة، راجعنا فورًا. وأبغاك تلتزم بالحمية وتتابع قياس السكر بشكل يومي.",
+      "corrected": "يا أبو خالد، نتائج التحاليل بينت إن السكر التراكمي مرتفع والكوليسترول بعد فوق المعدل الطبيعي. بنستمر على Metformin مرتين باليوم، وبنضيف Jardiance حبة يوميًا. أما الدهون فابدأ على Atorvastatin قبل النوم. إذا حسيت بعطش شديد أو كثرة التبول أو دوخة، راجعنا فورًا. وأبغاك تلتزم بالحمية وتتابع قياس السكر بشكل يومي.",
+      "corrections": [
+        {
+          "span_text": "التراكمي",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "والكوليسترول",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        },
+        {
+          "span_text": "أما الدهون",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "التراكمي",
+          "start_index": 8,
+          "end_index": 9,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "والكوليسترول",
+          "start_index": 10,
+          "end_index": 11,
+          "max_suspicion": 0.667,
+          "reason": "phonetic_near_medical"
+        },
+        {
+          "text": "أما الدهون",
+          "start_index": 24,
+          "end_index": 26,
+          "max_suspicion": 0.8,
+          "reason": "phonetic_near_medical_2gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "التراكمي",
+          "candidates": [
+            {
+              "term": "cataract",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "carcinoma",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "paracetamol",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "itraconazole",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "lyrica",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "والكوليسترول",
+          "candidates": [
+            {
+              "term": "colistin",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "crestor",
+              "phonetic_score": 0.667
+            },
+            {
+              "term": "clopidogrel",
+              "phonetic_score": 0.571
+            },
+            {
+              "term": "enalapril",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "salbutamol",
+              "phonetic_score": 0.5
+            }
+          ]
+        },
+        {
+          "span_text": "أما الدهون",
+          "candidates": [
+            {
+              "term": "amlodipine",
+              "phonetic_score": 0.8
+            },
+            {
+              "term": "clonidine",
+              "phonetic_score": 0.6
+            },
+            {
+              "term": "migraine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "betadine",
+              "phonetic_score": 0.5
+            },
+            {
+              "term": "codeine",
+              "phonetic_score": 0.5
+            }
+          ]
+        }
+      ]
+    },
+    "TC-044": {
+      "case_id": "TC-044",
+      "original": "يا أم محمد، الأشعة أوضحت وجود التهاب بسيط في الرئة. بصرف لك Augmentin لمدة سبعة أيام، ومعاه Paracetamol للحرارة إذا احتجتي. إذا استمر الكحة أو صار عندك ضيق نفس، استخدمي البخاخ Ventolin وتعالي للمراجعة مباشرة.",
+      "corrected": "يا أم محمد، الأشعة أوضحت وجود التهاب بسيط في الرئة. بصرف لك Augmentin لمدة سبعة أيام، ومعاه Paracetamol للحرارة إذا احتجتي. إذا استمر الكحة أو صار عندك ضيق نفس، استخدمي البخاخ Ventolin وتعالي للمراجعة مباشرة.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-045": {
+      "case_id": "TC-045",
+      "original": "يا أبو راشد، الضغط عندك ما زال مرتفع رغم العلاج الحالي. بنرفع جرعة Amlodipine ونضيف Losartan مرة يوميًا. إذا حسيت بصداع شديد أو زغللة في النظر أو ألم بالصدر، توجه للطوارئ فورًا. حاول تقلل الملح وتمارس المشي يوميًا.",
+      "corrected": "يا أبو راشد، الضغط عندك ما زال مرتفع رغم العلاج الحالي. بنرفع جرعة Amlodipine ونضيف Losartan مرة يوميًا. إذا حسيت بصداع شديد أو زغللة في النظر أو ألم بالصدر، توجه للطوارئ فورًا. حاول تقلل الملح وتمارس المشي يوميًا.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-046": {
+      "case_id": "TC-046",
+      "original": "يا أختي، الأعراض اللي تشتكين منها تتوافق مع ارتجاع بالمريء. خذي Omeprazole قبل الفطور يوميًا لمدة شهر، واستخدمي Gaviscon بعد الوجبات عند الحاجة. تجنبي الأكل الدسم والقهوة قبل النوم، وإذا استمرت الأعراض بنسوي منظار للمعدة.",
+      "corrected": "يا أختي، الأعراض اللي تشتكين منها تتوافق مع ارتجاع بالمريء. خذي Omeprazole قبل الفطور يوميًا لمدة شهر، واستخدمي Gaviscon بعد الوجبات عند الحاجة. تجنبي الأكل الدسم والقهوة قبل النوم، وإذا استمرت الأعراض بنسوي منظار للمعدة.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-047": {
+      "case_id": "TC-047",
+      "original": "يا أبو عبدالله، واضح إن عندك نوبة ربو تحسسي. استخدم بخاخ Symbicort بشكل منتظم صباحًا ومساءً، وخلك محتفظ ببخاخ Ventolin للطوارئ. إذا زادت الأعراض أو صار عندك صفير شديد بالتنفس، راجع المستشفى مباشرة.",
+      "corrected": "يا أبو عبدالله، واضح إن عندك نوبة ربو تحسسي. استخدم بخاخ Symbicort بشكل منتظم صباحًا ومساءً، وخلك محتفظ ببخاخ Ventolin للطوارئ. إذا زادت الأعراض أو صار عندك صفير شديد بالتنفس، راجع المستشفى مباشرة.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-048": {
+      "case_id": "TC-048",
+      "original": "يا أم فهد، تحليل البول أكد وجود التهاب بالمسالك البولية. باعطيك Ciprofloxacin لمدة خمسة أيام، ومعاه Paracetamol إذا كان فيه ألم أو حرارة. أكثري من شرب الماء، وإذا صار فيه ألم بالخاصرة أو ارتفاع شديد بالحرارة لازم تراجعين بسرعة.",
+      "corrected": "يا أم فهد، تحليل البول أكد وجود التهاب بالمسالك البولية. باعطيك Ciprofloxacin لمدة خمسة أيام، ومعاه Paracetamol إذا كان فيه ألم أو حرارة. أكثري من شرب الماء، وإذا صار فيه ألم بالخاصرة أو ارتفاع شديد بالحرارة لازم تراجعين بسرعة.",
+      "corrections": [
+        {
+          "span_text": "كان فيه ألم",
+          "chosen": "",
+          "path": "hitl_escalate",
+          "confidence": 0.0
+        }
+      ],
+      "flagged_spans": [
+        {
+          "text": "كان فيه ألم",
+          "start_index": 18,
+          "end_index": 21,
+          "max_suspicion": 0.6,
+          "reason": "phonetic_near_medical_3gram"
+        }
+      ],
+      "retrieval_candidates": [
+        {
+          "span_text": "كان فيه ألم",
+          "candidates": [
+            {
+              "term": "influenza",
+              "phonetic_score": 0.6
+            }
+          ]
+        }
+      ]
+    },
+    "TC-049": {
+      "case_id": "TC-049",
+      "original": "يا أختي، نتائج الغدة تبين إن عندك قصور بالغدة الدرقية. بنبدأ علاج Levothyroxine كل صباح على معدة فاضية. بعد ستة أسابيع بنعيد تحليل TSH ونشوف إذا الجرعة مناسبة أو تحتاج تعديل.",
+      "corrected": "يا أختي، نتائج الغدة تبين إن عندك قصور بالغدة الدرقية. بنبدأ علاج Levothyroxine كل صباح على معدة فاضية. بعد ستة أسابيع بنعيد تحليل TSH ونشوف إذا الجرعة مناسبة أو تحتاج تعديل.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-050": {
+      "case_id": "TC-050",
+      "original": "يا أبو ناصر، بعد مراجعة الفحوصات بنستمر على Aspirin وClopidogrel لتقليل خطر الجلطات، ومعهم Bisoprolol لتنظيم نبضات القلب وRosuvastatin للكوليسترول. مهم جدًا الالتزام بالأدوية وعدم إيقاف أي دواء بدون استشارة.",
+      "corrected": "يا أبو ناصر، بعد مراجعة الفحوصات بنستمر على Aspirin وClopidogrel لتقليل خطر الجلطات، ومعهم Bisoprolol لتنظيم نبضات القلب وRosuvastatin للكوليسترول. مهم جدًا الالتزام بالأدوية وعدم إيقاف أي دواء بدون استشارة.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-051": {
+      "case_id": "TC-051",
+      "original": "يا أم خالد، عندك التهاب بالجيوب الأنفية مصحوب باحتقان شديد. باصرف لك Augmentin لمدة أسبوع وCetirizine للحساسية وFluticasone Nasal Spray للاحتقان. إذا استمرت الأعراض أكثر من عشرة أيام لازم نعيد التقييم.",
+      "corrected": "يا أم خالد، عندك التهاب بالجيوب الأنفية مصحوب باحتقان شديد. باصرف لك Augmentin لمدة أسبوع وCetirizine للحساسية وFluticasone Nasal Spray للاحتقان. إذا استمرت الأعراض أكثر من عشرة أيام لازم نعيد التقييم.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    },
+    "TC-052": {
+      "case_id": "TC-052",
+      "original": "يا أبو سالم، الأعراض والتحاليل تشير إلى التهاب بالمفاصل. بنبدأ على Methotrexate أسبوعيًا مع Folic Acid، وخذ Ibuprofen عند اللزوم للألم. ضروري تسوي تحاليل وظائف الكبد بشكل دوري أثناء العلاج، وإذا حسيت بأي أعراض غير معتادة تواصل معنا فورًا.",
+      "corrected": "يا أبو سالم، الأعراض والتحاليل تشير إلى التهاب بالمفاصل. بنبدأ على Methotrexate أسبوعيًا مع Folic Acid، وخذ Ibuprofen عند اللزوم للألم. ضروري تسوي تحاليل وظائف الكبد بشكل دوري أثناء العلاج، وإذا حسيت بأي أعراض غير معتادة تواصل معنا فورًا.",
+      "corrections": [],
+      "flagged_spans": [],
+      "retrieval_candidates": []
+    }
+  }
+}

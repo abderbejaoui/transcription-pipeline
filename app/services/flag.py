@@ -99,15 +99,30 @@ def _morph_is_real_arabic(word: str) -> bool:
     colloquial Gulf forms, and MSA medical vocabulary. Drug mangles
     (e.g. \u0644\u0627\u064a\u0632\u064a\u0646\u0648 for lisinopril) produce zero analyses; genuine Arabic
     words always produce at least one.
+
+    Falls back to trying common prefix-stripped forms (\u0627\u0644, \u0648\u0627\u0644, \u2026) because
+    some lexicalised adjectives and verbal nouns (e.g. '\u0627\u0644\u062a\u0631\u0627\u0643\u0645\u064a') appear in
+    the MSA DB only under their stem, not the definite-article form.
     """
-    for analyzer in (_GLF_ANALYZER, _MSA_ANALYZER):
-        if analyzer is None:
-            continue
-        try:
-            if any(a.get("pos") not in ("PUNC", None) for a in analyzer.analyze(word)):
+    def _has_analysis(w: str) -> bool:
+        for analyzer in (_GLF_ANALYZER, _MSA_ANALYZER):
+            if analyzer is None:
+                continue
+            try:
+                if any(a.get("pos") not in ("PUNC", None) for a in analyzer.analyze(w)):
+                    return True
+            except Exception:
+                continue
+        return False
+
+    if _has_analysis(word):
+        return True
+    # Try prefix-stripped variants before giving up \u2014 handles forms like
+    # '\u0627\u0644\u062a\u0631\u0627\u0643\u0645\u064a' where only '\u062a\u0631\u0627\u0643\u0645\u064a' is in the MSA DB.
+    for pre in ("\u0627\u0644", "\u0648\u0627\u0644", "\u0628\u0627\u0644", "\u0643\u0627\u0644", "\u0641\u0627\u0644", "\u0644\u0644", "\u0648", "\u0628", "\u0644", "\u0641"):
+        if word.startswith(pre) and len(word) - len(pre) >= 3:
+            if _has_analysis(word[len(pre):]):
                 return True
-        except Exception:
-            continue
     return False
 
 
@@ -524,6 +539,121 @@ def _phonetic_alias_lookup(needle_translits: List[str]) -> Optional[str]:
     return None
 
 
+# ---------------------------------------------------------------------------
+# Spelled-out alphanumeric lab codes (e.g. 'HbA1c' dictated letter-by-letter
+# as "اتش بي ايه وان سي"). Gulf clinicians commonly spell abbreviation-style
+# lab tests one letter/digit at a time since there's no natural Arabic
+# pronunciation for them. These spans are typically 4-6 tokens long, longer
+# than the generic n-gram pass below (capped at 3 tokens) can ever join, so
+# they need a dedicated pass that runs before it.
+# ---------------------------------------------------------------------------
+
+_ARABIC_SPELLED_LETTERS: Dict[str, str] = {
+    "اتش": "h", "إتش": "h", "ايتش": "h", "إيتش": "h",
+    "بي": "b",
+    "سي": "c",
+    "دي": "d",
+    "ايه": "a", "إيه": "a",
+    "اف": "f", "إف": "f",
+    "جي": "g",
+    "كيو": "q",
+    "تي": "t",
+    "في": "v",
+    "دبليو": "w",
+    "اكس": "x", "إكس": "x",
+    "واي": "y",
+    "زد": "z",
+}
+
+_ARABIC_SPELLED_DIGITS: Dict[str, str] = {
+    "زيرو": "0",
+    "وان": "1",
+    "تو": "2",
+    "ثري": "3",
+    "فور": "4",
+    "فايف": "5",
+    "سيكس": "6",
+    "سفن": "7",
+    "ايت": "8", "إيت": "8",
+    "ناين": "9",
+}
+
+
+def _match_spelled_code(code: str, lexicon: List[str]) -> List[Dict[str, Any]]:
+    """Match an already-Latin reconstructed code (e.g. 'hba1c') against the
+    lexicon directly. No transliteration step is needed — the candidate
+    string is built from spelled-out Latin letter/digit names, so it's
+    compared straight against each lexicon term (digits kept, since they're
+    often the only thing distinguishing one lab code from another)."""
+    scored: List[Dict[str, Any]] = []
+    code_sk = _consonant_skeleton_latin(code)
+    for term in lexicon:
+        term_lat = re.sub(r"[^a-z0-9]", "", term.lower())
+        if not term_lat:
+            continue
+        if code == term_lat:
+            scored.append({"term": term, "phonetic_similarity": 1.0})
+            continue
+        sim = 0.0
+        if _length_ratio_ok(code, term_lat):
+            sim = max(sim, _lev_sim(code, term_lat))
+        term_sk = _consonant_skeleton_latin(term_lat)
+        if code_sk and term_sk and _length_ratio_ok(code_sk, term_sk):
+            sim = max(sim, _lev_sim(code_sk, term_sk))
+        if sim < 0.6:
+            continue
+        scored.append({"term": term, "phonetic_similarity": round(sim, 3)})
+    scored.sort(key=lambda d: -d["phonetic_similarity"])
+    return scored[:3]
+
+
+def _try_spelled_alphanumeric(
+    words: List[str], lexicon: List[str], consumed: set,
+) -> List[Dict[str, Any]]:
+    """Scan for runs of spelled-out letter/digit names and match the
+    reconstructed code against the lexicon. Requires at least 3 consecutive
+    recognized tokens with at least 2 letters, so isolated short Arabic
+    words that happen to collide with a letter name (e.g. 'بي') don't fire
+    on their own — only a genuine spelled-out sequence does."""
+    flags: List[Dict[str, Any]] = []
+    n = len(words)
+    i = 0
+    while i < n:
+        if i in consumed:
+            i += 1
+            continue
+        run_codes: List[str] = []
+        run_indices: List[int] = []
+        letter_count = 0
+        j = i
+        while j < n and j not in consumed:
+            tok = words[j]
+            code = _ARABIC_SPELLED_LETTERS.get(tok) or _ARABIC_SPELLED_DIGITS.get(tok)
+            if code is None:
+                break
+            run_codes.append(code)
+            run_indices.append(j)
+            if tok in _ARABIC_SPELLED_LETTERS:
+                letter_count += 1
+            j += 1
+        if len(run_codes) >= 3 and letter_count >= 2:
+            joined_code = "".join(run_codes)
+            candidates = _match_spelled_code(joined_code, lexicon)
+            if candidates and candidates[0]["phonetic_similarity"] >= 0.7:
+                flags.append({
+                    "index": run_indices[0],
+                    "word": " ".join(words[run_indices[0]:run_indices[-1] + 1]),
+                    "reason": "phonetic_spelled_code",
+                    "candidates": candidates,
+                    "span_indices": run_indices,
+                })
+                consumed.update(run_indices)
+            i = j if j > i else i + 1
+        else:
+            i = j if j > i else i + 1
+    return flags
+
+
 def _is_likely_drug(term: str) -> bool:
     term = term.lower().strip()
     if term in _DRUG_HINT_TERMS:
@@ -656,16 +786,44 @@ def _phonetic_candidates(
 # The skeleton approach can't distinguish a correct Arabic form from a misspelling
 # with the same consonants (e.g. نيكسيوم and a correct nexium spelling share the
 # same skeleton). This set grows at runtime via register_known_arabic_form().
-_KNOWN_ARABIC_MEDICAL_FORMS: set = {
-    # cholesterol (كوليسترول) — common clitic variants
-    "كوليسترول", "الكوليسترول", "للكوليسترول", "وكوليسترول", "بالكوليسترول",
-    # insulin (أنسولين)
-    "أنسولين", "الأنسولين", "للأنسولين", "وأنسولين", "بالأنسولين",
-    # creatinine (كرياتينين)
-    "كرياتينين", "الكرياتينين", "للكرياتينين", "وكرياتينين",
-    # ibuprofen (إيبوبروفين)
-    "إيبوبروفين", "الإيبوبروفين", "للإيبوبروفين", "بالإيبوبروفين",
-}
+# Base Arabic forms of medical terms that may be spelled correctly in a
+# transcript and should NOT be re-flagged as suspicious.  Add the *stem*
+# only (no definite article, no clitics) — all common Arabic prefix
+# combinations are generated programmatically at module load time below.
+_ARABIC_MEDICAL_BASE_FORMS: frozenset = frozenset({
+    "كوليسترول",   # cholesterol
+    "أنسولين",     # insulin
+    "كرياتينين",   # creatinine
+    "إيبوبروفين",  # ibuprofen
+    "تروبونين",    # troponin
+    "أسبرين",      # aspirin
+})
+
+_ARABIC_CLITIC_PREFIXES = (
+    "", "ال", "وال", "بال", "كال", "فال", "لل",
+    "و", "ب", "ل", "ف", "ك",
+)
+
+
+def _generate_arabic_medical_forms(bases: frozenset) -> set:
+    """Expand each base Arabic medical term into all common clitic variants.
+
+    Generates forms like كوليسترول, الكوليسترول, والكوليسترول, بالكوليسترول
+    etc. for every base form.  Only keeps variants whose total length ≥ 4 so
+    single-char prefix artifacts are never produced.
+    """
+    result: set = set()
+    for base in bases:
+        for pre in _ARABIC_CLITIC_PREFIXES:
+            form = pre + base
+            if len(form) >= 4:
+                result.add(form)
+    return result
+
+
+_KNOWN_ARABIC_MEDICAL_FORMS: set = _generate_arabic_medical_forms(
+    _ARABIC_MEDICAL_BASE_FORMS
+)
 
 
 def register_known_arabic_form(arabic_alias: str) -> None:
@@ -715,6 +873,11 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
     words = [w for w in re.split(r"\s+", transcript.strip()) if w]
     flags: List[Dict[str, Any]] = []
     consumed: set = set()
+
+    # --- Spelled-out alphanumeric lab codes ('HbA1c' dictated letter by
+    # letter). Runs before the n-gram passes since these spans are often
+    # longer than the 3-token n-gram cap below can reach.
+    flags.extend(_try_spelled_alphanumeric(words, lexicon, consumed))
 
     # Compute single-word candidates once (used by both single + n-gram passes).
     single_results: List[Optional[List[Dict[str, Any]]]] = []
@@ -778,8 +941,25 @@ def phonetic_pass(transcript: str) -> List[Dict[str, Any]]:
             filler_count = sum(1 for w in window if _is_arabic_filler(w))
             # Reject if more than half the window is filler (or for n=2,
             # if BOTH are filler — protects 'مع الاكل' false positive).
+            # Exception: when all-filler bigrams join to a very high-confidence
+            # drug match (≥0.85), they are almost certainly a split drug name
+            # whose fragments happen to look like real Arabic words to the
+            # morphological analyzer (e.g. 'وار'+'فارين' → warfarin 0.875,
+            # 'لان'+'توس' → lantus 1.0).  Pre-check before rejecting so these
+            # survive — plain Arabic word pairs never score this high.
             if n == 2 and filler_count >= 2:
-                continue
+                # Only rescue all-filler bigrams when at least one fragment
+                # is ≤3 chars — genuine split-drug pieces like وار/لان/فال
+                # are always short, while pairs of full Arabic words (خليه
+                # يأخذ) are longer and their joined skeleton can accidentally
+                # hit a drug at high similarity (klacid, etc.).
+                if not any(len(w) <= 3 for w in window):
+                    continue
+                _pre = _phonetic_candidates(
+                    "".join(window), lexicon, k=1, threshold=0.85,
+                )
+                if not (_pre and _pre[0]["phonetic_similarity"] >= 0.85):
+                    continue
             if n == 3 and filler_count >= 2:
                 continue
             has_filler = filler_count > 0
@@ -942,6 +1122,16 @@ _ARABIC_SHORT_PARTICLES = {
     "كل",   # "every/all" — adjective/determiner; too short to be a drug fragment
 }
 
+# POS tags that unambiguously mark a word as a grammatical function word,
+# not a content noun that might coincidentally look like a drug fragment.
+# Used by _is_arabic_filler for ≤3-char words.
+_FUNCTION_POS: frozenset = frozenset({
+    "verb", "verb_pseudo",
+    "prep", "conj", "conj_sub",
+    "part", "part_focus", "part_neg", "part_verb",
+    "pron", "interj",
+})
+
 # Fallback for when morphology DBs are unavailable: a compact set covering
 # the most common Arabic words that phonetically collide with drug skeletons.
 _ARABIC_FILLER_FALLBACK = {
@@ -959,11 +1149,13 @@ def _is_arabic_filler(word: str) -> bool:
 
     Strategy (in order):
     1. Empty string → skip.
-    2. Explicit particle set: confirmed short structural words → always skip.
-    3. Short words (≤3 chars) NOT in the particle set → NOT filler. Drug
-       name mangles often produce short fragments (e.g. 'با' in كارباmazepine,
-       'كار' in كاربامازيبين) that must NOT be blocked from n-gram joining.
-    4. Longer words (4+ chars): morphological check via Gulf + MSA analyzers.
+    2. Explicit particle set: 1-2 char and confirmed exception words → always skip.
+    3. Short words (≤3 chars) not in the particle set: run morphological
+       analysis but only trust it for *function* POS tags (verb, prep,
+       particle, conjunction…).  Pure content nouns stay NOT filler so they
+       can participate in drug-mangle n-gram matching.
+    4. Longer words (4+ chars): full morphological check (including
+       prefix-stripped fallback — see _morph_is_real_arabic).
     5. Fallback if morphology DBs unavailable: compact hardcoded set.
     """
     w = _TASHKEEL_RE.sub("", unicodedata.normalize("NFKC", word))
@@ -972,9 +1164,27 @@ def _is_arabic_filler(word: str) -> bool:
         return True
     if w in _ARABIC_SHORT_PARTICLES:
         return True
-    # Short words not in the particle list may be drug mangle fragments —
-    # don't classify them as filler or they get excluded from n-gram joining.
     if len(w) <= 3:
+        # Short words are ambiguous: drug-mangle fragments (e.g. 'اوغ' from
+        # augmentin) are ≤3 chars too, so we can't label every short word as
+        # filler.  Run the morphological check but only trust a function-word
+        # verdict when ALL available analyzers agree — this avoids false
+        # positives caused by Gulf-specific dialect verb forms that happen to
+        # look like common nouns (e.g. 'تين' = figs is mistakenly tagged
+        # 'verb' by the GLF DB but correctly 'noun' by MSA).
+        # Use MSA as the primary authority for short-word function-POS
+        # classification.  MSA is more conservative: for ambiguous 3-char
+        # words that happen to look like Gulf dialect verb forms (e.g.
+        # 'تين' = figs tagged 'verb' by GLF but 'noun' by MSA), MSA gives
+        # the more reliable answer.  Fall back to GLF only when MSA is absent.
+        primary = _MSA_ANALYZER if _MSA_ANALYZER is not None else _GLF_ANALYZER
+        if primary is not None:
+            try:
+                if any(a.get("pos") in _FUNCTION_POS
+                       for a in primary.analyze(w)):
+                    return True
+            except Exception:
+                pass
         return False
     if _GLF_ANALYZER is not None or _MSA_ANALYZER is not None:
         return _morph_is_real_arabic(w)
@@ -1426,18 +1636,18 @@ def apply_high_confidence_corrections(
         if not chosen:
             continue
 
-        # Preserve the Arabic conjunction if the span started with 'و<drug>'.
-        # But NOT when the drug itself begins with a 'و'/w-sound — e.g.
-        # 'وار فارين' is warfarin (و is part of the name), not 'و'+'arfarin'.
-        # In that case the leading 'و' is consonant, so prepending it would
-        # produce 'وwarfarin'. Latin drugs starting w/o/u correspond to a
-        # leading Arabic و, so treat 'و' as a conjunction only otherwise.
+        # Detect whether the leading 'و' is a conjunction clitic that should
+        # be preserved as a SEPARATE word in the output.  'وسيمفاستاتن' →
+        # 'و simvastatin' (space-separated), NOT 'وsimvastatin' (concatenated).
+        # Exception: when the drug itself starts with a w/o/u sound (e.g.
+        # warfarin → 'و' is part of the name, not a conjunction), leave it.
         drug_starts_with_waw_sound = chosen[:1].lower() in ("w", "o", "u")
-        if waw_prefix and not chosen.startswith(_AR_WAW) and not drug_starts_with_waw_sound:
-            chosen = _AR_WAW + chosen
+        waw_sep = (waw_prefix
+                   and not chosen.startswith(_AR_WAW)
+                   and not drug_starts_with_waw_sound)
 
         # span_indices is set for bigram/trigram flags. Replace the FIRST
-        # word and clear the rest so 'وفولتران مسا' → 'وvoltaren'.
+        # word and clear the rest so 'وفولتران مسا' → 'و voltaren'.
         spans = f.get("span_indices") or [idx]
         first = spans[0]
         original_parts = []
@@ -1445,7 +1655,10 @@ def apply_high_confidence_corrections(
             if 0 <= off < len(word_to_tok):
                 original_parts.append(tokens[word_to_tok[off]])
         ti_first = word_to_tok[first]
-        tokens[ti_first] = chosen
+        # Separate the conjunction so 'وسيمفاستاتن' → 'و simvastatin'.
+        # `chosen` stays clean (just the drug name) so the correction record
+        # and the eval both see the canonical term without the Arabic prefix.
+        tokens[ti_first] = (_AR_WAW + " " + chosen) if waw_sep else chosen
         # Clear later words AND their leading whitespace so we don't leave
         # 'voltaren مسا' as the output of a 2-gram replacement.
         for off in spans[1:]:

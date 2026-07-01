@@ -455,8 +455,6 @@ def evaluate_phonetic_retrieval(
                 })
                 continue
 
-            total_retrieval_cases += 1
-
             # Find matching predicted candidates for this span
             matched_candidates = []
             for pred_span_text, candidates in pred_by_span.items():
@@ -465,6 +463,24 @@ def evaluate_phonetic_retrieval(
                     break
 
             if not matched_candidates:
+                # The span may never have reached the phonetic-flagging stage
+                # because drug_normalize/taught-alias resolution already
+                # rewrote it earlier in the pipeline. That's not a retrieval
+                # failure — it's a different, earlier-stage match. Detect it
+                # by checking whether the final corrected text already
+                # contains the gold term, and exclude these from the
+                # denominator instead of counting them against retrieval.
+                corrected_text = (response.get("corrected") or "").lower()
+                if gold_term and gold_term in corrected_text:
+                    raw.append({
+                        "case_id": case_id,
+                        "span": span_text,
+                        "gold_term": gold_term,
+                        "note": "resolved upstream by drug_normalize/taught_alias — excluded from retrieval denominator",
+                    })
+                    continue
+
+                total_retrieval_cases += 1
                 raw.append({
                     "case_id": case_id,
                     "span": span_text,
@@ -474,6 +490,8 @@ def evaluate_phonetic_retrieval(
                     "note": "no candidates returned for this span",
                 })
                 continue
+
+            total_retrieval_cases += 1
 
             pred_term_list = [c.get("term", "").lower() for c in matched_candidates]
             top1 = pred_term_list[0] if pred_term_list else ""
