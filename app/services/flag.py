@@ -1636,18 +1636,18 @@ def apply_high_confidence_corrections(
         if not chosen:
             continue
 
-        # Preserve the Arabic conjunction if the span started with 'و<drug>'.
-        # But NOT when the drug itself begins with a 'و'/w-sound — e.g.
-        # 'وار فارين' is warfarin (و is part of the name), not 'و'+'arfarin'.
-        # In that case the leading 'و' is consonant, so prepending it would
-        # produce 'وwarfarin'. Latin drugs starting w/o/u correspond to a
-        # leading Arabic و, so treat 'و' as a conjunction only otherwise.
+        # Detect whether the leading 'و' is a conjunction clitic that should
+        # be preserved as a SEPARATE word in the output.  'وسيمفاستاتن' →
+        # 'و simvastatin' (space-separated), NOT 'وsimvastatin' (concatenated).
+        # Exception: when the drug itself starts with a w/o/u sound (e.g.
+        # warfarin → 'و' is part of the name, not a conjunction), leave it.
         drug_starts_with_waw_sound = chosen[:1].lower() in ("w", "o", "u")
-        if waw_prefix and not chosen.startswith(_AR_WAW) and not drug_starts_with_waw_sound:
-            chosen = _AR_WAW + chosen
+        waw_sep = (waw_prefix
+                   and not chosen.startswith(_AR_WAW)
+                   and not drug_starts_with_waw_sound)
 
         # span_indices is set for bigram/trigram flags. Replace the FIRST
-        # word and clear the rest so 'وفولتران مسا' → 'وvoltaren'.
+        # word and clear the rest so 'وفولتران مسا' → 'و voltaren'.
         spans = f.get("span_indices") or [idx]
         first = spans[0]
         original_parts = []
@@ -1655,7 +1655,10 @@ def apply_high_confidence_corrections(
             if 0 <= off < len(word_to_tok):
                 original_parts.append(tokens[word_to_tok[off]])
         ti_first = word_to_tok[first]
-        tokens[ti_first] = chosen
+        # Separate the conjunction so 'وسيمفاستاتن' → 'و simvastatin'.
+        # `chosen` stays clean (just the drug name) so the correction record
+        # and the eval both see the canonical term without the Arabic prefix.
+        tokens[ti_first] = (_AR_WAW + " " + chosen) if waw_sep else chosen
         # Clear later words AND their leading whitespace so we don't leave
         # 'voltaren مسا' as the output of a 2-gram replacement.
         for off in spans[1:]:

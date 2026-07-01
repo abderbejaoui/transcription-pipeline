@@ -99,7 +99,7 @@ def call_remote_asr(audio_path: Path, language: str, remote_url: str, timeout: i
         try:
             with audio_path.open("rb") as fh:
                 resp = requests.post(
-                    f"{remote_url}/asr",
+                    f"{remote_url}/api/asr",
                     files={"audio": (audio_path.name, fh, "audio/wav")},
                     data={"language": language},
                     timeout=timeout,
@@ -153,6 +153,8 @@ class ClipResult:
     ground_truth: str
     asr_transcript: str | None
     asr_wer: float | None
+    corrected_transcript: str | None
+    corrected_wer: float | None
     expected_terms: list[str]
     pipeline_flagged: list[str]
     pipeline_corrections: list[dict]
@@ -176,16 +178,21 @@ def score_clip(
     if asr_transcript is not None:
         asr_wer = round(wer(gt, asr_transcript), 4)
 
-    flagged     = []
-    corrections = []
-    error       = None
+    flagged              = []
+    corrections          = []
+    corrected_transcript = None
+    corrected_wer        = None
+    error                = None
 
     if pipeline_response:
         if "error" in pipeline_response:
             error = pipeline_response["error"]
         else:
-            flagged     = [s.get("text", "") for s in pipeline_response.get("flagged_spans", [])]
-            corrections = pipeline_response.get("corrections", [])
+            flagged              = [s.get("text", "") for s in pipeline_response.get("flagged_spans", [])]
+            corrections          = pipeline_response.get("corrections", [])
+            corrected_transcript = pipeline_response.get("corrected") or None
+            if corrected_transcript is not None and gt:
+                corrected_wer = round(wer(gt, corrected_transcript), 4)
 
     # Term recall: did the pipeline flag or correct each expected term?
     # A term is also considered "found" if it was already correctly spelled in
@@ -223,6 +230,8 @@ def score_clip(
         ground_truth=gt,
         asr_transcript=asr_transcript,
         asr_wer=asr_wer,
+        corrected_transcript=corrected_transcript,
+        corrected_wer=corrected_wer,
         expected_terms=expected,
         pipeline_flagged=flagged,
         pipeline_corrections=corrections,
@@ -243,7 +252,7 @@ def print_report(results: list[ClipResult], elapsed: float, args: argparse.Names
     for r in results:
         by_cat[r.category].append(r)
 
-    width = 80
+    width = 96
     print()
     print("=" * width)
     print("  EVAL PROJECT REPORT")
@@ -253,33 +262,49 @@ def print_report(results: list[ClipResult], elapsed: float, args: argparse.Names
     print(f"  Duration   : {elapsed:.1f}s  |  Clips: {len(results)}")
     print("=" * width)
 
-    hdr = f"{'Category':<22} {'Clips':>5} {'ASR WER':>8} {'TermRecall':>11} {'FP/clip':>8}"
+    hdr = f"{'Category':<28} {'Clips':>5} {'ASR WER':>8} {'Corr WER':>9} {'WER Δ':>7} {'TermRecall':>11} {'FP/clip':>8}"
     print(hdr)
     print("-" * width)
 
+    def _fmt(v: float | None, width: int = 8) -> str:
+        return f"{v:.3f}".rjust(width) if v is not None else "  N/A".rjust(width)
+
     for cat, cat_results in sorted(by_cat.items()):
-        wers = [r.asr_wer for r in cat_results if r.asr_wer is not None]
-        avg_wer = sum(wers) / len(wers) if wers else None
-        recalls = [r.term_recall for r in cat_results if r.expected_terms]
+        asr_wers  = [r.asr_wer       for r in cat_results if r.asr_wer       is not None]
+        corr_wers = [r.corrected_wer  for r in cat_results if r.corrected_wer is not None]
+        avg_asr   = sum(asr_wers)  / len(asr_wers)  if asr_wers  else None
+        avg_corr  = sum(corr_wers) / len(corr_wers) if corr_wers else None
+        delta     = round(avg_corr - avg_asr, 3) if (avg_asr is not None and avg_corr is not None) else None
+        recalls   = [r.term_recall for r in cat_results if r.expected_terms]
         avg_recall = sum(recalls) / len(recalls) if recalls else None
-        fp_clips = [r for r in cat_results if not r.expected_terms]
-        fp_rate = sum(r.fp_corrections > 0 for r in fp_clips) / len(fp_clips) if fp_clips else None
+        fp_clips  = [r for r in cat_results if not r.expected_terms]
+        fp_rate   = sum(r.fp_corrections > 0 for r in fp_clips) / len(fp_clips) if fp_clips else None
+        delta_str = (f"{delta:+.3f}" if delta is not None else "  N/A").rjust(7)
         print(
-            f"  {cat:<20} {len(cat_results):>5}"
-            f"  {f'{avg_wer:.3f}' if avg_wer is not None else '  N/A':>8}"
-            f"  {f'{avg_recall:.3f}' if avg_recall is not None else '  N/A':>11}"
-            f"  {f'{fp_rate:.3f}' if fp_rate is not None else '  N/A':>8}"
+            f"  {cat:<26} {len(cat_results):>5}"
+            f"  {_fmt(avg_asr)}"
+            f"  {_fmt(avg_corr, 9)}"
+            f"  {delta_str}"
+            f"  {_fmt(avg_recall, 11)}"
+            f"  {_fmt(fp_rate, 8)}"
         )
 
     print("-" * width)
-    all_wers = [r.asr_wer for r in results if r.asr_wer is not None]
-    all_recalls = [r.term_recall for r in results if r.expected_terms]
-    all_fp_clips = [r for r in results if not r.expected_terms]
+    all_asr_wers  = [r.asr_wer      for r in results if r.asr_wer      is not None]
+    all_corr_wers = [r.corrected_wer for r in results if r.corrected_wer is not None]
+    avg_all_asr   = sum(all_asr_wers)  / len(all_asr_wers)  if all_asr_wers  else None
+    avg_all_corr  = sum(all_corr_wers) / len(all_corr_wers) if all_corr_wers else None
+    all_delta     = round(avg_all_corr - avg_all_asr, 3) if (avg_all_asr is not None and avg_all_corr is not None) else None
+    all_recalls   = [r.term_recall for r in results if r.expected_terms]
+    all_fp_clips  = [r for r in results if not r.expected_terms]
+    all_delta_str = (f"{all_delta:+.3f}" if all_delta is not None else "  N/A").rjust(7)
     print(
-        f"  {'OVERALL':<20} {len(results):>5}"
-        f"  {f'{sum(all_wers)/len(all_wers):.3f}' if all_wers else '  N/A':>8}"
-        f"  {f'{sum(all_recalls)/len(all_recalls):.3f}' if all_recalls else '  N/A':>11}"
-        f"  {f'{sum(r.fp_corrections>0 for r in all_fp_clips)/len(all_fp_clips):.3f}' if all_fp_clips else '  N/A':>8}"
+        f"  {'OVERALL':<26} {len(results):>5}"
+        f"  {_fmt(avg_all_asr)}"
+        f"  {_fmt(avg_all_corr, 9)}"
+        f"  {all_delta_str}"
+        f"  {_fmt(sum(all_recalls)/len(all_recalls) if all_recalls else None, 11)}"
+        f"  {_fmt(sum(r.fp_corrections>0 for r in all_fp_clips)/len(all_fp_clips) if all_fp_clips else None, 8)}"
     )
     print("=" * width)
 

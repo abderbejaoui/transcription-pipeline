@@ -5,8 +5,8 @@ from __future__ import annotations
 import os
 from typing import Dict
 
-DEFAULT_OLLAMA_URL = "http://localhost:11434/api/chat"
-DEFAULT_OLLAMA_MODEL = "gemma4:31b"
+DEFAULT_OLLAMA_URL = "http://100.68.87.28:11434/api/chat"
+DEFAULT_OLLAMA_MODEL = "hf.co/bartowski/calme-3.2-instruct-78b-GGUF:IQ4_XS"
 DEFAULT_OPENROUTER_URL = "https://openrouter.ai/api/v1/chat/completions"
 DEFAULT_OPENROUTER_MODEL = "openai/gpt-4o-mini"
 
