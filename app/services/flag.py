@@ -1113,6 +1113,7 @@ _ARABIC_SHORT_PARTICLES = {
     "اخذ",  # "take / took" — verb that frequently precedes drug names
     "خذ",   # "take!" (imperative)
     "هل",   # question particle (do / is / did?)
+    "يا",   # vocative particle ("O doctor", "ya duktoor") — never a drug
     "بس",   # Gulf Arabic "just / only"
     "كم",   # "how much / how many"
     "عم",   # Gulf Arabic continuous marker ("doing")
@@ -1141,6 +1142,13 @@ _ARABIC_FILLER_FALLBACK = {
     "عدوى", "حمية", "كوليسترول", "الكوليسترول",
     "الدكتور", "الطبيب", "علاج", "دواء", "تحليل",
     "اليوم", "ساعه", "يوم", "شهر", "مرات", "حبوب",
+    # Islamic greeting words — phonetically collide with drug skeletons
+    # (e.g. عليكم skeleton lkm ≈ eliquis lks at ~0.80 similarity)
+    "السلام", "عليكم", "عليك", "وعليكم",
+    # common patient complaint / social words
+    "اعاني", "مساعدة", "مساعدتي", "يمكنكم", "يمكنك",
+    "الراس", "راسي", "جسمي", "بطني",
+    "دكتور", "دكتورة", "طبيب", "طبيبة",
 }
 
 
